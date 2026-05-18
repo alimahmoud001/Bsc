@@ -10364,18 +10364,26 @@ function broadcast(){
 
 async function loadHistory(){
   try {
-    $('historyBody').innerHTML = '<tr><td colspan="6">جاري الجلب من BscScan...</td></tr>';
+    $('historyBody').innerHTML = '<tr><td colspan="6">جاري جلب سجل BNB و USDT...</td></tr>';
     $('historyPanel').classList.remove('hidden');
-    const url = `https://api.bscscan.com/api?module=account&action=txlist&address=${state.address}&startblock=0&endblock=99999999&page=1&offset=20&sort=desc&apikey=${BSCSCAN_API_KEY}`;
-    const res = await fetch(url).then(r=>r.json());
-    if(res.status !== '1') throw new Error(res.message || 'لا توجد بيانات');
-    $('historyBody').innerHTML = res.result.map(x => `
+    const bnbUrl = `https://api.bscscan.com/api?module=account&action=txlist&address=${state.address}&startblock=0&endblock=99999999&page=1&offset=20&sort=desc&apikey=${BSCSCAN_API_KEY}`;
+    const usdtUrl = `https://api.bscscan.com/api?module=account&action=tokentx&contractaddress=${USDT}&address=${state.address}&page=1&offset=20&sort=desc&apikey=${BSCSCAN_API_KEY}`;
+    const [bnbRes, usdtRes] = await Promise.all([
+      fetch(bnbUrl).then(r=>r.json()).catch(()=>({status:'0',result:[]})),
+      fetch(usdtUrl).then(r=>r.json()).catch(()=>({status:'0',result:[]}))
+    ]);
+    let rows = [];
+    if(bnbRes.status==='1') bnbRes.result.forEach(x=>rows.push({time:x.timeStamp, asset:'BNB', amount:ethers.utils.formatEther(x.value), to:x.to, ok:x.isError==='0', hash:x.hash}));
+    if(usdtRes.status==='1') usdtRes.result.forEach(x=>rows.push({time:x.timeStamp, asset:'USDT', amount:ethers.utils.formatUnits(x.value, 18), to:x.to, ok:true, hash:x.hash}));
+    rows.sort((a,b)=>b.time - a.time);
+    if(rows.length===0) { $('historyBody').innerHTML = '<tr><td colspan="6">لا توجد معاملات سابقة.</td></tr>'; return; }
+    $('historyBody').innerHTML = rows.slice(0,30).map(x => `
       <tr>
-        <td>${new Date(x.timeStamp*1000).toLocaleDateString()}</td>
-        <td>BNB</td>
-        <td>${Number(ethers.utils.formatEther(x.value)).toFixed(4)}</td>
+        <td>${new Date(x.time*1000).toLocaleDateString()}</td>
+        <td>${x.asset}</td>
+        <td>${Number(x.amount).toFixed(4)}</td>
         <td>${short(x.to)}</td>
-        <td class="${x.isError==='0'?'ok':'bad'}">${x.isError==='0'?'نجحت':'فشلت'}</td>
+        <td class="${x.ok?'ok':'bad'}">${x.ok?'نجحت':'فشلت'}</td>
         <td><a href="https://bscscan.com/tx/${x.hash}" target="_blank" style="color:var(--primary)">🔗</a></td>
       </tr>
     `).join('');
