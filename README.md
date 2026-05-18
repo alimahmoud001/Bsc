@@ -524,7 +524,13 @@
 
         // Initialize provider
         async function initProvider() {
-            provider = new ethers.JsonRpcProvider(BSC_RPC);
+            try {
+                provider = new ethers.JsonRpcProvider(BSC_RPC);
+                console.log('Provider تم تهيئته بنجاح');
+            } catch (error) {
+                console.error('خطأ في تهيئة Provider:', error);
+                throw error;
+            }
         }
 
         // Login to wallet
@@ -558,7 +564,9 @@
                 document.getElementById('signedInputCard').classList.remove('hidden');
 
                 // Refresh balance
-                await refreshBalance();
+                setTimeout(async () => {
+                    await refreshBalance();
+                }, 500);
             } catch (error) {
                 showAlert(loginAlert, 'خطأ: ' + error.message, 'error');
             }
@@ -567,22 +575,35 @@
         // Refresh balance
         async function refreshBalance() {
             try {
+                if (!provider || !currentAddress) {
+                    console.error('Provider أو العنوان غير مهيأ');
+                    return;
+                }
+
                 // Get BNB balance
                 const bnbBalance = await provider.getBalance(currentAddress);
                 const bnbFormatted = ethers.formatEther(bnbBalance);
+                console.log('BNB Balance:', bnbFormatted);
 
                 // Get USDT balance
                 const usdtContract = new ethers.Contract(USDT_ADDRESS, USDT_ABI, provider);
                 const usdtBalance = await usdtContract.balanceOf(currentAddress);
                 const decimals = await usdtContract.decimals();
                 const usdtFormatted = ethers.formatUnits(usdtBalance, decimals);
+                console.log('USDT Balance:', usdtFormatted);
 
-                document.getElementById('bnbBalance').textContent = parseFloat(bnbFormatted).toFixed(4);
-                document.getElementById('usdtBalance').textContent = parseFloat(usdtFormatted).toFixed(2);
+                const bnbElement = document.getElementById('bnbBalance');
+                const usdtElement = document.getElementById('usdtBalance');
+                
+                if (bnbElement) bnbElement.textContent = parseFloat(bnbFormatted).toFixed(4);
+                if (usdtElement) usdtElement.textContent = parseFloat(usdtFormatted).toFixed(2);
 
                 currentBalance = currentToken === 'BNB' ? bnbFormatted : usdtFormatted;
+                
+                console.log('تم تحديث الأرصدة بنجاح');
             } catch (error) {
                 console.error('خطأ في تحديث الرصيد:', error);
+                alert('خطأ في تحديث الأرصدة: ' + error.message);
             }
         }
 
@@ -617,4 +638,188 @@
                 const calculated = (currentBalance * percentage / 100).toFixed(4);
                 
                 document.getElementById('percentageValue').textContent = percentage + '%';
-                document.getElementBy
+                document.getElementById('calculatedAmount').textContent = calculated + ' ' + currentToken;
+                document.getElementById('amount').value = calculated;
+            });
+        });
+
+        // Build transaction
+        async function buildTransaction() {
+            const recipient = document.getElementById('recipientAddress').value.trim();
+            const amount = document.getElementById('amount').value;
+            const gasLimit = document.getElementById('gasLimit').value;
+            const gasPrice = document.getElementById('gasPrice').value;
+            const transactionAlert = document.getElementById('transactionAlert');
+
+            if (!recipient.startsWith('0x') || recipient.length !== 42) {
+                showAlert(transactionAlert, 'عنوان المستقبل غير صحيح', 'error');
+                return;
+            }
+
+            if (!amount || amount <= 0) {
+                showAlert(transactionAlert, 'المبلغ يجب أن يكون أكبر من صفر', 'error');
+                return;
+            }
+
+            try {
+                let txData;
+
+                if (currentToken === 'BNB') {
+                    // BNB transfer
+                    txData = {
+                        to: recipient,
+                        value: ethers.parseEther(amount).toString(),
+                        gasLimit: gasLimit,
+                        gasPrice: ethers.parseUnits(gasPrice, 'gwei').toString(),
+                        from: currentAddress,
+                        chainId: 56,
+                        nonce: await provider.getTransactionCount(currentAddress),
+                        type: 2
+                    };
+                } else {
+                    // USDT transfer
+                    const usdtContract = new ethers.Contract(USDT_ADDRESS, USDT_ABI, provider);
+                    const iface = new ethers.Interface(USDT_ABI);
+                    const data = iface.encodeFunctionData('transfer', [recipient, ethers.parseUnits(amount, 18)]);
+
+                    txData = {
+                        to: USDT_ADDRESS,
+                        data: data,
+                        gasLimit: gasLimit,
+                        gasPrice: ethers.parseUnits(gasPrice, 'gwei').toString(),
+                        from: currentAddress,
+                        value: '0',
+                        chainId: 56,
+                        nonce: await provider.getTransactionCount(currentAddress),
+                        type: 2
+                    };
+                }
+
+                // Display unsigned transaction
+                document.getElementById('unsignedTransaction').value = JSON.stringify(txData, null, 2);
+                document.getElementById('encodedTransaction').value = Buffer.from(JSON.stringify(txData)).toString('base64');
+
+                document.getElementById('unsignedCard').classList.remove('hidden');
+                showAlert(transactionAlert, 'تم بناء المعاملة بنجاح!', 'success');
+            } catch (error) {
+                showAlert(transactionAlert, 'خطأ: ' + error.message, 'error');
+            }
+        }
+
+        // Generate QR Code
+        function generateQRCode() {
+            const unsignedTx = document.getElementById('unsignedTransaction').value;
+            const qrContainer = document.getElementById('qrCode');
+            qrContainer.innerHTML = '';
+
+            QRCode.toCanvas(document.createElement('canvas'), unsignedTx, {
+                errorCorrectionLevel: 'H',
+                type: 'image/png',
+                quality: 0.95,
+                margin: 1,
+                width: 300,
+                color: {
+                    dark: '#000000',
+                    light: '#ffffff'
+                }
+            }, function(error, canvas) {
+                if (error) {
+                    console.error('خطأ في إنشاء QR Code:', error);
+                    return;
+                }
+                qrContainer.appendChild(canvas);
+                document.getElementById('qrCard').classList.remove('hidden');
+            });
+        }
+
+        // Copy to clipboard
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            element.select();
+            document.execCommand('copy');
+            alert('تم النسخ إلى الحافظة!');
+        }
+
+        // Broadcast transaction
+        async function broadcastTransaction() {
+            const signedTx = document.getElementById('signedTransaction').value.trim();
+            const broadcastAlert = document.getElementById('broadcastAlert');
+
+            if (!signedTx) {
+                showAlert(broadcastAlert, 'الرجاء إدخال المعاملة الموقعة', 'error');
+                return;
+            }
+
+            try {
+                const tx = await provider.broadcastTransaction(signedTx);
+                showAlert(broadcastAlert, 'تم إرسال المعاملة! Hash: ' + tx.hash, 'success');
+                document.getElementById('signedTransaction').value = '';
+            } catch (error) {
+                showAlert(broadcastAlert, 'خطأ: ' + error.message, 'error');
+            }
+        }
+
+        // Clear transaction
+        function clearTransaction() {
+            document.getElementById('recipientAddress').value = '';
+            document.getElementById('amount').value = '';
+            document.getElementById('gasPrice').value = '5';
+            document.getElementById('percentageSlider').value = '0';
+            document.getElementById('percentageValue').textContent = '0%';
+            document.getElementById('calculatedAmount').textContent = '0.00';
+        }
+
+        // Clear signed transaction
+        function clearSignedTransaction() {
+            document.getElementById('signedTransaction').value = '';
+        }
+
+        // Reset wallet
+        function resetWallet() {
+            currentAddress = null;
+            currentToken = 'BNB';
+            
+            document.getElementById('loginCard').classList.remove('hidden');
+            document.getElementById('walletCard').classList.add('hidden');
+            document.getElementById('transactionCard').classList.add('hidden');
+            document.getElementById('unsignedCard').classList.add('hidden');
+            document.getElementById('signedInputCard').classList.add('hidden');
+            document.getElementById('qrCard').classList.add('hidden');
+            
+            clearTransaction();
+            clearSignedTransaction();
+        }
+
+        // Show alert
+        function showAlert(element, message, type) {
+            element.textContent = message;
+            element.className = 'alert ' + type;
+            setTimeout(() => {
+                element.className = 'alert';
+            }, 5000);
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', async () => {
+            console.log('الصفحة تم تحميلها');
+            try {
+                await initProvider();
+                console.log('تم تهيئة Provider بنجاح');
+            } catch (error) {
+                console.error('خطأ في تهيئة Provider:', error);
+                alert('خطأ في الاتصال بالشبكة: ' + error.message);
+            }
+        });
+
+        // Global error handler
+        window.addEventListener('error', (event) => {
+            console.error('خطأ عام:', event.error);
+        });
+
+        // Unhandled promise rejection handler
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Promise rejection غير معالج:', event.reason);
+        });
+    </script>
+</body>
+</html>
