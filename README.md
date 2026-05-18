@@ -581,29 +581,60 @@
                     return;
                 }
 
+                console.log('جاري تحديث الأرصدة للعنوان:', currentAddress);
+
                 // Get BNB balance
-                const bnbBalance = await provider.getBalance(currentAddress);
-                const bnbFormatted = ethers.formatEther(bnbBalance);
-                console.log('BNB Balance:', bnbFormatted);
+                let bnbBalance = await provider.getBalance(currentAddress);
+                console.log('BNB Balance (raw):', bnbBalance.toString());
+                
+                let bnbFormatted = '0';
+                if (bnbBalance && bnbBalance.toString() !== '0') {
+                    bnbFormatted = ethers.formatEther(bnbBalance);
+                }
+                console.log('BNB Balance (formatted):', bnbFormatted);
 
                 // Get USDT balance
-                const usdtContract = new ethers.Contract(USDT_ADDRESS, USDT_ABI, provider);
-                const usdtBalance = await usdtContract.balanceOf(currentAddress);
-                const decimals = await usdtContract.decimals();
-                const usdtFormatted = ethers.formatUnits(usdtBalance, decimals);
-                console.log('USDT Balance:', usdtFormatted);
+                let usdtFormatted = '0';
+                try {
+                    const usdtContract = new ethers.Contract(USDT_ADDRESS, USDT_ABI, provider);
+                    const usdtBalance = await usdtContract.balanceOf(currentAddress);
+                    console.log('USDT Balance (raw):', usdtBalance.toString());
+                    
+                    if (usdtBalance && usdtBalance.toString() !== '0') {
+                        const decimals = await usdtContract.decimals();
+                        console.log('USDT Decimals:', decimals);
+                        usdtFormatted = ethers.formatUnits(usdtBalance, decimals);
+                    }
+                } catch (usdtError) {
+                    console.error('خطأ في الحصول على رصيد USDT:', usdtError);
+                    usdtFormatted = '0';
+                }
+                console.log('USDT Balance (formatted):', usdtFormatted);
 
                 const bnbElement = document.getElementById('bnbBalance');
                 const usdtElement = document.getElementById('usdtBalance');
                 
-                if (bnbElement) bnbElement.textContent = parseFloat(bnbFormatted).toFixed(4);
-                if (usdtElement) usdtElement.textContent = parseFloat(usdtFormatted).toFixed(2);
+                if (bnbElement) {
+                    const bnbValue = parseFloat(bnbFormatted || '0');
+                    bnbElement.textContent = isNaN(bnbValue) ? '0.0000' : bnbValue.toFixed(4);
+                }
+                if (usdtElement) {
+                    const usdtValue = parseFloat(usdtFormatted || '0');
+                    usdtElement.textContent = isNaN(usdtValue) ? '0.00' : usdtValue.toFixed(2);
+                }
 
-                currentBalance = currentToken === 'BNB' ? bnbFormatted : usdtFormatted;
+                currentBalance = currentToken === 'BNB' ? (bnbFormatted || '0') : (usdtFormatted || '0');
                 
                 console.log('تم تحديث الأرصدة بنجاح');
             } catch (error) {
                 console.error('خطأ في تحديث الرصيد:', error);
+                
+                // عرض قيم افتراضية عند حدوث خطأ
+                const bnbElement = document.getElementById('bnbBalance');
+                const usdtElement = document.getElementById('usdtBalance');
+                if (bnbElement) bnbElement.textContent = '0.0000';
+                if (usdtElement) usdtElement.textContent = '0.00';
+                
                 alert('خطأ في تحديث الأرصدة: ' + error.message);
             }
         }
