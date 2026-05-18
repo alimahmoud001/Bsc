@@ -10103,13 +10103,23 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 /***/ })
 /******/ ])["default"];
 });</script><script>
-const BSC_RPC = 'https://bsc-dataseed.binance.org/';
+const RPC_LIST = ['https://bsc-dataseed.binance.org/', 'https://binance.llamarpc.com', 'https://bsc-dataseed1.defibit.io/'];
 const BSCSCAN_API_KEY = 'ZM8ACMJB67C2IXKKBF8URFUNSY';
 const BSCSCAN_API = 'https://api.bscscan.com/api';
 const CHAIN_ID = 56;
 const USDT = '0x55d398326f99059fF775485246999027B3197955';
 const ERC20_ABI = ['function balanceOf(address) view returns (uint256)','function decimals() view returns (uint8)','function symbol() view returns (string)','function transfer(address to,uint256 amount) returns (bool)'];
-const provider = new ethers.providers.JsonRpcProvider(BSC_RPC, {name:'bnb', chainId: CHAIN_ID});
+
+let provider = new ethers.providers.JsonRpcProvider(RPC_LIST[0], {name:'bnb', chainId: CHAIN_ID});
+async function switchRPC(){
+  for(let url of RPC_LIST){
+    try {
+      const p = new ethers.providers.JsonRpcProvider(url, {name:'bnb', chainId: CHAIN_ID});
+      await p.getNetwork(); provider = p; return true;
+    } catch(e) {}
+  }
+  return false;
+}
 const usdt = new ethers.Contract(USDT, ERC20_ABI, provider);
 let state = {address:'', bnbWei: ethers.BigNumber.from(0), usdtUnits: ethers.BigNumber.from(0), unsigned:null, requestId:null, pendingTimer:null, pendingRaw:null};
 const $ = id => document.getElementById(id);
@@ -10128,8 +10138,17 @@ async function login(){
 }
 async function refreshBalances(){
   if(!state.address) return;
-  const [bnb, token] = await Promise.all([provider.getBalance(state.address), usdt.balanceOf(state.address)]);
-  state.bnbWei=bnb; state.usdtUnits=token; $('bnbBal').textContent = fmtBN(bnb)+' BNB'; $('usdtBal').textContent = fmtUSDT(token)+' USDT'; updatePercent();
+  try {
+    const usdtContract = new ethers.Contract(USDT, ERC20_ABI, provider);
+    const [bnb, token] = await Promise.all([provider.getBalance(state.address), usdtContract.balanceOf(state.address)]);
+    state.bnbWei=bnb; state.usdtUnits=token; $('bnbBal').textContent = fmtBN(bnb)+' BNB'; $('usdtBal').textContent = fmtUSDT(token)+' USDT'; updatePercent();
+  } catch(e) {
+    if(e.code === 'NETWORK_ERROR' || e.message.includes('noNetwork')) {
+      log('جاري محاولة الاتصال بخادم بديل...', 'warn');
+      if(await switchRPC()) return refreshBalances();
+    }
+    throw e;
+  }
 }
 function selectedBalance(){ return $('asset').value==='BNB'? state.bnbWei : state.usdtUnits; }
 function updatePercent(){
@@ -10182,15 +10201,20 @@ async function startScanner(){
     $('scanBox').classList.remove('hidden');
     const video=$('video'); 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error('المتصفح لا يدعم الكاميرا أو يتطلب اتصال HTTPS آمن.');
+      throw new Error('المتصفح لا يدعم الكاميرا في وضع file://. يرجى استخدام النسخ واللصق أو فتح الملف عبر localhost.');
     }
+    log('يرجى الموافقة على إذن الكاميرا في المتصفح...', 'warn');
     camStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}); 
     video.srcObject=camStream; 
     await video.play(); 
     scanLoop();
-    log('تم تشغيل الكاميرا. وجهها نحو رمز QR.', 'warn');
+    log('تم تشغيل الكاميرا بنجاح. وجهها نحو رمز QR.', 'ok');
   } catch(e) {
-    log('خطأ في الكاميرا: ' + (e.message || 'تأكد من منح صلاحية الكاميرا واستخدام HTTPS أو localhost'), 'bad');
+    let msg = 'تعذر الوصول للكاميرا. ';
+    if(e.name==='NotAllowedError') msg += 'يرجى منح الإذن من إعدادات المتصفح.';
+    else if(location.protocol==='file:') msg += 'المتصفحات تمنع الكاميرا في الملفات المحلية. استخدم النسخ واللصق.';
+    else msg += (e.message || '');
+    log(msg, 'bad');
     $('scanBox').classList.add('hidden');
   }
 }
