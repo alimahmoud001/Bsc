@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محفظة Tron - التوقيع (أوفلاين)</title>
+    <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.0/dist/TronWeb.js"></script>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --primary-color: #FFD700;
+            --text-color: #ffffff;
+            --card-bg: #1a1a1a;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.1);
+        }
+        h2 { color: var(--primary-color); text-align: center; margin-top: 0; }
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background: #222;
+            color: white;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: var(--primary-color);
+            color: black;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1em;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        .copy-btn {
+            background: #333;
+            color: var(--primary-color);
+            padding: 5px 10px;
+            font-size: 0.8em;
+            width: auto;
+            margin: 5px 0;
+        }
+        .warning {
+            color: #ff4444;
+            font-size: 0.85em;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h2>توقيع المعاملة</h2>
+        <p class="warning">تنبيه: أدخل المفتاح الخاص الفرعي فقط. لا تستخدم هذا الملف على جهاز متصل بالإنترنت لضمان الأمان.</p>
+        
+        <input type="password" id="privateKey" placeholder="أدخل المفتاح الخاص (Private Key)">
+        
+        <textarea id="unsignedTxInput" rows="5" placeholder="الصق بيانات المعاملة غير الموقعة هنا"></textarea>
+        
+        <button onclick="signTransaction()">توقيع المعاملة</button>
+    </div>
+
+    <div class="card" id="signedTxCard" style="display:none;">
+        <h2>التوقيع (المعاملة الموقعة)</h2>
+        <textarea id="signedTxOutput" rows="5" readonly></textarea>
+        <button class="copy-btn" onclick="copyText('signedTxOutput')">نسخ التوقيع</button>
+        <p style="font-size: 0.8em; color: #888;">انسخ هذا التوقيع والصفه في الملف الأول للبث.</p>
+    </div>
+
+    <div id="statusMsg" class="status"></div>
+</div>
+
+<script>
+    let tronWeb;
+
+    function initTronWeb() {
+        // لا نحتاج للاتصال بالشبكة هنا لأننا نوقع أوفلاين
+        tronWeb = new TronWeb({
+            fullHost: 'https://api.trongrid.io'
+        });
+    }
+
+    async function signTransaction() {
+        const privKey = document.getElementById('privateKey').value.trim();
+        const unsignedTxStr = document.getElementById('unsignedTxInput').value.trim();
+
+        if (!privKey) return showStatus("يرجى إدخال المفتاح الخاص", "error");
+        if (!unsignedTxStr) return showStatus("يرجى لصق المعاملة غير الموقعة", "error");
+
+        try {
+            const unsignedTx = JSON.parse(unsignedTxStr);
+            
+            // التوقيع باستخدام المفتاح الخاص
+            const signedTx = await tronWeb.trx.sign(unsignedTx, privKey);
+            
+            document.getElementById('signedTxOutput').value = JSON.stringify(signedTx);
+            document.getElementById('signedTxCard').style.display = 'block';
+            showStatus("تم التوقيع بنجاح", "success");
+        } catch (e) {
+            showStatus("فشل التوقيع: " + e.message, "error");
+        }
+    }
+
+    function copyText(id) {
+        const copyText = document.getElementById(id);
+        copyText.select();
+        document.execCommand("copy");
+        alert("تم النسخ!");
+    }
+
+    function showStatus(msg, type) {
+        const status = document.getElementById('statusMsg');
+        status.innerText = msg;
+        status.style.display = 'block';
+        status.style.backgroundColor = type === 'success' ? '#2e7d32' : '#c62828';
+        setTimeout(() => status.style.display = 'none', 5000);
+    }
+
+    initTronWeb();
+</script>
+</body>
+</html>
