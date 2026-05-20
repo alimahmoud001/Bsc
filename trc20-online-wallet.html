@@ -12,6 +12,9 @@
             --text-color: #ffffff;
             --card-bg: #1a1a1a;
         }
+        * {
+            box-sizing: border-box;
+        }
         body {
             background-color: var(--bg-color);
             color: var(--text-color);
@@ -25,7 +28,7 @@
         }
         .container {
             width: 100%;
-            max-width: 400px;
+            max-width: 450px;
         }
         .card {
             background-color: var(--card-bg);
@@ -34,14 +37,25 @@
             margin-bottom: 20px;
             box-shadow: 0 4px 15px rgba(255, 215, 0, 0.1);
         }
-        h2 { color: var(--primary-color); text-align: center; margin-top: 0; }
+        h2 { 
+            color: var(--primary-color); 
+            text-align: center; 
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
         .balance-item {
             display: flex;
             justify-content: space-between;
-            margin: 10px 0;
-            font-size: 1.2em;
+            margin: 15px 0;
+            font-size: 1.1em;
+            padding: 10px;
+            background: #0a0a0a;
+            border-radius: 8px;
         }
-        .balance-value { font-weight: bold; color: var(--primary-color); }
+        .balance-value { 
+            font-weight: bold; 
+            color: var(--primary-color);
+        }
         input, textarea, select {
             width: 100%;
             padding: 12px;
@@ -51,8 +65,19 @@
             background: #222;
             color: white;
             box-sizing: border-box;
+            font-size: 1em;
         }
-        .slider-container { margin: 20px 0; }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+        }
+        .slider-container { 
+            margin: 20px 0;
+            padding: 15px;
+            background: #0a0a0a;
+            border-radius: 8px;
+        }
         input[type="range"] {
             -webkit-appearance: none;
             width: 100%;
@@ -60,6 +85,7 @@
             background: #333;
             border-radius: 5px;
             outline: none;
+            margin: 10px 0;
         }
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
@@ -68,6 +94,14 @@
             background: var(--primary-color);
             border-radius: 50%;
             cursor: pointer;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
         }
         button {
             width: 100%;
@@ -80,49 +114,86 @@
             font-size: 1em;
             cursor: pointer;
             margin: 10px 0;
-            transition: transform 0.1s;
+            transition: all 0.2s;
         }
-        button:active { transform: scale(0.98); }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+        }
+        button:active { 
+            transform: scale(0.98); 
+        }
+        button:disabled { 
+            opacity: 0.5; 
+            cursor: not-allowed; 
+            transform: none;
+        }
         .copy-btn {
             background: #333;
             color: var(--primary-color);
-            padding: 5px 10px;
-            font-size: 0.8em;
+            padding: 8px 12px;
+            font-size: 0.9em;
             width: auto;
             margin: 5px 0;
         }
         .status {
-            padding: 10px;
-            border-radius: 5px;
+            padding: 12px;
+            border-radius: 8px;
             margin: 10px 0;
             text-align: center;
             display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         .timer {
-            font-size: 1.5em;
+            font-size: 1.8em;
             color: #ff4444;
             text-align: center;
-            margin: 10px 0;
+            margin: 15px 0;
             display: none;
+            font-weight: bold;
         }
         .loading {
             display: inline-block;
-            width: 12px;
-            height: 12px;
+            width: 14px;
+            height: 14px;
             background: var(--primary-color);
             border-radius: 50%;
             animation: pulse 1s infinite;
         }
         @keyframes pulse {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            50% { opacity: 0.4; }
         }
         .node-info {
-            font-size: 0.75em;
+            font-size: 0.8em;
             color: #888;
             text-align: center;
-            margin-top: 5px;
+            margin-top: 8px;
+            padding: 8px;
+            background: #0a0a0a;
+            border-radius: 5px;
+        }
+        .debug-info {
+            font-size: 0.75em;
+            color: #aaa;
+            background: #0a0a0a;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            max-height: 100px;
+            overflow-y: auto;
+            font-family: monospace;
+            border-left: 3px solid var(--primary-color);
         }
     </style>
 </head>
@@ -130,14 +201,14 @@
 
 <div class="container">
     <div class="card" id="loginSection">
-        <h2>تسجيل الدخول</h2>
+        <h2>🔐 تسجيل الدخول</h2>
         <input type="text" id="publicAddress" placeholder="أدخل العنوان العام (T...)">
         <button onclick="login()">دخول</button>
     </div>
 
     <div id="mainSection" style="display:none;">
         <div class="card">
-            <h2>الرصيد</h2>
+            <h2>💰 الرصيد</h2>
             <div class="balance-item">
                 <span>TRX:</span>
                 <span id="trxBalance" class="balance-value">
@@ -150,56 +221,48 @@
                     <span class="loading"></span>
                 </span>
             </div>
-            <button class="copy-btn" onclick="refreshBalances()">تحديث الرصيد</button>
+            <button class="copy-btn" onclick="refreshBalances()">🔄 تحديث الرصيد</button>
             <div class="node-info" id="nodeInfo"></div>
         </div>
 
         <div class="card">
-            <h2>تكوين معاملة</h2>
+            <h2>📝 تكوين معاملة</h2>
             <select id="tokenType" onchange="updateAmountBySlider()">
                 <option value="TRX">TRX</option>
                 <option value="USDT">USDT (TRC20)</option>
             </select>
             <input type="text" id="recipient" placeholder="عنوان المستلم">
-            <input type="number" id="amount" placeholder="الكمية" oninput="updateSliderByAmount()">
+            <input type="number" id="amount" placeholder="الكمية" step="0.000001" oninput="updateSliderByAmount()">
             
             <div class="slider-container">
                 <label>النسبة: <span id="percentLabel">0</span>%</label>
                 <input type="range" id="percentSlider" min="0" max="100" value="0" oninput="updateAmountBySlider()">
             </div>
 
-            <button onclick="createUnsignedTx()">تكوين معاملة غير موقعة</button>
+            <button onclick="createUnsignedTx()">✏️ تكوين معاملة غير موقعة</button>
         </div>
 
         <div class="card" id="unsignedTxCard" style="display:none;">
-            <h2>المعاملة غير الموقعة</h2>
-            <textarea id="unsignedTxText" rows="5" readonly></textarea>
-            <button class="copy-btn" onclick="copyText('unsignedTxText')">نسخ المعاملة</button>
-            <p style="font-size: 0.8em; color: #888;">انسخ هذا النص واذهب للملف الثاني لتوقيعه.</p>
+            <h2>📄 المعاملة غير الموقعة</h2>
+            <textarea id="unsignedTxText" rows="6" readonly></textarea>
+            <button class="copy-btn" onclick="copyText('unsignedTxText')">📋 نسخ المعاملة</button>
+            <p style="font-size: 0.85em; color: #888;">انسخ هذا النص واذهب للملف الثاني لتوقيعه.</p>
         </div>
 
         <div class="card">
-            <h2>بث المعاملة</h2>
-            <textarea id="signedTxInput" placeholder="الصق التوقيع (المعاملة الموقعة) هنا"></textarea>
+            <h2>🚀 بث المعاملة</h2>
+            <textarea id="signedTxInput" placeholder="الصق التوقيع (المعاملة الموقعة) هنا" rows="6"></textarea>
             <div id="timerDisplay" class="timer">30</div>
-            <button id="broadcastBtn" onclick="startBroadcastCountdown()">بث المعاملة للشبكة</button>
-            <button id="cancelBtn" style="display:none; background: #ff4444; color: white;" onclick="cancelBroadcast()">إلغاء البث</button>
+            <button id="broadcastBtn" onclick="startBroadcastCountdown()">🌐 بث المعاملة للشبكة</button>
+            <button id="cancelBtn" style="display:none; background: #ff4444; color: white;" onclick="cancelBroadcast()">❌ إلغاء البث</button>
         </div>
     </div>
     <div id="statusMsg" class="status"></div>
+    <div id="debugInfo" class="debug-info" style="display:none;"></div>
 </div>
 
 <script>
     const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
-    
-    // قائمة عقد بديلة
-    const RPC_NODES = [
-        'https://api.trongrid.io',
-        'https://api.shasta.trongrid.io',
-        'https://tron.publicnode.com',
-        'https://rpc.tron.network',
-        'https://api.tronstack.com'
-    ];
     
     let tronWeb;
     let userAddress = "";
@@ -208,70 +271,86 @@
     let countdownInterval;
     let currentNodeIndex = 0;
 
+    // دالة لتسجيل معلومات التصحيح
+    function logDebug(msg) {
+        const debugDiv = document.getElementById('debugInfo');
+        debugDiv.style.display = 'block';
+        const timestamp = new Date().toLocaleTimeString('ar-SA');
+        debugDiv.innerHTML += `[${timestamp}] ${msg}<br>`;
+        debugDiv.scrollTop = debugDiv.scrollHeight;
+    }
+
     async function initTronWeb() {
-        // محاولة الاتصال بعقد متعددة
-        for (let i = 0; i < RPC_NODES.length; i++) {
-            try {
-                tronWeb = new TronWeb({
-                    fullHost: RPC_NODES[i]
-                });
-                
-                // اختبار الاتصال
-                await tronWeb.trx.getBalance("TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t");
-                currentNodeIndex = i;
-                console.log("✓ متصل بـ:", RPC_NODES[i]);
-                return;
-            } catch (e) {
-                console.log("✗ فشل الاتصال بـ:", RPC_NODES[i]);
-                continue;
-            }
+        try {
+            logDebug("جاري تهيئة TronWeb...");
+            tronWeb = new TronWeb({
+                fullHost: 'https://api.trongrid.io'
+            });
+            logDebug("✓ تم تهيئة TronWeb بنجاح");
+            return true;
+        } catch (e) {
+            logDebug("✗ خطأ في تهيئة TronWeb: " + e.message);
+            return false;
         }
-        
-        // إذا فشلت جميع المحاولات
-        showStatus("فشل الاتصال بجميع العقد. تحقق من اتصالك بالإنترنت.", "error");
     }
 
     async function login() {
         const addr = document.getElementById('publicAddress').value.trim();
-        if (tronWeb && tronWeb.isAddress(addr)) {
+        logDebug("محاولة تسجيل الدخول بالعنوان: " + addr.substring(0, 10) + "...");
+        
+        if (!tronWeb) {
+            showStatus("لم يتم تهيئة TronWeb بعد", "error");
+            return;
+        }
+        
+        if (tronWeb.isAddress(addr)) {
             userAddress = addr;
+            logDebug("✓ العنوان صحيح");
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('mainSection').style.display = 'block';
             refreshBalances();
         } else {
-            showStatus("عنوان غير صحيح أو لم يتم الاتصال بالشبكة", "error");
+            logDebug("✗ العنوان غير صحيح");
+            showStatus("عنوان غير صحيح", "error");
         }
     }
 
     async function refreshBalances() {
         try {
+            logDebug("جاري جلب الأرصدة...");
             document.getElementById('trxBalance').innerHTML = '<span class="loading"></span>';
             document.getElementById('usdtBalance').innerHTML = '<span class="loading"></span>';
             
-            // TRX Balance
-            const trxBalanceSun = await tronWeb.trx.getBalance(userAddress);
-            balances.TRX = trxBalanceSun / 1000000;
-            document.getElementById('trxBalance').innerText = balances.TRX.toFixed(4);
-
-            // USDT Balance
+            // جلب رصيد TRX
             try {
+                logDebug("جاري جلب رصيد TRX...");
+                const trxBalanceSun = await tronWeb.trx.getBalance(userAddress);
+                balances.TRX = trxBalanceSun / 1000000;
+                document.getElementById('trxBalance').innerText = balances.TRX.toFixed(4);
+                logDebug("✓ رصيد TRX: " + balances.TRX.toFixed(4));
+            } catch (e) {
+                logDebug("✗ خطأ في جلب TRX: " + e.message);
+                document.getElementById('trxBalance').innerText = "خطأ";
+            }
+
+            // جلب رصيد USDT
+            try {
+                logDebug("جاري جلب رصيد USDT...");
                 const contract = await tronWeb.contract().at(USDT_CONTRACT);
                 const usdtBalanceRaw = await contract.balanceOf(userAddress).call();
                 balances.USDT = parseInt(usdtBalanceRaw._hex || usdtBalanceRaw) / 1000000;
                 document.getElementById('usdtBalance').innerText = balances.USDT.toFixed(2);
+                logDebug("✓ رصيد USDT: " + balances.USDT.toFixed(2));
             } catch (e) {
-                // في حالة فشل جلب USDT
+                logDebug("✗ خطأ في جلب USDT: " + e.message);
                 document.getElementById('usdtBalance').innerText = "خطأ";
-                console.error("خطأ في جلب USDT:", e.message);
             }
             
-            document.getElementById('nodeInfo').innerText = "العقدة: " + RPC_NODES[currentNodeIndex].split('//')[1];
+            document.getElementById('nodeInfo').innerText = "✓ متصل بشبكة Tron";
             showStatus("تم تحديث الرصيد بنجاح", "success");
         } catch (e) {
-            console.error("خطأ في جلب الرصيد:", e);
-            document.getElementById('trxBalance').innerText = "خطأ";
-            document.getElementById('usdtBalance').innerText = "خطأ";
-            showStatus("خطأ: " + e.message, "error");
+            logDebug("✗ خطأ عام: " + e.message);
+            showStatus("خطأ في جلب الرصيد: " + e.message, "error");
         }
     }
 
@@ -301,14 +380,24 @@
         const amount = document.getElementById('amount').value;
         const type = document.getElementById('tokenType').value;
 
-        if (!tronWeb.isAddress(recipient)) return showStatus("عنوان المستلم غير صحيح", "error");
-        if (amount <= 0) return showStatus("أدخل كمية صحيحة", "error");
+        logDebug(`تكوين معاملة: ${type} إلى ${recipient.substring(0, 10)}...`);
+
+        if (!tronWeb.isAddress(recipient)) {
+            logDebug("✗ عنوان المستلم غير صحيح");
+            return showStatus("عنوان المستلم غير صحيح", "error");
+        }
+        if (amount <= 0) {
+            logDebug("✗ الكمية غير صحيحة");
+            return showStatus("أدخل كمية صحيحة", "error");
+        }
 
         try {
             let transaction;
             if (type === 'TRX') {
+                logDebug("جاري تكوين معاملة TRX...");
                 transaction = await tronWeb.transactionBuilder.sendTrx(recipient, tronWeb.toSun(amount), userAddress);
             } else {
+                logDebug("جاري تكوين معاملة USDT...");
                 const options = {};
                 const parameter = [
                     { type: 'address', value: recipient },
@@ -322,16 +411,22 @@
 
             document.getElementById('unsignedTxText').value = JSON.stringify(transaction);
             document.getElementById('unsignedTxCard').style.display = 'block';
+            logDebug("✓ تم تكوين المعاملة بنجاح");
             showStatus("تم تكوين المعاملة بنجاح", "success");
         } catch (e) {
+            logDebug("✗ فشل تكوين المعاملة: " + e.message);
             showStatus("فشل تكوين المعاملة: " + e.message, "error");
         }
     }
 
     function startBroadcastCountdown() {
         const signedTxStr = document.getElementById('signedTxInput').value.trim();
-        if (!signedTxStr) return showStatus("يرجى لصق التوقيع أولاً", "error");
+        if (!signedTxStr) {
+            logDebug("✗ لم يتم لصق التوقيع");
+            return showStatus("يرجى لصق التوقيع أولاً", "error");
+        }
 
+        logDebug("جاري بدء العداد التنازلي للبث...");
         let timeLeft = 30;
         const timerDisplay = document.getElementById('timerDisplay');
         const broadcastBtn = document.getElementById('broadcastBtn');
@@ -358,20 +453,25 @@
         document.getElementById('timerDisplay').style.display = 'none';
         document.getElementById('broadcastBtn').disabled = false;
         document.getElementById('cancelBtn').style.display = 'none';
+        logDebug("✓ تم إلغاء البث");
         showStatus("تم إلغاء البث", "info");
     }
 
     async function broadcastTransaction() {
         const signedTxStr = document.getElementById('signedTxInput').value.trim();
         try {
+            logDebug("جاري بث المعاملة...");
             const signedTx = JSON.parse(signedTxStr);
             const result = await tronWeb.trx.sendRawTransaction(signedTx);
             if (result.result) {
+                logDebug("✓ تم بث المعاملة بنجاح! Hash: " + result.txid);
                 showStatus("تم بث المعاملة بنجاح! Hash: " + result.txid, "success");
             } else {
+                logDebug("✗ فشل البث: " + JSON.stringify(result));
                 showStatus("فشل البث: " + JSON.stringify(result), "error");
             }
         } catch (e) {
+            logDebug("✗ خطأ في البيانات الموقعة: " + e.message);
             showStatus("خطأ في البيانات الموقعة: " + e.message, "error");
         }
         cancelBroadcast();
@@ -381,6 +481,7 @@
         const copyText = document.getElementById(id);
         copyText.select();
         document.execCommand("copy");
+        logDebug("✓ تم نسخ النص");
         alert("تم النسخ!");
     }
 
@@ -394,6 +495,7 @@
 
     // تهيئة عند تحميل الصفحة
     window.addEventListener('load', async () => {
+        logDebug("جاري تحميل الصفحة...");
         await initTronWeb();
     });
 </script>
