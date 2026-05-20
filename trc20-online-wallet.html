@@ -83,6 +83,7 @@
             transition: transform 0.1s;
         }
         button:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
         .copy-btn {
             background: #333;
             color: var(--primary-color);
@@ -105,6 +106,24 @@
             margin: 10px 0;
             display: none;
         }
+        .loading {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .node-info {
+            font-size: 0.75em;
+            color: #888;
+            text-align: center;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -121,13 +140,18 @@
             <h2>الرصيد</h2>
             <div class="balance-item">
                 <span>TRX:</span>
-                <span id="trxBalance" class="balance-value">0.00</span>
+                <span id="trxBalance" class="balance-value">
+                    <span class="loading"></span>
+                </span>
             </div>
             <div class="balance-item">
                 <span>USDT:</span>
-                <span id="usdtBalance" class="balance-value">0.00</span>
+                <span id="usdtBalance" class="balance-value">
+                    <span class="loading"></span>
+                </span>
             </div>
             <button class="copy-btn" onclick="refreshBalances()">تحديث الرصيد</button>
+            <div class="node-info" id="nodeInfo"></div>
         </div>
 
         <div class="card">
@@ -167,46 +191,87 @@
 
 <script>
     const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+    
+    // قائمة عقد بديلة
+    const RPC_NODES = [
+        'https://api.trongrid.io',
+        'https://api.shasta.trongrid.io',
+        'https://tron.publicnode.com',
+        'https://rpc.tron.network',
+        'https://api.tronstack.com'
+    ];
+    
     let tronWeb;
     let userAddress = "";
     let balances = { TRX: 0, USDT: 0 };
     let broadcastTimeout;
     let countdownInterval;
+    let currentNodeIndex = 0;
 
     async function initTronWeb() {
-        // استخدام عقدة عامة (Mainnet)
-        tronWeb = new TronWeb({
-            fullHost: 'https://api.trongrid.io'
-        });
+        // محاولة الاتصال بعقد متعددة
+        for (let i = 0; i < RPC_NODES.length; i++) {
+            try {
+                tronWeb = new TronWeb({
+                    fullHost: RPC_NODES[i]
+                });
+                
+                // اختبار الاتصال
+                await tronWeb.trx.getBalance("TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t");
+                currentNodeIndex = i;
+                console.log("✓ متصل بـ:", RPC_NODES[i]);
+                return;
+            } catch (e) {
+                console.log("✗ فشل الاتصال بـ:", RPC_NODES[i]);
+                continue;
+            }
+        }
+        
+        // إذا فشلت جميع المحاولات
+        showStatus("فشل الاتصال بجميع العقد. تحقق من اتصالك بالإنترنت.", "error");
     }
 
     async function login() {
         const addr = document.getElementById('publicAddress').value.trim();
-        if (tronWeb.isAddress(addr)) {
+        if (tronWeb && tronWeb.isAddress(addr)) {
             userAddress = addr;
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('mainSection').style.display = 'block';
             refreshBalances();
         } else {
-            showStatus("عنوان غير صحيح", "error");
+            showStatus("عنوان غير صحيح أو لم يتم الاتصال بالشبكة", "error");
         }
     }
 
     async function refreshBalances() {
         try {
+            document.getElementById('trxBalance').innerHTML = '<span class="loading"></span>';
+            document.getElementById('usdtBalance').innerHTML = '<span class="loading"></span>';
+            
             // TRX Balance
             const trxBalanceSun = await tronWeb.trx.getBalance(userAddress);
             balances.TRX = trxBalanceSun / 1000000;
             document.getElementById('trxBalance').innerText = balances.TRX.toFixed(4);
 
             // USDT Balance
-            const contract = await tronWeb.contract().at(USDT_CONTRACT);
-            const usdtBalanceRaw = await contract.balanceOf(userAddress).call();
-            balances.USDT = parseInt(usdtBalanceRaw._hex || usdtBalanceRaw) / 1000000;
-            document.getElementById('usdtBalance').innerText = balances.USDT.toFixed(2);
+            try {
+                const contract = await tronWeb.contract().at(USDT_CONTRACT);
+                const usdtBalanceRaw = await contract.balanceOf(userAddress).call();
+                balances.USDT = parseInt(usdtBalanceRaw._hex || usdtBalanceRaw) / 1000000;
+                document.getElementById('usdtBalance').innerText = balances.USDT.toFixed(2);
+            } catch (e) {
+                // في حالة فشل جلب USDT
+                document.getElementById('usdtBalance').innerText = "خطأ";
+                console.error("خطأ في جلب USDT:", e.message);
+            }
+            
+            document.getElementById('nodeInfo').innerText = "العقدة: " + RPC_NODES[currentNodeIndex].split('//')[1];
+            showStatus("تم تحديث الرصيد بنجاح", "success");
         } catch (e) {
-            console.error(e);
-            showStatus("خطأ في جلب الرصيد", "error");
+            console.error("خطأ في جلب الرصيد:", e);
+            document.getElementById('trxBalance').innerText = "خطأ";
+            document.getElementById('usdtBalance').innerText = "خطأ";
+            showStatus("خطأ: " + e.message, "error");
         }
     }
 
@@ -307,9 +372,9 @@
                 showStatus("فشل البث: " + JSON.stringify(result), "error");
             }
         } catch (e) {
-            showStatus("خطأ في البيانات الموقعة", "error");
+            showStatus("خطأ في البيانات الموقعة: " + e.message, "error");
         }
-        cancelBroadcast(); // لإعادة ضبط الأزرار
+        cancelBroadcast();
     }
 
     function copyText(id) {
@@ -327,7 +392,10 @@
         setTimeout(() => status.style.display = 'none', 5000);
     }
 
-    initTronWeb();
+    // تهيئة عند تحميل الصفحة
+    window.addEventListener('load', async () => {
+        await initTronWeb();
+    });
 </script>
 </body>
 </html>
