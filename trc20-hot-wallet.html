@@ -1,9 +1,11 @@
-
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>محفظة Tron - النسخة المضمونة</title>
+    <!-- إضافة Polyfill لـ Buffer -->
+    <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.0/dist/TronWeb.js"></script>
     <style>
         body {
@@ -256,7 +258,7 @@
             logDebug(`فشل جلب TRX: ${e.message}`);
         }
 
-        // 2. جلب USDT بنظام ثلاثي المراحل
+        // 2. جلب USDT بنظام ثلاثي المراحل مع معالجة أفضل للأخطاء
         logDebug('بدء جلب رصيد USDT...');
         let usdtFound = false;
 
@@ -264,7 +266,25 @@
         try {
             const contract = await tronWeb.contract().at(USDT_CONTRACT);
             const usdtRaw = await contract.balanceOf(currentAddress).call();
-            const usdtValue = usdtRaw.toNumber ? usdtRaw.toNumber() : (usdtRaw._hex ? parseInt(usdtRaw._hex, 16) : usdtRaw);
+            
+            // معالجة محسّنة للقيم المختلفة
+            let usdtValue = 0;
+            if (usdtRaw && typeof usdtRaw === 'object') {
+                if (usdtRaw.toNumber && typeof usdtRaw.toNumber === 'function') {
+                    usdtValue = usdtRaw.toNumber();
+                } else if (usdtRaw._hex) {
+                    usdtValue = parseInt(usdtRaw._hex, 16);
+                } else if (usdtRaw.toString) {
+                    usdtValue = parseInt(usdtRaw.toString());
+                } else {
+                    usdtValue = usdtRaw;
+                }
+            } else if (typeof usdtRaw === 'number') {
+                usdtValue = usdtRaw;
+            } else if (typeof usdtRaw === 'string') {
+                usdtValue = parseInt(usdtRaw);
+            }
+            
             balances.USDT = usdtValue / 1e6;
             usdtFound = true;
             logDebug(`USDT (المرحلة أ): ${balances.USDT}`);
@@ -276,7 +296,7 @@
         if (!usdtFound || balances.USDT === 0) {
             try {
                 const account = await tronWeb.trx.getAccount(currentAddress);
-                if (account.trc20) {
+                if (account && account.trc20 && Array.isArray(account.trc20)) {
                     const usdtToken = account.trc20.find(t => Object.keys(t)[0] === USDT_CONTRACT);
                     if (usdtToken) {
                         balances.USDT = Object.values(usdtToken)[0] / 1e6;
@@ -293,14 +313,25 @@
         if (!usdtFound) {
             try {
                 const url = `https://api.trongrid.io/v1/accounts/${currentAddress}`;
-                const response = await fetch(url, { headers: { "TRON-PRO-API-KEY": API_KEY } });
+                const response = await fetch(url, { 
+                    headers: { "TRON-PRO-API-KEY": API_KEY },
+                    method: 'GET'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
                 const data = await response.json();
-                if (data.data && data.data[0] && data.data[0].trc20) {
-                    const usdtVal = data.data[0].trc20.find(t => t[USDT_CONTRACT]);
-                    if (usdtVal) {
-                        balances.USDT = usdtVal[USDT_CONTRACT] / 1e6;
-                        usdtFound = true;
-                        logDebug(`USDT (المرحلة ج): ${balances.USDT}`);
+                if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
+                    const accountData = data.data[0];
+                    if (accountData.trc20 && Array.isArray(accountData.trc20)) {
+                        const usdtVal = accountData.trc20.find(t => t && t[USDT_CONTRACT]);
+                        if (usdtVal && usdtVal[USDT_CONTRACT]) {
+                            balances.USDT = usdtVal[USDT_CONTRACT] / 1e6;
+                            usdtFound = true;
+                            logDebug(`USDT (المرحلة ج): ${balances.USDT}`);
+                        }
                     }
                 }
             } catch (e) {
