@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>محفظة Tron - النسخة المستقرة</title>
+    <title>محفظة Tron - النسخة النهائية</title>
     <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.0/dist/TronWeb.js"></script>
     <style>
         body {
@@ -169,14 +169,12 @@
     let currentUnsignedTx = null;
     let broadcastTimer = null;
 
-    // تهيئة قوية لـ TronWeb تضمن تمرير المفتاح في كل مكان
     function setupTronWeb() {
         const HttpProvider = TronWeb.providers.HttpProvider;
         const fullNode = new HttpProvider('https://api.trongrid.io');
         const solidityNode = new HttpProvider('https://api.trongrid.io');
         const eventServer = new HttpProvider('https://api.trongrid.io');
 
-        // حقن المفتاح في الرؤوس الافتراضية لكل مزود
         [fullNode, solidityNode, eventServer].forEach(provider => {
             provider.headers = { "TRON-PRO-API-KEY": API_KEY };
         });
@@ -186,12 +184,11 @@
 
     async function checkApiHealth() {
         try {
-            const status = await tronWeb.fullNode.request('wallet/getnodeinfo', {}, 'post');
-            document.getElementById('api-status').innerHTML = '✅ اتصال API نشط ومصرح به';
+            await tronWeb.fullNode.request('wallet/getnodeinfo', {}, 'post');
+            document.getElementById('api-status').innerHTML = '✅ اتصال API نشط';
             document.getElementById('api-status').style.color = '#00ff00';
         } catch (e) {
-            console.error('API Check Failed:', e);
-            document.getElementById('api-status').innerHTML = '❌ خطأ في API (401): المفتاح غير مفعل أو مقيد';
+            document.getElementById('api-status').innerHTML = '❌ خطأ في API (401)';
             document.getElementById('api-status').style.color = '#ff4444';
         }
     }
@@ -208,7 +205,7 @@
         currentAddress = addr;
         const btn = document.getElementById('login-btn');
         btn.disabled = true;
-        btn.innerHTML = '<span class="loading-spinner"></span> جاري الدخول...';
+        btn.innerHTML = '<span class="loading-spinner"></span> جاري التحميل...';
         
         try {
             await updateBalances();
@@ -217,7 +214,8 @@
             document.getElementById('broadcast-section').classList.remove('hidden');
             showStatus('تم تسجيل الدخول', '#ffd700');
         } catch (e) {
-            alert('فشل جلب البيانات. تأكد من أن مفتاح API يعمل (401).');
+            console.error(e);
+            alert('فشل جلب البيانات. تأكد من اتصال الإنترنت.');
             btn.disabled = false;
             btn.innerText = 'تسجيل الدخول';
         }
@@ -229,16 +227,36 @@
         balances.TRX = tronWeb.fromSun(trxSun);
         document.getElementById('trx-balance').innerText = balances.TRX + ' TRX';
 
-        // USDT
+        // USDT - طريقة محسنة ومباشرة عبر API TronGrid لضمان الدقة
         try {
+            // محاولة أولى: عبر العقد الذكي
             const contract = await tronWeb.contract().at(USDT_CONTRACT);
             const usdtRaw = await contract.balanceOf(currentAddress).call();
-            const usdtValue = usdtRaw.toNumber ? usdtRaw.toNumber() : usdtRaw;
+            // تحويل النتيجة بدقة سواء كانت BigNumber أو كائن
+            const usdtValue = usdtRaw.toNumber ? usdtRaw.toNumber() : (usdtRaw._hex ? parseInt(usdtRaw._hex, 16) : usdtRaw);
             balances.USDT = usdtValue / 1e6;
-            document.getElementById('usdt-balance').innerText = balances.USDT.toFixed(2) + ' USDT';
         } catch (e) {
-            document.getElementById('usdt-balance').innerText = '0.00 USDT';
+            console.warn('Smart Contract Call failed, trying API fallback...');
+            try {
+                // محاولة ثانية: عبر API الحسابات المباشر
+                const accountInfo = await tronWeb.trx.getAccount(currentAddress);
+                if (accountInfo.trc20) {
+                    const usdtData = accountInfo.trc20.find(token => Object.keys(token)[0] === USDT_CONTRACT);
+                    if (usdtData) {
+                        const rawVal = Object.values(usdtData)[0];
+                        balances.USDT = rawVal / 1e6;
+                    } else {
+                        balances.USDT = 0;
+                    }
+                } else {
+                    balances.USDT = 0;
+                }
+            } catch (apiErr) {
+                console.error('API Fallback failed:', apiErr);
+                balances.USDT = 0;
+            }
         }
+        document.getElementById('usdt-balance').innerText = balances.USDT.toFixed(2) + ' USDT';
     }
 
     function updateAmountBySlider() {
