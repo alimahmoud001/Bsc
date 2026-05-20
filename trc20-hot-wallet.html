@@ -1,12 +1,41 @@
-<!DOCTYPE html>
+
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>محفظة Tron - النسخة المضمونة</title>
-    <!-- إضافة Polyfill لـ Buffer -->
+    
+    <!-- حقن Buffer Polyfill بقوة عالية قبل أي شيء آخر -->
+    <script>
+        // تعريف Buffer عالمياً قبل تحميل أي مكتبات
+        if (typeof Buffer === 'undefined') {
+            window.Buffer = {
+                isBuffer: function(obj) {
+                    return obj != null && obj._isBuffer === true;
+                },
+                from: function(data, encoding) {
+                    if (typeof data === 'string') {
+                        const bytes = new Uint8Array(data.length);
+                        for (let i = 0; i < data.length; i++) {
+                            bytes[i] = data.charCodeAt(i);
+                        }
+                        return bytes;
+                    }
+                    return new Uint8Array(data);
+                },
+                alloc: function(size) {
+                    return new Uint8Array(size);
+                }
+            };
+        }
+    </script>
+    
+    <!-- مكتبة Buffer الكاملة -->
     <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.js"></script>
+    
+    <!-- TronWeb -->
     <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.0/dist/TronWeb.js"></script>
+    
     <style>
         body {
             background-color: #000;
@@ -90,7 +119,7 @@
             padding: 10px;
             border-radius: 5px;
             margin-top: 20px;
-            max-height: 100px;
+            max-height: 150px;
             overflow-y: auto;
             width: 100%;
             box-sizing: border-box;
@@ -189,20 +218,28 @@
         const log = document.getElementById('debug-log');
         log.innerHTML += `<br>> ${msg}`;
         log.scrollTop = log.scrollHeight;
+        console.log(msg); // أيضاً في console للتشخيص
     }
 
     function setupTronWeb() {
-        const HttpProvider = TronWeb.providers.HttpProvider;
-        const fullNode = new HttpProvider('https://api.trongrid.io');
-        const solidityNode = new HttpProvider('https://api.trongrid.io');
-        const eventServer = new HttpProvider('https://api.trongrid.io');
+        try {
+            // فحص توفر Buffer
+            logDebug(`فحص Buffer: ${typeof Buffer} - ${Buffer ? 'موجود' : 'غير موجود'}`);
+            
+            const HttpProvider = TronWeb.providers.HttpProvider;
+            const fullNode = new HttpProvider('https://api.trongrid.io');
+            const solidityNode = new HttpProvider('https://api.trongrid.io');
+            const eventServer = new HttpProvider('https://api.trongrid.io');
 
-        [fullNode, solidityNode, eventServer].forEach(provider => {
-            provider.headers = { "TRON-PRO-API-KEY": API_KEY };
-        });
+            [fullNode, solidityNode, eventServer].forEach(provider => {
+                provider.headers = { "TRON-PRO-API-KEY": API_KEY };
+            });
 
-        tronWeb = new TronWeb(fullNode, solidityNode, eventServer);
-        logDebug('تمت تهيئة TronWeb بنجاح');
+            tronWeb = new TronWeb(fullNode, solidityNode, eventServer);
+            logDebug('✅ تمت تهيئة TronWeb بنجاح');
+        } catch (e) {
+            logDebug(`❌ فشل تهيئة TronWeb: ${e.message}`);
+        }
     }
 
     async function checkApiHealth() {
@@ -210,15 +247,16 @@
             await tronWeb.fullNode.request('wallet/getnodeinfo', {}, 'post');
             document.getElementById('api-status').innerHTML = '✅ اتصال API نشط';
             document.getElementById('api-status').style.color = '#00ff00';
-            logDebug('فحص API: ناجح');
+            logDebug('✅ فحص API: ناجح');
         } catch (e) {
             document.getElementById('api-status').innerHTML = '❌ خطأ في API (401)';
             document.getElementById('api-status').style.color = '#ff4444';
-            logDebug('فحص API: فشل (401)');
+            logDebug(`❌ فحص API: فشل - ${e.message}`);
         }
     }
 
     window.onload = function() {
+        logDebug('🔧 بدء التهيئة...');
         setupTronWeb();
         checkApiHealth();
     };
@@ -233,14 +271,14 @@
         btn.innerHTML = '<span class="loading-spinner"></span> جاري التحميل...';
         
         try {
-            logDebug(`بدء تسجيل الدخول للعنوان: ${addr}`);
+            logDebug(`🔐 بدء تسجيل الدخول للعنوان: ${addr}`);
             await updateBalances();
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('wallet-info').classList.remove('hidden');
             document.getElementById('broadcast-section').classList.remove('hidden');
-            showStatus('تم تسجيل الدخول', '#ffd700');
+            showStatus('✅ تم تسجيل الدخول', '#ffd700');
         } catch (e) {
-            logDebug(`خطأ في تسجيل الدخول: ${e.message}`);
+            logDebug(`❌ خطأ في تسجيل الدخول: ${e.message}`);
             alert('فشل جلب البيانات. راجع سجل التشخيص في الأسفل.');
             btn.disabled = false;
             btn.innerText = 'تسجيل الدخول';
@@ -253,70 +291,88 @@
             const trxSun = await tronWeb.trx.getBalance(currentAddress);
             balances.TRX = tronWeb.fromSun(trxSun);
             document.getElementById('trx-balance').innerText = balances.TRX + ' TRX';
-            logDebug(`رصيد TRX: ${balances.TRX}`);
+            logDebug(`💰 رصيد TRX: ${balances.TRX}`);
         } catch (e) {
-            logDebug(`فشل جلب TRX: ${e.message}`);
+            logDebug(`❌ فشل جلب TRX: ${e.message}`);
         }
 
         // 2. جلب USDT بنظام ثلاثي المراحل مع معالجة أفضل للأخطاء
-        logDebug('بدء جلب رصيد USDT...');
+        logDebug('🔄 بدء جلب رصيد USDT...');
         let usdtFound = false;
 
         // المرحلة أ: العقد الذكي المباشر
         try {
+            logDebug('📍 المرحلة أ: محاولة جلب USDT من العقد الذكي...');
             const contract = await tronWeb.contract().at(USDT_CONTRACT);
             const usdtRaw = await contract.balanceOf(currentAddress).call();
+            
+            logDebug(`📊 القيمة الخام من العقد: ${JSON.stringify(usdtRaw)}`);
             
             // معالجة محسّنة للقيم المختلفة
             let usdtValue = 0;
             if (usdtRaw && typeof usdtRaw === 'object') {
                 if (usdtRaw.toNumber && typeof usdtRaw.toNumber === 'function') {
                     usdtValue = usdtRaw.toNumber();
+                    logDebug(`✓ تم التحويل باستخدام toNumber()`);
                 } else if (usdtRaw._hex) {
                     usdtValue = parseInt(usdtRaw._hex, 16);
+                    logDebug(`✓ تم التحويل من _hex`);
                 } else if (usdtRaw.toString) {
                     usdtValue = parseInt(usdtRaw.toString());
+                    logDebug(`✓ تم التحويل من toString()`);
                 } else {
                     usdtValue = usdtRaw;
+                    logDebug(`✓ استخدام القيمة مباشرة`);
                 }
             } else if (typeof usdtRaw === 'number') {
                 usdtValue = usdtRaw;
+                logDebug(`✓ القيمة رقم مباشر`);
             } else if (typeof usdtRaw === 'string') {
                 usdtValue = parseInt(usdtRaw);
+                logDebug(`✓ تم التحويل من نص`);
             }
             
             balances.USDT = usdtValue / 1e6;
             usdtFound = true;
-            logDebug(`USDT (المرحلة أ): ${balances.USDT}`);
+            logDebug(`✅ USDT (المرحلة أ): ${balances.USDT}`);
         } catch (e) {
-            logDebug(`فشل المرحلة أ: ${e.message}`);
+            logDebug(`❌ فشل المرحلة أ: ${e.message}`);
         }
 
         // المرحلة ب: API الحسابات (TRC20 List)
         if (!usdtFound || balances.USDT === 0) {
             try {
+                logDebug('📍 المرحلة ب: محاولة جلب USDT من بيانات الحساب...');
                 const account = await tronWeb.trx.getAccount(currentAddress);
                 if (account && account.trc20 && Array.isArray(account.trc20)) {
+                    logDebug(`📊 عدد الرموز: ${account.trc20.length}`);
                     const usdtToken = account.trc20.find(t => Object.keys(t)[0] === USDT_CONTRACT);
                     if (usdtToken) {
                         balances.USDT = Object.values(usdtToken)[0] / 1e6;
                         usdtFound = true;
-                        logDebug(`USDT (المرحلة ب): ${balances.USDT}`);
+                        logDebug(`✅ USDT (المرحلة ب): ${balances.USDT}`);
+                    } else {
+                        logDebug(`⚠️ لم يتم العثور على USDT في الحساب`);
                     }
+                } else {
+                    logDebug(`⚠️ لا توجد بيانات trc20 في الحساب`);
                 }
             } catch (e) {
-                logDebug(`فشل المرحلة ب: ${e.message}`);
+                logDebug(`❌ فشل المرحلة ب: ${e.message}`);
             }
         }
 
         // المرحلة ج: استعلام API خارجي (TronGrid API)
         if (!usdtFound) {
             try {
+                logDebug('📍 المرحلة ج: محاولة جلب USDT من TronGrid API...');
                 const url = `https://api.trongrid.io/v1/accounts/${currentAddress}`;
                 const response = await fetch(url, { 
                     headers: { "TRON-PRO-API-KEY": API_KEY },
                     method: 'GET'
                 });
+                
+                logDebug(`📊 حالة الاستجابة: ${response.status}`);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
@@ -326,22 +382,29 @@
                 if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
                     const accountData = data.data[0];
                     if (accountData.trc20 && Array.isArray(accountData.trc20)) {
+                        logDebug(`📊 عدد الرموز من API: ${accountData.trc20.length}`);
                         const usdtVal = accountData.trc20.find(t => t && t[USDT_CONTRACT]);
                         if (usdtVal && usdtVal[USDT_CONTRACT]) {
                             balances.USDT = usdtVal[USDT_CONTRACT] / 1e6;
                             usdtFound = true;
-                            logDebug(`USDT (المرحلة ج): ${balances.USDT}`);
+                            logDebug(`✅ USDT (المرحلة ج): ${balances.USDT}`);
+                        } else {
+                            logDebug(`⚠️ لم يتم العثور على USDT في استجابة API`);
                         }
+                    } else {
+                        logDebug(`⚠️ لا توجد بيانات trc20 في استجابة API`);
                     }
+                } else {
+                    logDebug(`⚠️ لا توجد بيانات حساب في استجابة API`);
                 }
             } catch (e) {
-                logDebug(`فشل المرحلة ج: ${e.message}`);
+                logDebug(`❌ فشل المرحلة ج: ${e.message}`);
             }
         }
 
         if (!usdtFound) {
             balances.USDT = 0;
-            logDebug('لم يتم العثور على رصيد USDT (قد يكون 0)');
+            logDebug('⚠️ لم يتم العثور على رصيد USDT (قد يكون 0 أو غير متوفر)');
         }
         
         document.getElementById('usdt-balance').innerText = balances.USDT.toFixed(2) + ' USDT';
@@ -367,7 +430,7 @@
         btn.innerHTML = '<span class="loading-spinner"></span> جاري التكوين...';
 
         try {
-            logDebug(`تكوين معاملة ${type} بمبلغ ${amount}`);
+            logDebug(`📝 تكوين معاملة ${type} بمبلغ ${amount}`);
             let tx;
             if (type === 'TRX') {
                 tx = await tronWeb.transactionBuilder.sendTrx(recipient, tronWeb.toSun(amount), currentAddress);
@@ -382,10 +445,10 @@
             currentUnsignedTx = tx;
             document.getElementById('unsigned-tx-data').value = JSON.stringify(tx);
             document.getElementById('unsigned-section').classList.remove('hidden');
-            showStatus('تم تكوين المعاملة', '#ffd700');
-            logDebug('تم تكوين المعاملة بنجاح');
+            showStatus('✅ تم تكوين المعاملة', '#ffd700');
+            logDebug('✅ تم تكوين المعاملة بنجاح');
         } catch (e) {
-            logDebug(`خطأ في التكوين: ${e.message}`);
+            logDebug(`❌ خطأ في التكوين: ${e.message}`);
             alert('خطأ: ' + e.message);
         } finally {
             btn.disabled = false;
@@ -417,28 +480,28 @@
         clearInterval(broadcastTimer);
         document.getElementById('timer-container').classList.add('hidden');
         document.getElementById('broadcast-btn').classList.remove('hidden');
-        showStatus('تم إلغاء البث', '#ff4444');
-        logDebug('تم إلغاء بث المعاملة');
+        showStatus('❌ تم إلغاء البث', '#ff4444');
+        logDebug('❌ تم إلغاء بث المعاملة');
     }
 
     async function broadcastTransaction(signature) {
         try {
-            logDebug('بدء بث المعاملة للشبكة...');
+            logDebug('📤 بدء بث المعاملة للشبكة...');
             const signedTx = JSON.parse(JSON.stringify(currentUnsignedTx));
             if (!signedTx.signature) signedTx.signature = [];
             signedTx.signature.push(signature);
 
             const receipt = await tronWeb.trx.sendRawTransaction(signedTx);
             if (receipt.result) {
-                showStatus('تم البث بنجاح! ID: ' + receipt.txid, '#00ff00');
-                logDebug(`نجاح البث: ${receipt.txid}`);
+                showStatus('✅ تم البث بنجاح! ID: ' + receipt.txid, '#00ff00');
+                logDebug(`✅ نجاح البث: ${receipt.txid}`);
                 alert('تم البث بنجاح!');
             } else {
                 throw new Error(JSON.stringify(receipt));
             }
         } catch (e) {
-            logDebug(`فشل البث: ${e.message}`);
-            showStatus('فشل البث: ' + e.message, '#ff4444');
+            logDebug(`❌ فشل البث: ${e.message}`);
+            showStatus('❌ فشل البث: ' + e.message, '#ff4444');
             cancelBroadcast();
         }
     }
@@ -447,7 +510,7 @@
         const el = document.getElementById(id);
         el.select();
         document.execCommand("copy");
-        showStatus('تم النسخ', '#ffd700');
+        showStatus('✅ تم النسخ', '#ffd700');
     }
 
     function showStatus(msg, color) {
