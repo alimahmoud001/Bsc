@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>محفظة Tron - الواجهة الرئيسية</title>
-    <!-- استخدام نسخة محددة ومستقرة من TronWeb -->
     <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.0/dist/TronWeb.js"></script>
     <style>
         body {
@@ -169,61 +168,77 @@
     let currentUnsignedTx = null;
     let broadcastTimer = null;
 
-    // تهيئة TronWeb عند تحميل الصفحة
+    // تهيئة TronWeb مع تمرير المفتاح في جميع الروابط لتجنب 401
+    function initTronWeb() {
+        const fullNode = 'https://api.trongrid.io';
+        const solidityNode = 'https://api.trongrid.io';
+        const eventServer = 'https://api.trongrid.io';
+        
+        tronWeb = new TronWeb({
+            fullNode: fullNode,
+            solidityNode: solidityNode,
+            eventServer: eventServer,
+            headers: { "TRON-PRO-API-KEY": API_KEY }
+        });
+        
+        // تأكيد إضافي للمفتاح في كل مزود خدمة
+        tronWeb.fullNode.headers = { "TRON-PRO-API-KEY": API_KEY };
+        tronWeb.solidityNode.headers = { "TRON-PRO-API-KEY": API_KEY };
+        tronWeb.eventServer.headers = { "TRON-PRO-API-KEY": API_KEY };
+    }
+
     window.onload = function() {
         try {
-            tronWeb = new TronWeb({
-                fullHost: 'https://api.trongrid.io',
-                headers: { "TRON-PRO-API-KEY": API_KEY }
-            });
-            showStatus('متصل بشبكة Tron', '#00ff00');
+            initTronWeb();
+            showStatus('جاهز للاتصال', '#ffd700');
         } catch (e) {
-            showStatus('خطأ في تهيئة المكتبة', '#ff0000');
+            showStatus('خطأ في التهيئة', '#ff0000');
         }
     };
 
     async function login() {
         const addr = document.getElementById('wallet-address').value.trim();
         if (!tronWeb || !tronWeb.isAddress(addr)) {
-            return alert('يرجى إدخال عنوان Tron صحيح يبدأ بحرف T');
+            return alert('يرجى إدخال عنوان Tron صحيح');
         }
         
         currentAddress = addr;
         document.getElementById('login-btn').disabled = true;
-        document.getElementById('login-btn').innerHTML = '<span class="loading-spinner"></span> جاري الدخول...';
+        document.getElementById('login-btn').innerHTML = '<span class="loading-spinner"></span> جاري التحقق...';
         
         try {
             await updateBalances();
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('wallet-info').classList.remove('hidden');
             document.getElementById('broadcast-section').classList.remove('hidden');
-            showStatus('تم تسجيل الدخول بنجاح', '#ffd700');
+            showStatus('متصل بنجاح', '#00ff00');
         } catch (e) {
-            alert('فشل جلب البيانات: ' + e.message);
+            console.error(e);
+            let errorMsg = 'فشل الاتصال (401). تأكد من صلاحية مفتاح API الخاص بك.';
+            if (e.message) errorMsg += ' التفاصيل: ' + e.message;
+            alert(errorMsg);
+            showStatus('خطأ في الصلاحيات 401', '#ff4444');
             document.getElementById('login-btn').disabled = false;
             document.getElementById('login-btn').innerText = 'تسجيل الدخول';
         }
     }
 
     async function updateBalances() {
-        try {
-            // TRX Balance
-            const trxSun = await tronWeb.trx.getBalance(currentAddress);
-            balances.TRX = tronWeb.fromSun(trxSun);
-            document.getElementById('trx-balance').innerText = balances.TRX + ' TRX';
+        // جلب رصيد TRX
+        const trxSun = await tronWeb.trx.getBalance(currentAddress);
+        balances.TRX = tronWeb.fromSun(trxSun);
+        document.getElementById('trx-balance').innerText = balances.TRX + ' TRX';
 
-            // USDT Balance
+        // جلب رصيد USDT
+        try {
             const contract = await tronWeb.contract().at(USDT_CONTRACT);
             const usdtRaw = await contract.balanceOf(currentAddress).call();
-            // التعامل مع النتيجة سواء كانت BigNumber أو رقم عادي
             const usdtValue = usdtRaw.toNumber ? usdtRaw.toNumber() : usdtRaw;
             balances.USDT = usdtValue / 1e6;
             document.getElementById('usdt-balance').innerText = balances.USDT.toFixed(2) + ' USDT';
         } catch (e) {
-            console.error('Balance Error:', e);
-            document.getElementById('trx-balance').innerText = 'خطأ في الجلب';
-            document.getElementById('usdt-balance').innerText = 'خطأ في الجلب';
-            throw e;
+            console.warn('USDT Balance Error:', e);
+            document.getElementById('usdt-balance').innerText = '0.00 USDT';
         }
     }
 
@@ -272,7 +287,7 @@
             currentUnsignedTx = tx;
             document.getElementById('unsigned-tx-data').value = JSON.stringify(tx);
             document.getElementById('unsigned-section').classList.remove('hidden');
-            showStatus('تم تكوين المعاملة بنجاح', '#ffd700');
+            showStatus('تم تكوين المعاملة', '#ffd700');
         } catch (e) {
             alert('خطأ في تكوين المعاملة: ' + e.message);
         } finally {
@@ -284,7 +299,7 @@
     function startBroadcastTimer() {
         const sig = document.getElementById('signature-input').value.trim();
         if (!sig) return alert('يرجى إدخال التوقيع أولاً');
-        if (!currentUnsignedTx) return alert('لا توجد معاملة لتوقيعها');
+        if (!currentUnsignedTx) return alert('لا توجد معاملة');
 
         document.getElementById('broadcast-btn').classList.add('hidden');
         document.getElementById('timer-container').classList.remove('hidden');
@@ -318,7 +333,7 @@
 
             const receipt = await tronWeb.trx.sendRawTransaction(signedTx);
             if (receipt.result || receipt.code === 'SUCCESS') {
-                showStatus('تم بث المعاملة بنجاح! ID: ' + (receipt.txid || receipt.transaction.txID), '#ffd700');
+                showStatus('تم البث بنجاح! ID: ' + (receipt.txid || receipt.transaction.txID), '#00ff00');
                 document.getElementById('timer-container').classList.add('hidden');
                 alert('تم البث بنجاح!');
             } else {
@@ -334,7 +349,7 @@
         const copyText = document.getElementById(id);
         copyText.select();
         document.execCommand("copy");
-        showStatus('تم النسخ إلى الحافظة', '#ffd700');
+        showStatus('تم النسخ', '#ffd700');
     }
 
     function showStatus(msg, color) {
