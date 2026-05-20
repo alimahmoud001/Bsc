@@ -1,380 +1,479 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>محفظة Tron - المعاملات</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tronweb/6.0.0/TronWeb.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>محفظة ترون غير موقعة - الجزء الأول (إنشاء المعاملات)</title>
     <style>
-        body {
-            background-color: #000;
-            color: #fff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        * {
             margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-        }
-        .container {
-            width: 100%;
-            max-width: 400px;
-            background: #111;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.1);
-        }
-        h2 { color: #ffd700; text-align: center; }
-        .card {
-            background: #222;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            border: 1px solid #333;
-        }
-        label { display: block; margin-bottom: 8px; color: #aaa; font-size: 14px; }
-        input, textarea, select {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            border: 1px solid #444;
-            background: #000;
-            color: #fff;
+            padding: 0;
             box-sizing: border-box;
+            font-family: system-ui, 'Segoe UI', 'Cairo', -apple-system, BlinkMacSystemFont, sans-serif;
         }
-        .btn {
+        body {
+            background: #0a0a0a;
+            min-height: 100vh;
+            padding: 20px 12px 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .card {
+            max-width: 550px;
             width: 100%;
-            padding: 15px;
-            background-color: #ffd700;
-            color: #000;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background 0.3s;
+            margin: 0 auto;
+            background: #000000;
+            border-radius: 32px;
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,215,0,0.2);
+            overflow: hidden;
+            padding: 24px 20px 32px;
+            border: 1px solid #ffd96633;
         }
-        .btn:hover { background-color: #ffc800; }
-        .btn:disabled { background-color: #555; cursor: not-allowed; }
-        .btn-secondary { background-color: #444; color: #fff; margin-top: 10px; }
-        .balance-info { display: flex; justify-content: space-between; margin-bottom: 10px; }
-        .balance-val { color: #ffd700; font-weight: bold; }
-        .slider-container { margin: 20px 0; }
-        input[type="range"] { accent-color: #ffd700; }
-        .unsigned-box {
-            background: #000;
-            border: 1px dashed #ffd700;
-            padding: 10px;
-            word-break: break-all;
+        h1 {
+            font-size: 1.7rem;
+            font-weight: 700;
+            color: #FFD966;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .sub {
+            color: #bbbb88;
+            font-size: 0.8rem;
+            margin-bottom: 24px;
+            border-right: 2px solid #FFD966;
+            padding-right: 12px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin: 18px 0 6px 0;
+            color: #FFD966;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+        input, textarea, .slider-container {
+            width: 100%;
+            background: #111111;
+            border: 1px solid #333;
+            border-radius: 20px;
+            padding: 14px 16px;
+            color: #f5f5f0;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+        input:focus, textarea:focus {
+            border-color: #FFD966;
+            box-shadow: 0 0 0 2px #ffd96633;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 110px;
             font-family: monospace;
-            font-size: 12px;
-            max-height: 150px;
-            overflow-y: auto;
-            margin-bottom: 10px;
+            background: #0c0c0c;
         }
-        .timer {
-            text-align: center;
-            font-size: 24px;
-            color: #ff4444;
-            margin: 10px 0;
-            display: none;
+        button {
+            background: #FFD966;
+            border: none;
+            padding: 14px 18px;
+            border-radius: 40px;
+            font-weight: bold;
+            font-size: 1rem;
+            color: #000000;
+            margin-top: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+            width: 100%;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        button:active {
+            transform: scale(0.97);
+            background: #e6c34b;
         }
         .copy-btn {
-            background: #333;
-            color: #ffd700;
-            border: 1px solid #ffd700;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 12px;
-            cursor: pointer;
-            float: left;
-        }
-        .hidden { display: none; }
-        #debug-log {
-            font-size: 10px;
-            color: #666;
-            margin-top: 20px;
-            width: 100%;
-            max-width: 400px;
-            text-align: left;
-            direction: ltr;
-            background: #050505;
+            background: #2a2a1c;
+            color: #FFD966;
+            margin-top: 8px;
+            font-size: 0.8rem;
             padding: 10px;
-            border-radius: 5px;
-            max-height: 100px;
-            overflow-y: auto;
+        }
+        .flex-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .slider-wrapper {
+            background: #111;
+            padding: 12px 16px;
+            border-radius: 40px;
+            margin: 12px 0;
+        }
+        input[type="range"] {
+            width: 100%;
+            padding: 0;
+            background: #2c2c2c;
+            height: 4px;
+            border-radius: 10px;
+            -webkit-appearance: none;
+        }
+        input[type="range"]:focus {
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #FFD966;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 4px gold;
+        }
+        .percent-display {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #FFD966;
+            background: #1f1f1a;
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 40px;
+            margin-top: 8px;
+        }
+        .balance-card {
+            background: #141414;
+            border-radius: 24px;
+            padding: 12px 16px;
+            margin: 12px 0;
+            border-left: 4px solid #FFD966;
+        }
+        .warning-timer {
+            background: #2a1e0a;
+            color: #ffbb44;
+            padding: 10px;
+            border-radius: 28px;
+            text-align: center;
+            font-size: 0.85rem;
+            margin: 20px 0 8px;
+        }
+        hr {
+            border-color: #333;
+            margin: 20px 0;
+        }
+        .status {
+            background: #0f0f0f;
+            border-radius: 20px;
+            padding: 10px;
+            margin-top: 12px;
+            font-size: 0.8rem;
+            color: #bbaa66;
+            word-break: break-all;
+        }
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 10px;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid #FFD966;
+            color: #FFD966;
+            box-shadow: none;
+        }
+        @media (max-width: 500px) {
+            .card { padding: 18px 14px; }
+            button { padding: 12px; }
         }
     </style>
+    <!-- TronWeb & TronLink helper (للتواصل مع الشبكة وبث المعاملات) -->
+    <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.0/dist/TronWeb.js"></script>
 </head>
 <body>
+<div class="card">
+    <h1>🔐 TRON ‏•  غير موقّعة</h1>
+    <div class="sub">إنشاء معاملة TX / USDT (TRC20) + توقيع لاحق + بث آمن</div>
 
-<div class="container" id="login-screen">
-    <h2>تسجيل الدخول</h2>
-    <label>العنوان العام (Public Address):</label>
-    <input type="text" id="public-address" placeholder="T..." value="">
-    <button class="btn" id="login-btn" onclick="login()">دخول</button>
-</div>
+    <!-- 1️⃣ العنوان العام -->
+    <label>📍 العنوان العام (الحساب)</label>
+    <input type="text" id="publicAddress" placeholder="T... أو 41..." value="">
 
-<div class="container hidden" id="wallet-screen">
-    <h2>محفظتي</h2>
+    <button id="connectWalletBtn" style="background:#2c2c1a; color:#FFD966;">🔌 فتح المحفظة وعرض الرصيد</button>
+
+    <div id="walletInfo" class="balance-card" style="display:none;">
+        <div>💰 الرصيد TRX: <span id="trxBalance">0</span> TRX</div>
+        <div>💎 الرصيد USDT (TRC20): <span id="usdtBalance">0</span> USDT</div>
+    </div>
+
+    <!-- مؤشر النسبة المئوية -->
+    <label>🎚️ نسبة من الرصيد (%) — لعملة TRX أو USDT</label>
+    <div class="slider-wrapper">
+        <input type="range" id="percentSlider" min="0" max="100" value="20" step="1">
+        <div class="flex-row" style="justify-content: space-between; margin-top: 8px;">
+            <span>0%</span>
+            <span class="percent-display" id="percentValue">20%</span>
+            <span>100%</span>
+        </div>
+    </div>
+
+    <!-- اختيار العملة -->
+    <label>💱 نوع العملة</label>
+    <select id="tokenType" style="background:#111; border-radius:40px; padding:12px; color:#ffd966;">
+        <option value="TRX">TRX (العملة الأصلية)</option>
+        <option value="USDT">USDT (TRC20) – عقد معروف</option>
+    </select>
+
+    <!-- حقل المبلغ المحسوب -->
+    <label>📊 المبلغ المحسوب</label>
+    <input type="text" id="calculatedAmount" readonly placeholder="سيظهر المبلغ تلقائياً" style="background:#1a1a1a;">
+
+    <label>✍️ معاملة غير موقعة (JSON / نصي)</label>
+    <textarea id="unsignedTxArea" placeholder="ستظهر هنا المعاملة بصيغة نصية قابلة للنسخ ..."></textarea>
+    <div class="btn-group">
+        <button id="buildTxBtn" style="background:#FFD966; color:black;">📝 تكوين المعاملة غير الموقعة</button>
+        <button id="copyUnsignedBtn" class="copy-btn">📋 نسخ المعاملة</button>
+    </div>
+
+    <hr>
+
+    <label>🔏 التوقيع المشفر (من الملف الثاني)</label>
+    <textarea id="signatureInput" placeholder="الصق التوقيع المشفر الناتج من الملف الثاني (المفتاح الخاص الفرعي)"></textarea>
+    <div style="display: flex; gap:8px;">
+        <button id="broadcastWithSigBtn" style="background:#FFD966;">📡 بث المعاملة + التوقيع</button>
+        <button id="pasteSignatureBtn" class="copy-btn">📋 لصق من الحافظة</button>
+    </div>
     
-    <div class="card">
-        <div class="balance-info">
-            <span>رصيد TRX:</span>
-            <span class="balance-val" id="trx-balance">0.00</span>
-        </div>
-        <div class="balance-info">
-            <span>رصيد USDT:</span>
-            <span class="balance-val" id="usdt-balance">0.00</span>
-        </div>
+    <div id="timerArea" class="warning-timer" style="display: none;">
+        ⏳ مهلة الإلغاء: <span id="countdownSec">30</span> ثانية — يمكنك إلغاء البث خلال هذه الفترة.
+        <button id="cancelBroadcastBtn" style="background:#a03333; margin-top:8px; padding:6px; font-size:0.8rem;">❌ إلغاء المعاملة قبل البث</button>
     </div>
-
-    <div class="card">
-        <label>نوع العملة:</label>
-        <select id="asset-type" onchange="updateSlider()">
-            <option value="TRX">TRX</option>
-            <option value="USDT">USDT (TRC20)</option>
-        </select>
-
-        <label>عنوان المستلم:</label>
-        <input type="text" id="to-address" placeholder="عنوان المستلم...">
-
-        <div class="slider-container">
-            <label>النسبة المئوية: <span id="percent-label">0%</span></label>
-            <input type="range" id="amount-slider" min="0" max="100" value="0" oninput="calculateAmount()">
-        </div>
-
-        <label>المبلغ:</label>
-        <input type="number" id="amount-input" placeholder="0.00">
-
-        <button class="btn" onclick="createUnsigned()">تكوين معاملة غير موقعة</button>
-    </div>
-
-    <div id="unsigned-section" class="hidden">
-        <label>المعاملة غير الموقعة (كود نصي):</label>
-        <button class="copy-btn" onclick="copyText('unsigned-data')">نسخ</button>
-        <div class="unsigned-box" id="unsigned-data"></div>
-        
-        <label>لصق التوقيع المستلم:</label>
-        <textarea id="signature-input" rows="3" placeholder="الصق التوقيع هنا..."></textarea>
-        
-        <div id="timer-display" class="timer">30</div>
-        <button class="btn" id="broadcast-btn" onclick="startBroadcastCountdown()">بث المعاملة</button>
-        <button class="btn btn-secondary hidden" id="cancel-btn" onclick="cancelBroadcast()">إلغاء البث</button>
-    </div>
+    <div id="statusMsg" class="status"></div>
 </div>
-
-<div id="debug-log"></div>
 
 <script>
-    const API_KEY = '4e8fc7a5-83ae-4f99-a98a-4b8f47e39551';
-    const USDT_CONTRACT = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
-    
-    let tronWeb;
-    let userAddress = '';
-    let balances = { TRX: 0, USDT: 0 };
-    let currentUnsignedTx = null;
+    // ********** إعدادات الشبكة وعقد USDT (TRC20 معروف) **********
+    const TRON_GRID = "https://api.trongrid.io";
+    const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";  // USDT (TRC20) mainnet
+    let tronWebInstance = null;
+    let currentUnsignedTransaction = null;      // تخزين المعاملة غير الموقعة (كائن)
+    let currentRawTxHex = null;
+    let currentTxID = null;
+    let timeoutId = null;
+    let isBroadcastingLock = false;
+
+    // تهيئة TronWeb عام
+    async function initTronWeb() {
+        if(window.tronWeb && window.tronWeb.defaultAddress) {
+            tronWebInstance = window.tronWeb;
+        } else {
+            tronWebInstance = new TronWeb({ fullHost: TRON_GRID });
+        }
+        return tronWebInstance;
+    }
+    initTronWeb();
+
+    // عرض الرصيد بناءً على العنوان المدخل
+    document.getElementById("connectWalletBtn").addEventListener("click", async () => {
+        const address = document.getElementById("publicAddress").value.trim();
+        if(!address || (!address.startsWith("T") && !address.startsWith("41"))) {
+            document.getElementById("statusMsg").innerHTML = "⚠️ يرجى إدخال عنوان Tron صالح (يبدأ بـ T أو 41)";
+            return;
+        }
+        try {
+            await initTronWeb();
+            let formattedAddr = address;
+            if(address.startsWith("41") && address.length === 42) formattedAddr = tronWebInstance.address.fromHex(address);
+            else if(address.startsWith("T")) formattedAddr = address;
+            else throw new Error("تنسيق عنوان غير معروف");
+
+            const account = await tronWebInstance.trx.getAccount(formattedAddr);
+            const trxBalance = (account.balance / 1e6).toFixed(2);
+            // USDT balance via contract
+            const contract = await tronWebInstance.contract().at(USDT_CONTRACT);
+            let usdtRaw = await contract.balanceOf(formattedAddr).call();
+            let usdtBalance = (usdtRaw / 1e6).toFixed(2);
+            document.getElementById("trxBalance").innerText = trxBalance;
+            document.getElementById("usdtBalance").innerText = usdtBalance;
+            document.getElementById("walletInfo").style.display = "block";
+            document.getElementById("statusMsg").innerHTML = `✅ تم جلب الرصيد بنجاح`;
+            // حفظ الرصيد للتحديث الديناميكي
+            window.currentTRX = parseFloat(trxBalance);
+            window.currentUSDT = parseFloat(usdtBalance);
+            updateAmountFromSlider();
+        } catch(e) {
+            console.error(e);
+            document.getElementById("statusMsg").innerHTML = `❌ فشل جلب الرصيد: ${e.message}`;
+        }
+    });
+
+    function updateAmountFromSlider() {
+        const percent = parseInt(document.getElementById("percentSlider").value);
+        document.getElementById("percentValue").innerText = percent+"%";
+        const token = document.getElementById("tokenType").value;
+        let balance = (token === "TRX") ? (window.currentTRX || 0) : (window.currentUSDT || 0);
+        let amountRaw = (balance * percent / 100);
+        if(token === "TRX") {
+            document.getElementById("calculatedAmount").value = amountRaw.toFixed(6) + " TRX";
+        } else {
+            document.getElementById("calculatedAmount").value = amountRaw.toFixed(2) + " USDT";
+        }
+        window.currentAmount = amountRaw;
+    }
+
+    document.getElementById("percentSlider").addEventListener("input", updateAmountFromSlider);
+    document.getElementById("tokenType").addEventListener("change", updateAmountFromSlider);
+
+    // بناء المعاملة غير الموقعة (نصي JSON مفصل)
+    document.getElementById("buildTxBtn").addEventListener("click", async () => {
+        const address = document.getElementById("publicAddress").value.trim();
+        if(!address) { alert("أدخل العنوان العام أولاً"); return; }
+        if(!window.currentTRX && !window.currentUSDT && !document.getElementById("walletInfo").style.display === "block") {
+            alert("يرجى الضغط على 'فتح المحفظة وعرض الرصيد' أولاً لجلب الرصيد");
+            return;
+        }
+        const token = document.getElementById("tokenType").value;
+        let amountToSend = window.currentAmount;
+        if(!amountToSend || amountToSend <= 0) { alert("المبلغ غير صالح أو صفر"); return; }
+        try {
+            await initTronWeb();
+            let fromAddress = address.startsWith("T") ? address : tronWebInstance.address.fromHex(address);
+            let unsignedParams = {};
+            let unsignedTxObject = null;
+            if(token === "TRX") {
+                let sunAmount = Math.floor(amountToSend * 1e6);
+                const tx = await tronWebInstance.transactionBuilder.sendTrx(fromAddress, sunAmount, fromAddress);
+                unsignedTxObject = tx;
+            } else {
+                // USDT TRC20 transfer
+                const contract = await tronWebInstance.contract().at(USDT_CONTRACT);
+                let decimals = 6;
+                let rawAmount = Math.floor(amountToSend * 10**decimals);
+                const parameter = [{ type: 'address', value: fromAddress }, { type: 'uint256', value: rawAmount.toString() }];
+                const tx = await tronWebInstance.transactionBuilder.triggerConstantContract(USDT_CONTRACT, 'transfer(address,uint256)', {}, parameter, fromAddress);
+                // نحتاج المعاملة الفعلية غير الموقعة عن طريق triggerContract
+                const unSigned = await tronWebInstance.transactionBuilder.triggerContract(USDT_CONTRACT, 'transfer(address,uint256)', {}, parameter, fromAddress);
+                if(!unSigned.transaction) throw new Error("فشل بناء معاملة USDT");
+                unsignedTxObject = unSigned.transaction;
+            }
+            // إضافة expiration لحوالى 60 دقيقة لكن لا بأس
+            if(!unsignedTxObject.raw_data.expiration) {
+                const expireTime = Date.now() + 60 * 60 * 1000;
+                unsignedTxObject.raw_data.expiration = expireTime;
+            }
+            currentUnsignedTransaction = unsignedTxObject;
+            const txJson = JSON.stringify(unsignedTxObject, null, 2);
+            document.getElementById("unsignedTxArea").value = txJson;
+            document.getElementById("statusMsg").innerHTML = "✅ تم إنشاء المعاملة غير الموقعة. يمكنك نسخها واستخدامها في الملف الثاني للتوقيع.";
+            currentRawTxHex = null;
+        } catch(err) {
+            document.getElementById("statusMsg").innerHTML = `❌ خطأ في بناء المعاملة: ${err.message}`;
+            console.error(err);
+        }
+    });
+
+    document.getElementById("copyUnsignedBtn").addEventListener("click", () => {
+        let txText = document.getElementById("unsignedTxArea").value;
+        if(!txText) { alert("لا توجد معاملة للنسخ"); return; }
+        navigator.clipboard.writeText(txText);
+        document.getElementById("statusMsg").innerHTML = "📋 تم نسخ المعاملة غير الموقعة!";
+    });
+
+    document.getElementById("pasteSignatureBtn").addEventListener("click", async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            document.getElementById("signatureInput").value = text;
+            document.getElementById("statusMsg").innerHTML = "🖴 تم لصق التوقيع من الحافظة";
+        } catch(e) {
+            alert("يرجى لصق التوقيع يدوياً (Ctrl+V)");
+        }
+    });
+
+    // مهلة 30 ثانية مع إمكانية الإلغاء
     let countdownInterval = null;
-
-    function log(msg) {
-        const div = document.getElementById('debug-log');
-        div.innerHTML += `> ${msg}<br>`;
-        div.scrollTop = div.scrollHeight;
-        console.log(msg);
-    }
-
-    window.onload = function() {
-        log("جاري تهيئة النظام...");
-        setTimeout(() => {
-            if (typeof TronWeb !== 'undefined') {
-                try {
-                    // محاولة التهيئة بأكثر من طريقة لضمان التوافق
-                    const TronWebLib = window.TronWeb.default || window.TronWeb;
-                    tronWeb = new TronWebLib({
-                        fullHost: 'https://api.trongrid.io',
-                        headers: { "TRON-PRO-API-KEY": API_KEY }
-                    });
-                    log("تم تحميل مكتبة TronWeb بنجاح.");
-                } catch (e) {
-                    log("خطأ في تهيئة TronWeb: " + e.message);
-                }
-            } else {
-                log("فشل تحميل مكتبة TronWeb. يرجى التحقق من الإنترنت.");
-            }
-        }, 500);
-    };
-
-    async function login() {
-        const addr = document.getElementById('public-address').value.trim();
-        const btn = document.getElementById('login-btn');
-
-        if (!tronWeb) {
-            alert("المكتبة لم تحمل بعد، يرجى الانتظار ثواني.");
-            return;
-        }
-
-        if (!addr || !tronWeb.isAddress(addr)) {
-            alert("يرجى إدخال عنوان Tron صحيح يبدأ بـ T");
-            return;
-        }
-
-        btn.disabled = true;
-        btn.innerText = "جاري الدخول...";
-        log("محاولة الدخول للعنوان: " + addr);
-
-        try {
-            userAddress = addr;
-            // محاولة جلب الرصيد كاختبار للاتصال
-            await refreshBalances();
-            
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('wallet-screen').classList.remove('hidden');
-            log("تم تسجيل الدخول بنجاح.");
-        } catch (e) {
-            log("فشل تسجيل الدخول: " + e.message);
-            alert("تعذر تسجيل الدخول. تأكد من اتصالك بالإنترنت أو صحة العنوان.");
-        } finally {
-            btn.disabled = false;
-            btn.innerText = "دخول";
-        }
-    }
-
-    async function refreshBalances() {
-        log("جاري تحديث الأرصدة...");
-        try {
-            // TRX
-            const trxSun = await tronWeb.trx.getBalance(userAddress);
-            balances.TRX = tronWeb.fromSun(trxSun);
-            document.getElementById('trx-balance').innerText = balances.TRX;
-            log("رصيد TRX: " + balances.TRX);
-
-            // USDT
-            try {
-                const contract = await tronWeb.contract().at(USDT_CONTRACT);
-                const usdtRaw = await contract.balanceOf(userAddress).call();
-                balances.USDT = (usdtRaw.toNumber() / 1e6).toFixed(2);
-                document.getElementById('usdt-balance').innerText = balances.USDT;
-                log("رصيد USDT: " + balances.USDT);
-            } catch (usdtErr) {
-                log("تنبيه: فشل جلب رصيد USDT (قد يكون العنوان جديداً): " + usdtErr.message);
-                document.getElementById('usdt-balance').innerText = "0.00";
-            }
-        } catch (e) {
-            throw new Error("فشل الاتصال بالشبكة: " + e.message);
-        }
-    }
-
-    function updateSlider() {
-        document.getElementById('amount-slider').value = 0;
-        document.getElementById('percent-label').innerText = '0%';
-        document.getElementById('amount-input').value = '';
-    }
-
-    function calculateAmount() {
-        const percent = document.getElementById('amount-slider').value;
-        const asset = document.getElementById('asset-type').value;
-        document.getElementById('percent-label').innerText = percent + '%';
-        
-        const total = parseFloat(balances[asset]);
-        const amount = (total * (percent / 100)).toFixed(6);
-        document.getElementById('amount-input').value = amount;
-    }
-
-    async function createUnsigned() {
-        const to = document.getElementById('to-address').value.trim();
-        const amount = document.getElementById('amount-input').value;
-        const asset = document.getElementById('asset-type').value;
-
-        if (!tronWeb.isAddress(to)) { alert('عنوان المستلم غير صحيح'); return; }
-        if (!amount || amount <= 0) { alert('أدخل مبلغاً صحيحاً'); return; }
-
-        log("جاري تكوين معاملة " + asset + "...");
-        try {
-            let tx;
-            if (asset === 'TRX') {
-                tx = await tronWeb.transactionBuilder.sendTrx(to, tronWeb.toSun(amount), userAddress);
-            } else {
-                const options = {};
-                const functionSelector = 'transfer(address,uint256)';
-                const parameter = [
-                    { type: 'address', value: to },
-                    { type: 'uint256', value: (amount * 1e6).toFixed(0) }
-                ];
-                const trigger = await tronWeb.transactionBuilder.triggerSmartContract(
-                    USDT_CONTRACT, functionSelector, options, parameter, userAddress
-                );
-                tx = trigger.transaction;
-            }
-
-            currentUnsignedTx = tx;
-            document.getElementById('unsigned-data').innerText = JSON.stringify(tx);
-            document.getElementById('unsigned-section').classList.remove('hidden');
-            log("تم تكوين المعاملة بنجاح.");
-        } catch (e) {
-            log("خطأ في تكوين المعاملة: " + e.message);
-            alert('خطأ: ' + e.message);
-        }
-    }
-
-    function copyText(id) {
-        const text = document.getElementById(id).innerText || document.getElementById(id).value;
-        navigator.clipboard.writeText(text).then(() => alert('تم النسخ!'));
-    }
-
-    function startBroadcastCountdown() {
-        const signature = document.getElementById('signature-input').value.trim();
-        if (!signature) { alert('يرجى لصق التوقيع أولاً'); return; }
-
-        document.getElementById('broadcast-btn').classList.add('hidden');
-        document.getElementById('cancel-btn').classList.remove('hidden');
-        document.getElementById('timer-display').style.display = 'block';
-
-        let timeLeft = 30;
-        document.getElementById('timer-display').innerText = timeLeft;
-
-        countdownInterval = setInterval(async () => {
-            timeLeft--;
-            document.getElementById('timer-display').innerText = timeLeft;
-
-            if (timeLeft <= 0) {
+    function startCountdown(seconds, onCancel, onFinish) {
+        if(countdownInterval) clearInterval(countdownInterval);
+        let remaining = seconds;
+        const timerDiv = document.getElementById("timerArea");
+        const countSpan = document.getElementById("countdownSec");
+        timerDiv.style.display = "block";
+        countSpan.innerText = remaining;
+        const cancelBtn = document.getElementById("cancelBroadcastBtn");
+        const cancelHandler = () => {
+            if(countdownInterval) clearInterval(countdownInterval);
+            timerDiv.style.display = "none";
+            if(onCancel) onCancel();
+            document.getElementById("statusMsg").innerHTML = "⛔ تم إلغاء بث المعاملة قبل المهلة.";
+            cancelBtn.removeEventListener("click", cancelHandler);
+            isBroadcastingLock = false;
+        };
+        cancelBtn.addEventListener("click", cancelHandler, { once: true });
+        countdownInterval = setInterval(() => {
+            remaining--;
+            countSpan.innerText = remaining;
+            if(remaining <= 0) {
                 clearInterval(countdownInterval);
-                await broadcastTransaction(signature);
+                timerDiv.style.display = "none";
+                if(onFinish) onFinish();
+                cancelBtn.removeEventListener("click", cancelHandler);
             }
         }, 1000);
+        return () => { if(countdownInterval) clearInterval(countdownInterval); timerDiv.style.display = "none"; cancelBtn.removeEventListener("click", cancelHandler); };
     }
 
-    function cancelBroadcast() {
-        clearInterval(countdownInterval);
-        document.getElementById('broadcast-btn').classList.remove('hidden');
-        document.getElementById('cancel-btn').classList.add('hidden');
-        document.getElementById('timer-display').style.display = 'none';
-        log("تم إلغاء عملية البث.");
-        alert('تم إلغاء البث');
-    }
-
-    async function broadcastTransaction(signature) {
-        log("جاري محاولة بث المعاملة...");
-        try {
-            const signedTx = currentUnsignedTx;
-            signedTx.signature = [signature];
-
-            const result = await tronWeb.trx.sendRawTransaction(signedTx);
-            if (result.result) {
-                log("تم البث بنجاح! ID: " + result.txid);
-                alert('تم بث المعاملة بنجاح! ID: ' + result.txid);
-                location.reload();
-            } else {
-                log("فشل البث من الشبكة: " + JSON.stringify(result));
-                alert('فشل البث: ' + (result.message || "خطأ غير معروف"));
-            }
-        } catch (e) {
-            log("خطأ أثناء البث: " + e.message);
-            alert('خطأ أثناء البث: ' + e.message);
+    // بث المعاملة بعد إضافة التوقيع
+    document.getElementById("broadcastWithSigBtn").addEventListener("click", async () => {
+        if(isBroadcastingLock) { document.getElementById("statusMsg").innerHTML = "⚠️ عملية بث جارية بالفعل، انتظر."; return; }
+        let signatureHex = document.getElementById("signatureInput").value.trim();
+        if(!signatureHex) { alert("الرجاء لصق التوقيع المشفر من الملف الثاني أولاً"); return; }
+        if(!currentUnsignedTransaction) {
+            // محاولة تحويل النص من الحقل إلى معاملة إذا لم تكن محفوظة
+            let rawTx = document.getElementById("unsignedTxArea").value;
+            if(!rawTx) { alert("لا توجد معاملة غير موقعة. أنشئ معاملة أولاً."); return; }
+            try {
+                currentUnsignedTransaction = JSON.parse(rawTx);
+            } catch(e) { alert("البيانات غير صالحة (JSON)"); return; }
         }
-    }
+        // نسخ آمن للمعاملة
+        let signedTx = JSON.parse(JSON.stringify(currentUnsignedTransaction));
+        if(!signedTx.signatures) signedTx.signatures = [];
+        // التوقيع المشفر الذي تم توليده من الملف الثاني يجب أن يكون hex توقيع صالح لترون (عادة 65 بايت)
+        if(!signatureHex.startsWith("0x")) signatureHex = signatureHex;
+        signedTx.signatures.push(signatureHex);
+        // مهلة 30 ثانية مع إلغاء
+        isBroadcastingLock = true;
+        let broadcastAllowed = true;
+        const clearTimer = startCountdown(30, 
+            () => { broadcastAllowed = false; isBroadcastingLock = false; },
+            async () => {
+                if(!broadcastAllowed) return;
+                try {
+                    await initTronWeb();
+                    const result = await tronWebInstance.trx.sendRawTransaction(signedTx);
+                    if(result && (result.result || result.txid)) {
+                        document.getElementById("statusMsg").innerHTML = `🎉 تم بث المعاملة بنجاح! TXID: ${result.txid || result.transaction?.txID}`;
+                    } else {
+                        throw new Error(JSON.stringify(result));
+                    }
+                } catch(err) {
+                    document.getElementById("statusMsg").innerHTML = `❌ فشل البث: ${err.message || err}`;
+                } finally {
+                    isBroadcastingLock = false;
+                }
+            }
+        );
+        // إذا تم إلغاء البث قبل انتهاء المهلة
+        if(!broadcastAllowed) {
+            clearTimer();
+            isBroadcastingLock = false;
+        }
+    });
+    
+    // تحميل أولي مساعد
+    window.updateAmountFromSlider = updateAmountFromSlider;
+    // ضبط مؤشر الرصيد الافتراضي
+    document.getElementById("percentSlider").dispatchEvent(new Event("input"));
 </script>
-
 </body>
 </html>
