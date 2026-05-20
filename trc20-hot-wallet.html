@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>محفظة Tron - النسخة النهائية</title>
+    <title>محفظة Tron - النسخة المضمونة</title>
     <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.0/dist/TronWeb.js"></script>
     <style>
         body {
@@ -81,7 +81,19 @@
         .status { font-size: 0.85em; margin-top: 10px; text-align: center; min-height: 1.2em; }
         .hidden { display: none; }
         #countdown { color: #ff4444; font-weight: bold; font-size: 1.2em; }
-        .api-check { font-size: 0.7em; color: #888; text-align: center; margin-bottom: 10px; }
+        .debug-log {
+            font-size: 0.65em;
+            color: #666;
+            background: #0a0a0a;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 20px;
+            max-height: 100px;
+            overflow-y: auto;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #222;
+        }
         .loading-spinner {
             display: inline-block;
             width: 18px;
@@ -100,7 +112,7 @@
 
 <div class="container">
     <h2>محفظة Tron الذكية</h2>
-    <div id="api-status" class="api-check">جاري فحص اتصال API...</div>
+    <div id="api-status" style="font-size: 0.7em; text-align: center; margin-bottom: 10px;">جاري فحص الاتصال...</div>
 
     <!-- Login Section -->
     <div id="login-section" class="section">
@@ -157,6 +169,8 @@
     </div>
 
     <div id="status-msg" class="status"></div>
+    
+    <div class="debug-log" id="debug-log">سجل التشخيص: جاهز...</div>
 </div>
 
 <script>
@@ -169,6 +183,12 @@
     let currentUnsignedTx = null;
     let broadcastTimer = null;
 
+    function logDebug(msg) {
+        const log = document.getElementById('debug-log');
+        log.innerHTML += `<br>> ${msg}`;
+        log.scrollTop = log.scrollHeight;
+    }
+
     function setupTronWeb() {
         const HttpProvider = TronWeb.providers.HttpProvider;
         const fullNode = new HttpProvider('https://api.trongrid.io');
@@ -180,6 +200,7 @@
         });
 
         tronWeb = new TronWeb(fullNode, solidityNode, eventServer);
+        logDebug('تمت تهيئة TronWeb بنجاح');
     }
 
     async function checkApiHealth() {
@@ -187,9 +208,11 @@
             await tronWeb.fullNode.request('wallet/getnodeinfo', {}, 'post');
             document.getElementById('api-status').innerHTML = '✅ اتصال API نشط';
             document.getElementById('api-status').style.color = '#00ff00';
+            logDebug('فحص API: ناجح');
         } catch (e) {
             document.getElementById('api-status').innerHTML = '❌ خطأ في API (401)';
             document.getElementById('api-status').style.color = '#ff4444';
+            logDebug('فحص API: فشل (401)');
         }
     }
 
@@ -208,54 +231,88 @@
         btn.innerHTML = '<span class="loading-spinner"></span> جاري التحميل...';
         
         try {
+            logDebug(`بدء تسجيل الدخول للعنوان: ${addr}`);
             await updateBalances();
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('wallet-info').classList.remove('hidden');
             document.getElementById('broadcast-section').classList.remove('hidden');
             showStatus('تم تسجيل الدخول', '#ffd700');
         } catch (e) {
-            console.error(e);
-            alert('فشل جلب البيانات. تأكد من اتصال الإنترنت.');
+            logDebug(`خطأ في تسجيل الدخول: ${e.message}`);
+            alert('فشل جلب البيانات. راجع سجل التشخيص في الأسفل.');
             btn.disabled = false;
             btn.innerText = 'تسجيل الدخول';
         }
     }
 
     async function updateBalances() {
-        // TRX
-        const trxSun = await tronWeb.trx.getBalance(currentAddress);
-        balances.TRX = tronWeb.fromSun(trxSun);
-        document.getElementById('trx-balance').innerText = balances.TRX + ' TRX';
-
-        // USDT - طريقة محسنة ومباشرة عبر API TronGrid لضمان الدقة
+        // 1. جلب TRX
         try {
-            // محاولة أولى: عبر العقد الذكي
+            const trxSun = await tronWeb.trx.getBalance(currentAddress);
+            balances.TRX = tronWeb.fromSun(trxSun);
+            document.getElementById('trx-balance').innerText = balances.TRX + ' TRX';
+            logDebug(`رصيد TRX: ${balances.TRX}`);
+        } catch (e) {
+            logDebug(`فشل جلب TRX: ${e.message}`);
+        }
+
+        // 2. جلب USDT بنظام ثلاثي المراحل
+        logDebug('بدء جلب رصيد USDT...');
+        let usdtFound = false;
+
+        // المرحلة أ: العقد الذكي المباشر
+        try {
             const contract = await tronWeb.contract().at(USDT_CONTRACT);
             const usdtRaw = await contract.balanceOf(currentAddress).call();
-            // تحويل النتيجة بدقة سواء كانت BigNumber أو كائن
             const usdtValue = usdtRaw.toNumber ? usdtRaw.toNumber() : (usdtRaw._hex ? parseInt(usdtRaw._hex, 16) : usdtRaw);
             balances.USDT = usdtValue / 1e6;
+            usdtFound = true;
+            logDebug(`USDT (المرحلة أ): ${balances.USDT}`);
         } catch (e) {
-            console.warn('Smart Contract Call failed, trying API fallback...');
+            logDebug(`فشل المرحلة أ: ${e.message}`);
+        }
+
+        // المرحلة ب: API الحسابات (TRC20 List)
+        if (!usdtFound || balances.USDT === 0) {
             try {
-                // محاولة ثانية: عبر API الحسابات المباشر
-                const accountInfo = await tronWeb.trx.getAccount(currentAddress);
-                if (accountInfo.trc20) {
-                    const usdtData = accountInfo.trc20.find(token => Object.keys(token)[0] === USDT_CONTRACT);
-                    if (usdtData) {
-                        const rawVal = Object.values(usdtData)[0];
-                        balances.USDT = rawVal / 1e6;
-                    } else {
-                        balances.USDT = 0;
+                const account = await tronWeb.trx.getAccount(currentAddress);
+                if (account.trc20) {
+                    const usdtToken = account.trc20.find(t => Object.keys(t)[0] === USDT_CONTRACT);
+                    if (usdtToken) {
+                        balances.USDT = Object.values(usdtToken)[0] / 1e6;
+                        usdtFound = true;
+                        logDebug(`USDT (المرحلة ب): ${balances.USDT}`);
                     }
-                } else {
-                    balances.USDT = 0;
                 }
-            } catch (apiErr) {
-                console.error('API Fallback failed:', apiErr);
-                balances.USDT = 0;
+            } catch (e) {
+                logDebug(`فشل المرحلة ب: ${e.message}`);
             }
         }
+
+        // المرحلة ج: استعلام API خارجي (TronGrid API)
+        if (!usdtFound) {
+            try {
+                const url = `https://api.trongrid.io/v1/accounts/${currentAddress}`;
+                const response = await fetch(url, { headers: { "TRON-PRO-API-KEY": API_KEY } });
+                const data = await response.json();
+                if (data.data && data.data[0] && data.data[0].trc20) {
+                    const usdtVal = data.data[0].trc20.find(t => t[USDT_CONTRACT]);
+                    if (usdtVal) {
+                        balances.USDT = usdtVal[USDT_CONTRACT] / 1e6;
+                        usdtFound = true;
+                        logDebug(`USDT (المرحلة ج): ${balances.USDT}`);
+                    }
+                }
+            } catch (e) {
+                logDebug(`فشل المرحلة ج: ${e.message}`);
+            }
+        }
+
+        if (!usdtFound) {
+            balances.USDT = 0;
+            logDebug('لم يتم العثور على رصيد USDT (قد يكون 0)');
+        }
+        
         document.getElementById('usdt-balance').innerText = balances.USDT.toFixed(2) + ' USDT';
     }
 
@@ -279,6 +336,7 @@
         btn.innerHTML = '<span class="loading-spinner"></span> جاري التكوين...';
 
         try {
+            logDebug(`تكوين معاملة ${type} بمبلغ ${amount}`);
             let tx;
             if (type === 'TRX') {
                 tx = await tronWeb.transactionBuilder.sendTrx(recipient, tronWeb.toSun(amount), currentAddress);
@@ -294,7 +352,9 @@
             document.getElementById('unsigned-tx-data').value = JSON.stringify(tx);
             document.getElementById('unsigned-section').classList.remove('hidden');
             showStatus('تم تكوين المعاملة', '#ffd700');
+            logDebug('تم تكوين المعاملة بنجاح');
         } catch (e) {
+            logDebug(`خطأ في التكوين: ${e.message}`);
             alert('خطأ: ' + e.message);
         } finally {
             btn.disabled = false;
@@ -327,10 +387,12 @@
         document.getElementById('timer-container').classList.add('hidden');
         document.getElementById('broadcast-btn').classList.remove('hidden');
         showStatus('تم إلغاء البث', '#ff4444');
+        logDebug('تم إلغاء بث المعاملة');
     }
 
     async function broadcastTransaction(signature) {
         try {
+            logDebug('بدء بث المعاملة للشبكة...');
             const signedTx = JSON.parse(JSON.stringify(currentUnsignedTx));
             if (!signedTx.signature) signedTx.signature = [];
             signedTx.signature.push(signature);
@@ -338,11 +400,13 @@
             const receipt = await tronWeb.trx.sendRawTransaction(signedTx);
             if (receipt.result) {
                 showStatus('تم البث بنجاح! ID: ' + receipt.txid, '#00ff00');
+                logDebug(`نجاح البث: ${receipt.txid}`);
                 alert('تم البث بنجاح!');
             } else {
                 throw new Error(JSON.stringify(receipt));
             }
         } catch (e) {
+            logDebug(`فشل البث: ${e.message}`);
             showStatus('فشل البث: ' + e.message, '#ff4444');
             cancelBroadcast();
         }
