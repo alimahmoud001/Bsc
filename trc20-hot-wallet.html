@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -380,6 +380,20 @@
             border: 2px solid #ff4444;
         }
         
+        #debugLog {
+            font-size: 11px;
+            color: #666;
+            background: #000;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 20px;
+            max-height: 150px;
+            overflow-y: auto;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #333;
+        }
+        
         @media (max-width: 480px) {
             .container {
                 padding: 15px;
@@ -496,6 +510,9 @@
         
         <!-- زر تسجيل الخروج -->
         <button class="btn" style="background: #666; margin-top: 20px;" onclick="logout()">تسجيل الخروج</button>
+        
+        <!-- سجل التشخيص -->
+        <div id="debugLog" style="background: #000; border: 1px solid #333; padding: 10px; margin-top: 20px; border-radius: 8px; font-size: 11px; color: #888; max-height: 150px; overflow-y: auto; font-family: monospace; line-height: 1.4;"></div>
     </div>
 </div>
 
@@ -507,45 +524,82 @@
     let broadcastTimer = null;
     
     const USDT_CONTRACT = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
+    const API_KEY = '4e8fc7a5-83ae-4f99-a98a-4b8f47e39551';
+    
+    function logDebug(msg) {
+        const debugLog = document.getElementById('debugLog');
+        if (debugLog) {
+            debugLog.innerHTML += msg + '<br>';
+            debugLog.scrollTop = debugLog.scrollHeight;
+        }
+        console.log(msg);
+    }
     
     async function initTronWeb() {
         try {
+            logDebug('🔧 بدء تهيئة TronWeb...');
             const HttpProvider = TronWeb.providers.HttpProvider;
             const fullNode = new HttpProvider('https://api.trongrid.io');
             const solidityNode = new HttpProvider('https://api.trongrid.io');
             const eventServer = new HttpProvider('https://api.trongrid.io');
             
+            [fullNode, solidityNode, eventServer].forEach(provider => {
+                provider.headers = { "TRON-PRO-API-KEY": API_KEY };
+            });
+            
             tronWeb = new TronWeb(fullNode, solidityNode, eventServer);
+            logDebug('✅ تمت تهيئة TronWeb بنجاح');
         } catch (e) {
+            logDebug('❌ خطأ في تهيئة TronWeb: ' + e.message);
             console.error('خطأ في تهيئة TronWeb:', e);
         }
     }
     
     window.onload = () => {
+        logDebug('📱 جاري تحميل الصفحة...');
         initTronWeb();
+        setTimeout(() => {
+            if (!tronWeb) {
+                logDebug('⚠️ تحذير: TronWeb لم يتم تحميله بعد');
+            }
+        }, 2000);
     };
     
     async function loginWallet() {
         const addr = document.getElementById('walletAddress').value.trim();
         
+        logDebug('🔐 محاولة تسجيل الدخول للعنوان: ' + addr);
+        
         if (!addr) {
+            logDebug('❌ خطأ: لم يتم إدخال عنوان');
             showStatus('يرجى إدخال عنوان المحفظة', 'error');
             return;
         }
         
+        if (!tronWeb) {
+            logDebug('❌ خطأ: TronWeb لم يتم تحميله');
+            showStatus('خطأ: المكتبات لم تحمل بعد. حاول مجدداً', 'error');
+            return;
+        }
+        
         if (!tronWeb.isAddress(addr)) {
+            logDebug('❌ خطأ: عنوان غير صحيح');
             showStatus('عنوان المحفظة غير صحيح', 'error');
             return;
         }
         
         currentAddress = addr;
+        logDebug('✓ العنوان صحيح');
         
         try {
+            logDebug('⏳ جاري جلب الأرصدة...');
             await fetchBalances();
+            logDebug('✅ تم جلب الأرصدة بنجاح');
             document.getElementById('loginSection').classList.add('hidden');
             document.getElementById('walletSection').classList.add('active');
             showStatus('تم تسجيل الدخول بنجاح', 'success');
         } catch (e) {
+            logDebug('❌ خطأ في جلب البيانات: ' + e.message);
             showStatus('فشل جلب البيانات: ' + e.message, 'error');
         }
     }
@@ -553,10 +607,13 @@
     async function fetchBalances() {
         try {
             // جلب TRX
+            logDebug('💰 جاري جلب رصيد TRX...');
             const trxSun = await tronWeb.trx.getBalance(currentAddress);
             balances.TRX = tronWeb.fromSun(trxSun);
+            logDebug('✅ رصيد TRX: ' + balances.TRX);
             
             // جلب USDT
+            logDebug('💰 جاري جلب رصيد USDT...');
             try {
                 const contract = await tronWeb.contract().at(USDT_CONTRACT);
                 const usdtRaw = await contract.balanceOf(currentAddress).call();
@@ -577,13 +634,15 @@
                 }
                 
                 balances.USDT = usdtValue / 1e6;
+                logDebug('✅ رصيد USDT: ' + balances.USDT);
             } catch (e) {
-                console.log('لم يتم جلب USDT:', e.message);
+                logDebug('⚠️ لم يتم جلب USDT: ' + e.message);
                 balances.USDT = 0;
             }
             
             updateDisplay();
         } catch (e) {
+            logDebug('❌ خطأ في جلب الأرصدة: ' + e.message);
             throw new Error('فشل جلب الأرصدة: ' + e.message);
         }
     }
@@ -606,30 +665,40 @@
         const recipient = document.getElementById('recipientAddress').value.trim();
         const amount = (balances[currency] * percent) / 100;
         
+        logDebug('📝 بدء تكوين معاملة ' + currency);
+        
         if (!recipient) {
+            logDebug('❌ خطأ: لم يتم إدخال عنوان المستقبل');
             showStatus('يرجى إدخال عنوان المستقبل', 'error');
             return;
         }
         
         if (!tronWeb.isAddress(recipient)) {
+            logDebug('❌ خطأ: عنوان المستقبل غير صحيح');
             showStatus('عنوان المستقبل غير صحيح', 'error');
             return;
         }
         
         if (amount <= 0) {
+            logDebug('❌ خطأ: المبلغ = 0');
             showStatus('يرجى تحديد مبلغ أكبر من صفر', 'error');
             return;
         }
         
         try {
+            logDebug('⏳ جاري تكوين المعاملة...');
             if (currency === 'TRX') {
+                logDebug('💰 نوع: TRX');
                 currentTx = await tronWeb.transactionBuilder.sendTrx(
                     recipient,
                     tronWeb.toSun(amount),
                     currentAddress
                 );
+                logDebug('✅ تم تكوين معاملة TRX');
             } else {
+                logDebug('💰 نوع: USDT');
                 const amountWei = Math.floor(amount * 1e6);
+                logDebug('📊 المبلغ (Wei): ' + amountWei);
                 const tx = await tronWeb.transactionBuilder.triggerSmartContract(
                     USDT_CONTRACT,
                     'transfer(address,uint256)',
@@ -641,6 +710,7 @@
                     currentAddress
                 );
                 currentTx = tx.transaction;
+                logDebug('✅ تم تكوين معاملة USDT');
             }
             
             document.getElementById('txOutput').textContent = JSON.stringify(currentTx, null, 2);
@@ -649,6 +719,7 @@
             document.getElementById('broadcastBtn').style.display = 'block';
             showStatus('تم تكوين المعاملة بنجاح', 'success');
         } catch (e) {
+            logDebug('❌ خطأ في التكوين: ' + e.message);
             showStatus('خطأ في تكوين المعاملة: ' + e.message, 'error');
         }
     }
