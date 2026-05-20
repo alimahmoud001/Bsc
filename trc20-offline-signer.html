@@ -1,20 +1,82 @@
-<!DOCTYPE html>
+
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>محفظة Tron - التوقيع (أوفلاين)</title>
-    <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.0/dist/TronWeb.js"></script>
-    <style>
-        :root {
-            --bg-color: #000000;
-            --primary-color: #FFD700;
-            --text-color: #ffffff;
-            --card-bg: #1a1a1a;
+    <title>موقع التوقيع - Tron (موقّع بارد)</title>
+    
+    <!-- تعريف Buffer كامل يدوياً قبل أي شيء آخر -->
+    <script>
+        // تعريف Buffer الكامل والشامل
+        if (typeof Buffer === 'undefined') {
+            window.Buffer = {
+                isBuffer: function(obj) {
+                    return obj != null && (obj._isBuffer === true || obj instanceof Uint8Array);
+                },
+                from: function(data, encoding) {
+                    if (typeof data === 'string') {
+                        // تحويل النص إلى Uint8Array
+                        const bytes = new Uint8Array(data.length);
+                        for (let i = 0; i < data.length; i++) {
+                            bytes[i] = data.charCodeAt(i);
+                        }
+                        return bytes;
+                    } else if (data instanceof ArrayBuffer) {
+                        return new Uint8Array(data);
+                    } else if (Array.isArray(data)) {
+                        return new Uint8Array(data);
+                    } else if (data instanceof Uint8Array) {
+                        return data;
+                    }
+                    return new Uint8Array(data);
+                },
+                alloc: function(size) {
+                    return new Uint8Array(size);
+                },
+                allocUnsafe: function(size) {
+                    return new Uint8Array(size);
+                },
+                concat: function(list) {
+                    let totalLength = 0;
+                    for (let i = 0; i < list.length; i++) {
+                        totalLength += list[i].length;
+                    }
+                    const result = new Uint8Array(totalLength);
+                    let offset = 0;
+                    for (let i = 0; i < list.length; i++) {
+                        result.set(list[i], offset);
+                        offset += list[i].length;
+                    }
+                    return result;
+                }
+            };
+        } else {
+            // إذا كان Buffer موجوداً، تأكد من وجود الدوال المهمة
+            if (!Buffer.from) {
+                Buffer.from = function(data, encoding) {
+                    if (typeof data === 'string') {
+                        const bytes = new Uint8Array(data.length);
+                        for (let i = 0; i < data.length; i++) {
+                            bytes[i] = data.charCodeAt(i);
+                        }
+                        return bytes;
+                    }
+                    return new Uint8Array(data);
+                };
+            }
         }
+    </script>
+    
+    <!-- مكتبة Buffer الخارجية كنسخة احتياطية -->
+    <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.js"></script>
+    
+    <!-- TronWeb -->
+    <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.0/dist/TronWeb.js"></script>
+    
+    <style>
         body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            background-color: #000;
+            color: #fff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 20px;
@@ -25,132 +87,301 @@
         }
         .container {
             width: 100%;
-            max-width: 400px;
-        }
-        .card {
-            background-color: var(--card-bg);
-            border-radius: 15px;
+            max-width: 500px;
+            background: #111;
             padding: 20px;
-            margin-bottom: 20px;
+            border-radius: 15px;
             box-shadow: 0 4px 15px rgba(255, 215, 0, 0.1);
         }
-        h2 { color: var(--primary-color); text-align: center; margin-top: 0; }
-        input, textarea {
+        h2 { color: #ffd700; text-align: center; margin-bottom: 10px; }
+        .subtitle { text-align: center; color: #888; font-size: 0.9em; margin-bottom: 20px; }
+        .card {
+            background: #222;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+        label { display: block; margin-bottom: 8px; color: #aaa; font-size: 14px; font-weight: bold; }
+        textarea, input {
             width: 100%;
             padding: 12px;
-            margin: 10px 0;
+            margin-bottom: 15px;
             border-radius: 8px;
-            border: 1px solid #333;
-            background: #222;
-            color: white;
+            border: 1px solid #444;
+            background: #000;
+            color: #fff;
             box-sizing: border-box;
+            font-family: monospace;
+            font-size: 12px;
         }
-        button {
+        input[type="password"] {
+            letter-spacing: 2px;
+        }
+        .btn {
             width: 100%;
             padding: 15px;
-            background-color: var(--primary-color);
-            color: black;
+            background-color: #ffd700;
+            color: #000;
             border: none;
             border-radius: 8px;
             font-weight: bold;
-            font-size: 1em;
             cursor: pointer;
-            margin: 10px 0;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .btn:hover { background-color: #ffc800; }
+        .btn:disabled { background-color: #555; cursor: not-allowed; }
+        .result-box {
+            background: #000;
+            border: 1px dashed #ffd700;
+            padding: 10px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+            min-height: 50px;
+            max-height: 150px;
+            overflow-y: auto;
         }
         .copy-btn {
             background: #333;
-            color: var(--primary-color);
-            padding: 5px 10px;
-            font-size: 0.8em;
-            width: auto;
-            margin: 5px 0;
+            color: #ffd700;
+            border: 1px solid #ffd700;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .copy-btn:hover {
+            background: #444;
         }
         .warning {
             color: #ff4444;
-            font-size: 0.85em;
+            font-size: 12px;
+            margin-bottom: 15px;
             text-align: center;
-            margin-bottom: 10px;
-        }
-        .status {
+            background: rgba(255, 68, 68, 0.1);
             padding: 10px;
             border-radius: 5px;
-            margin: 10px 0;
+            border-left: 3px solid #ff4444;
+        }
+        .hidden { display: none; }
+        .success {
+            color: #00ff00;
+            font-size: 12px;
+            margin-top: 10px;
             text-align: center;
-            display: none;
+        }
+        .debug-log {
+            font-size: 0.65em;
+            color: #666;
+            background: #0a0a0a;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 15px;
+            max-height: 100px;
+            overflow-y: auto;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #222;
+        }
+        .info-box {
+            background: rgba(255, 215, 0, 0.05);
+            border-left: 3px solid #ffd700;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 12px;
+            color: #ddd;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <h2>🔐 موقّع المعاملات - Tron</h2>
+    <p class="subtitle">موقّع بارد (Cold Signer) - التوقيع يتم محلياً على جهازك فقط</p>
+    
+    <div class="warning">
+        ⚠️ تحذير أمني: لا تشارك مفتاحك الخاص مع أحد. التوقيع يتم محلياً على جهازك ولا يتم إرسال المفتاح إلى أي خادم.
+    </div>
+
+    <div class="info-box">
+        📋 الخطوات:
+        <br>1. أدخل مفتاحك الخاص (Private Key)
+        <br>2. الصق بيانات المعاملة من ملف المحفظة
+        <br>3. اضغط "توقيع المعاملة"
+        <br>4. انسخ التوقيع والصقه في ملف المحفظة
+    </div>
+
     <div class="card">
-        <h2>توقيع المعاملة</h2>
-        <p class="warning">تنبيه: أدخل المفتاح الخاص الفرعي فقط. لا تستخدم هذا الملف على جهاز متصل بالإنترنت لضمان الأمان.</p>
+        <label>🔑 المفتاح الخاص (Private Key):</label>
+        <input type="password" id="private-key" placeholder="أدخل المفتاح الخاص هنا (بدون 0x)...">
         
-        <input type="password" id="privateKey" placeholder="أدخل المفتاح الخاص (Private Key)">
+        <label>📝 بيانات المعاملة غير الموقعة (JSON):</label>
+        <textarea id="unsigned-input" rows="8" placeholder="الصق كود المعاملة من ملف المحفظة هنا..."></textarea>
         
-        <textarea id="unsignedTxInput" rows="5" placeholder="الصق بيانات المعاملة غير الموقعة هنا"></textarea>
-        
-        <button onclick="signTransaction()">توقيع المعاملة</button>
+        <button class="btn" onclick="signTransaction()">✍️ توقيع المعاملة</button>
     </div>
 
-    <div class="card" id="signedTxCard" style="display:none;">
-        <h2>التوقيع (المعاملة الموقعة)</h2>
-        <textarea id="signedTxOutput" rows="5" readonly></textarea>
-        <button class="copy-btn" onclick="copyText('signedTxOutput')">نسخ التوقيع</button>
-        <p style="font-size: 0.8em; color: #888;">انسخ هذا التوقيع والصفه في الملف الأول للبث.</p>
+    <div id="result-section" class="hidden">
+        <div class="card">
+            <label>✅ التوقيع الناتج (Signature):</label>
+            <button class="copy-btn" onclick="copyText('signature-output')">📋 نسخ التوقيع</button>
+            <div class="result-box" id="signature-output"></div>
+            <p class="success" id="copy-success" style="display: none;">✓ تم نسخ التوقيع بنجاح!</p>
+            <p style="font-size: 12px; color: #888; margin-top: 10px;">
+                📌 انسخ هذا التوقيع والصقه في حقل "التوقيع" في ملف المحفظة لإتمام عملية البث.
+            </p>
+        </div>
     </div>
 
-    <div id="statusMsg" class="status"></div>
+    <div class="debug-log" id="debug-log">سجل التشخيص: جاهز...</div>
 </div>
 
 <script>
     let tronWeb;
-
-    function initTronWeb() {
-        // لا نحتاج للاتصال بالشبكة هنا لأننا نوقع أوفلاين
-        tronWeb = new TronWeb({
-            fullHost: 'https://api.trongrid.io'
-        });
+    
+    function logDebug(msg) {
+        const log = document.getElementById('debug-log');
+        log.innerHTML += `<br>> ${msg}`;
+        log.scrollTop = log.scrollHeight;
+        console.log(msg);
     }
 
-    async function signTransaction() {
-        const privKey = document.getElementById('privateKey').value.trim();
-        const unsignedTxStr = document.getElementById('unsignedTxInput').value.trim();
+    function initTronWeb() {
+        try {
+            logDebug('🔧 بدء تهيئة TronWeb...');
+            logDebug(`🔍 فحص Buffer: ${typeof Buffer}`);
+            logDebug(`🔍 فحص Buffer.from: ${typeof Buffer.from}`);
+            
+            tronWeb = new TronWeb({
+                fullHost: 'https://api.trongrid.io'
+            });
+            logDebug('✅ تم تهيئة TronWeb بنجاح');
+        } catch (e) {
+            logDebug(`❌ فشل تهيئة TronWeb: ${e.message}`);
+        }
+    }
 
-        if (!privKey) return showStatus("يرجى إدخال المفتاح الخاص", "error");
-        if (!unsignedTxStr) return showStatus("يرجى لصق المعاملة غير الموقعة", "error");
+    window.onload = function() {
+        initTronWeb();
+    };
+
+    async function signTransaction() {
+        const privKey = document.getElementById('private-key').value.trim();
+        const unsignedData = document.getElementById('unsigned-input').value.trim();
+
+        if (!privKey) { 
+            alert('يرجى إدخال المفتاح الخاص');
+            logDebug('❌ خطأ: لم يتم إدخال المفتاح الخاص');
+            return; 
+        }
+        if (!unsignedData) { 
+            alert('يرجى إدخال بيانات المعاملة');
+            logDebug('❌ خطأ: لم يتم إدخال بيانات المعاملة');
+            return; 
+        }
 
         try {
-            const unsignedTx = JSON.parse(unsignedTxStr);
+            logDebug('🔐 بدء عملية التوقيع...');
+            
+            // تحليل بيانات المعاملة
+            let tx;
+            try {
+                tx = JSON.parse(unsignedData);
+                logDebug('✓ تم تحليل بيانات المعاملة بنجاح');
+            } catch (parseError) {
+                logDebug(`❌ خطأ في تحليل JSON: ${parseError.message}`);
+                alert('خطأ: بيانات المعاملة ليست بصيغة JSON صحيحة');
+                return;
+            }
+
+            // التحقق من صيغة المفتاح الخاص
+            let privateKey = privKey;
+            if (privateKey.startsWith('0x')) {
+                privateKey = privateKey.substring(2);
+                logDebug('✓ تم إزالة بادئة 0x من المفتاح');
+            }
+
+            logDebug(`📊 معرّف المعاملة: ${tx.txID || 'غير متوفر'}`);
             
             // التوقيع باستخدام المفتاح الخاص
-            const signedTx = await tronWeb.trx.sign(unsignedTx, privKey);
+            logDebug('⏳ جاري التوقيع...');
+            const signedTx = await tronWeb.trx.sign(tx, privateKey);
             
-            document.getElementById('signedTxOutput').value = JSON.stringify(signedTx);
-            document.getElementById('signedTxCard').style.display = 'block';
-            showStatus("تم التوقيع بنجاح", "success");
+            logDebug('✓ تم التوقيع بنجاح');
+            
+            // استخراج التوقيع فقط (أول عنصر في مصفوفة التوقيعات)
+            if (signedTx.signature && signedTx.signature.length > 0) {
+                const signature = signedTx.signature[0];
+                document.getElementById('signature-output').innerText = signature;
+                document.getElementById('result-section').classList.remove('hidden');
+                document.getElementById('copy-success').style.display = 'none';
+                logDebug(`✅ تم استخراج التوقيع: ${signature.substring(0, 20)}...`);
+                showStatus('✅ تم التوقيع بنجاح! انسخ التوقيع أعلاه.', '#00ff00');
+            } else {
+                logDebug('❌ لم يتم العثور على توقيع في المعاملة الموقعة');
+                alert('فشل استخراج التوقيع من المعاملة');
+            }
         } catch (e) {
-            showStatus("فشل التوقيع: " + e.message, "error");
+            logDebug(`❌ خطأ في التوقيع: ${e.message}`);
+            alert('خطأ في التوقيع: ' + e.message);
+            console.error(e);
         }
     }
 
     function copyText(id) {
-        const copyText = document.getElementById(id);
-        copyText.select();
-        document.execCommand("copy");
-        alert("تم النسخ!");
+        const text = document.getElementById(id).innerText;
+        if (!text) {
+            alert('لا يوجد توقيع للنسخ');
+            return;
+        }
+        
+        // محاولة النسخ باستخدام Clipboard API
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                document.getElementById('copy-success').style.display = 'block';
+                logDebug('✅ تم نسخ التوقيع إلى الحافظة');
+                setTimeout(() => {
+                    document.getElementById('copy-success').style.display = 'none';
+                }, 3000);
+            }).catch(err => {
+                logDebug(`❌ فشل النسخ: ${err.message}`);
+                fallbackCopy(text);
+            });
+        } else {
+            // طريقة بديلة للمتصفحات القديمة
+            fallbackCopy(text);
+        }
     }
 
-    function showStatus(msg, type) {
-        const status = document.getElementById('statusMsg');
-        status.innerText = msg;
-        status.style.display = 'block';
-        status.style.backgroundColor = type === 'success' ? '#2e7d32' : '#c62828';
-        setTimeout(() => status.style.display = 'none', 5000);
+    function fallbackCopy(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            document.execCommand('copy');
+            document.getElementById('copy-success').style.display = 'block';
+            logDebug('✅ تم نسخ التوقيع إلى الحافظة (طريقة بديلة)');
+            setTimeout(() => {
+                document.getElementById('copy-success').style.display = 'none';
+            }, 3000);
+        } catch (err) {
+            logDebug(`❌ فشل النسخ: ${err.message}`);
+            alert('فشل النسخ. يرجى نسخ التوقيع يدوياً.');
+        }
+        document.body.removeChild(textarea);
     }
 
-    initTronWeb();
+    function showStatus(msg, color) {
+        // يمكن إضافة عنصر حالة إذا لزم الأمر
+        console.log(msg);
+    }
 </script>
+
 </body>
 </html>
