@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>محفظة Tron - المعاملات</title>
-    <script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tronweb/6.0.0/TronWeb.js"></script>
     <style>
         body {
             background-color: #000;
@@ -187,19 +187,23 @@
 
     window.onload = function() {
         log("جاري تهيئة النظام...");
-        if (typeof TronWeb !== 'undefined') {
-            try {
-                tronWeb = new TronWeb({
-                    fullHost: 'https://api.trongrid.io',
-                    headers: { "TRON-PRO-API-KEY": API_KEY }
-                });
-                log("تم تحميل مكتبة TronWeb بنجاح.");
-            } catch (e) {
-                log("خطأ في تهيئة TronWeb: " + e.message);
+        setTimeout(() => {
+            if (typeof TronWeb !== 'undefined') {
+                try {
+                    // محاولة التهيئة بأكثر من طريقة لضمان التوافق
+                    const TronWebLib = window.TronWeb.default || window.TronWeb;
+                    tronWeb = new TronWebLib({
+                        fullHost: 'https://api.trongrid.io',
+                        headers: { "TRON-PRO-API-KEY": API_KEY }
+                    });
+                    log("تم تحميل مكتبة TronWeb بنجاح.");
+                } catch (e) {
+                    log("خطأ في تهيئة TronWeb: " + e.message);
+                }
+            } else {
+                log("فشل تحميل مكتبة TronWeb. يرجى التحقق من الإنترنت.");
             }
-        } else {
-            log("فشل تحميل مكتبة TronWeb. يرجى التحقق من الإنترنت.");
-        }
+        }, 500);
     };
 
     async function login() {
