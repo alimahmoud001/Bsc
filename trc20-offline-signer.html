@@ -1,412 +1,139 @@
-
+ali_mahmoud
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>موقّع TRON البارد</title>
     
-    <!-- تعريف Buffer -->
+    <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.0/dist/TronWeb.js"></script>
     <script>
-        if (typeof Buffer === 'undefined') {
-            window.Buffer = {
-                isBuffer: (obj) => obj != null && (obj._isBuffer === true || obj instanceof Uint8Array),
-                from: (data) => {
+        // تعريف Buffer محلي وقوي جداً لضمان عمل وظائف التوقيع
+        (function() {
+            if (typeof window.Buffer === 'undefined') {
+                window.Buffer = function(data, enc) { return new Uint8Array(data); };
+                window.Buffer.from = function(data, enc) {
                     if (typeof data === 'string') {
-                        const bytes = new Uint8Array(data.length);
-                        for (let i = 0; i < data.length; i++) bytes[i] = data.charCodeAt(i);
-                        return bytes;
+                        if (enc === 'hex') {
+                            const match = data.match(/.{1,2}/g);
+                            return new Uint8Array(match ? match.map(byte => parseInt(byte, 16)) : []);
+                        }
+                        return new TextEncoder().encode(data);
                     }
                     return new Uint8Array(data);
-                },
-                alloc: (size) => new Uint8Array(size),
-                allocUnsafe: (size) => new Uint8Array(size),
-                concat: (list) => {
-                    let totalLength = 0;
-                    for (let i = 0; i < list.length; i++) totalLength += list[i].length;
-                    const result = new Uint8Array(totalLength);
-                    let offset = 0;
-                    for (let i = 0; i < list.length; i++) {
-                        result.set(list[i], offset);
-                        offset += list[i].length;
-                    }
-                    return result;
-                }
-            };
-        } else if (!Buffer.from) {
-            Buffer.from = (data) => {
-                if (typeof data === 'string') {
-                    const bytes = new Uint8Array(data.length);
-                    for (let i = 0; i < data.length; i++) bytes[i] = data.charCodeAt(i);
-                    return bytes;
-                }
-                return new Uint8Array(data);
-            };
-        }
+                };
+                window.Buffer.isBuffer = function(obj) { return obj instanceof Uint8Array; };
+                window.Buffer.alloc = function(size) { return new Uint8Array(size); };
+            }
+        })();
     </script>
     
-    <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.0/dist/TronWeb.js"></script>
-    
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            background: #000;
-            color: #fff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            padding: 10px;
-            min-height: 100vh;
-        }
-        
-        .container {
-            max-width: 500px;
-            margin: 0 auto;
-            background: #0a0a0a;
-            border: 2px solid #ffd700;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
-        }
-        
-        h1 {
-            text-align: center;
-            color: #ffd700;
-            margin-bottom: 10px;
-            font-size: 24px;
-        }
-        
-        .subtitle {
-            text-align: center;
-            color: #888;
-            font-size: 12px;
-            margin-bottom: 20px;
-        }
-        
-        .warning-box {
-            background: rgba(255, 68, 68, 0.1);
-            border: 2px solid #ff4444;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 20px;
-            color: #ff4444;
-            font-size: 13px;
-            text-align: center;
-            font-weight: bold;
-        }
-        
-        .input-group {
-            margin-bottom: 15px;
-        }
-        
-        label {
-            display: block;
-            color: #ffd700;
-            font-weight: bold;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-        
-        input[type="password"],
-        textarea {
-            width: 100%;
-            padding: 12px;
-            background: #1a1a1a;
-            border: 2px solid #ffd700;
-            color: #fff;
-            border-radius: 8px;
-            font-size: 12px;
-            font-family: monospace;
-        }
-        
-        input[type="password"]:focus,
-        textarea:focus {
-            outline: none;
-            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-        }
-        
-        textarea {
-            resize: vertical;
-            min-height: 100px;
-        }
-        
-        .btn {
-            width: 100%;
-            padding: 14px;
-            background: #ffd700;
-            color: #000;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .btn:hover {
-            background: #ffed4e;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
-        }
-        
-        .btn:disabled {
-            background: #666;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .signature-output {
-            background: #1a1a1a;
-            border: 2px dashed #ffd700;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            max-height: 150px;
-            overflow-y: auto;
-            font-size: 11px;
-            font-family: monospace;
-            color: #00ff00;
-            word-break: break-all;
-            display: none;
-        }
-        
-        .signature-output.show {
-            display: block;
-        }
-        
-        .copy-btn {
-            width: 100%;
-            padding: 10px;
-            background: #333;
-            color: #ffd700;
-            border: 2px solid #ffd700;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-bottom: 15px;
-            transition: all 0.3s;
-            display: none;
-        }
-        
-        .copy-btn.show {
-            display: block;
-        }
-        
-        .copy-btn:hover {
-            background: #ffd700;
-            color: #000;
-        }
-        
-        .status-message {
-            text-align: center;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-weight: bold;
-            display: none;
-        }
-        
-        .status-message.show {
-            display: block;
-        }
-        
-        .status-success {
-            background: rgba(0, 255, 0, 0.1);
-            color: #00ff00;
-            border: 2px solid #00ff00;
-        }
-        
-        .status-error {
-            background: rgba(255, 68, 68, 0.1);
-            color: #ff4444;
-            border: 2px solid #ff4444;
-        }
-        
-        .info-box {
-            background: rgba(255, 215, 0, 0.05);
-            border-left: 3px solid #ffd700;
-            padding: 12px;
-            margin-bottom: 15px;
-            font-size: 12px;
-            color: #ddd;
-            border-radius: 5px;
-            line-height: 1.6;
-        }
-        
-        @media (max-width: 480px) {
-            .container {
-                padding: 15px;
-                border-radius: 10px;
-            }
-            
-            h1 {
-                font-size: 20px;
-                margin-bottom: 8px;
-            }
-            
-            .subtitle {
-                font-size: 11px;
-            }
-            
-            .btn {
-                padding: 12px;
-                font-size: 14px;
-            }
-            
-            label {
-                font-size: 13px;
-            }
-            
-            input[type="password"],
-            textarea {
-                font-size: 11px;
-                padding: 10px;
-            }
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #000; color: #fff; font-family: sans-serif; padding: 10px; }
+        .container { max-width: 500px; margin: 0 auto; background: #0a0a0a; border: 2px solid #ffd700; border-radius: 15px; padding: 20px; }
+        h1 { text-align: center; color: #ffd700; margin-bottom: 20px; font-size: 22px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; color: #ffd700; margin-bottom: 8px; font-weight: bold; font-size: 14px; }
+        input, textarea { width: 100%; padding: 12px; border: 2px solid #ffd700; background: #1a1a1a; color: #fff; border-radius: 8px; font-family: inherit; }
+        textarea { height: 100px; resize: none; font-size: 12px; font-family: monospace; }
+        button { width: 100%; padding: 12px; background: #ffd700; color: #000; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .status-message { padding: 10px; border-radius: 8px; margin: 10px 0; text-align: center; font-weight: bold; }
+        .status-success { background: #0a3a0a; color: #00ff00; border: 2px solid #00ff00; }
+        .status-error { background: #3a0a0a; color: #ff0000; border: 2px solid #ff0000; }
+        .output-section { background: #1a1a1a; border: 2px solid #00ff00; border-radius: 8px; padding: 15px; margin-top: 20px; }
+        .output-text { word-break: break-all; font-family: monospace; font-size: 13px; color: #00ff00; margin-bottom: 10px; }
+        .copy-btn { background: #00ff00; color: #000; width: auto; padding: 8px 15px; display: inline-block; }
+        .debug-log { background: #0a0a0a; border: 1px solid #444; padding: 10px; margin-top: 15px; max-height: 100px; overflow-y: auto; font-size: 11px; color: #888; }
+        .hidden { display: none; }
+        .warning { color: #ff6b6b; font-size: 12px; text-align: center; margin-bottom: 15px; border: 1px solid #ff6b6b; padding: 5px; border-radius: 5px; }
     </style>
 </head>
 <body>
+    <div class="container">
+        <h1>🔐 موقّع TRON البارد</h1>
+        <div class="warning">⚠️ استخدم هذا الملف على جهاز غير متصل بالإنترنت لزيادة الأمان</div>
+        
+        <div class="input-group">
+            <label>المفتاح الخاص (Private Key):</label>
+            <input type="password" id="privateKey" placeholder="أدخل مفتاحك الخاص هنا...">
+        </div>
+        
+        <div class="input-group">
+            <label>كود المعاملة (Unsigned JSON):</label>
+            <textarea id="unsignedJson" placeholder="الصق الكود من المحفظة هنا..."></textarea>
+        </div>
+        
+        <button onclick="signTransaction()">توقيع المعاملة 🖋️</button>
+        
+        <div id="statusMessage"></div>
+        
+        <div id="outputSection" class="output-section hidden">
+            <label style="color: #00ff00;">التوقيع الناتج (Signature):</label>
+            <div id="signatureOutput" class="output-text"></div>
+            <button class="copy-btn" onclick="copySignature()">📋 نسخ التوقيع</button>
+        </div>
+        
+        <div id="debugLog" class="debug-log"></div>
+    </div>
 
-<div class="container">
-    <h1>🔐 موقّع TRON</h1>
-    <p class="subtitle">التوقيع المحلي المشفر (Cold Signer)</p>
-    
-    <div class="warning-box">
-        ⚠️ لا تشارك مفتاحك الخاص مع أحد. التوقيع يتم محلياً على جهازك فقط.
-    </div>
-    
-    <div class="info-box">
-        📋 الخطوات:<br>
-        1️⃣ أدخل المفتاح الخاص الفرعي<br>
-        2️⃣ الصق المعاملة من الملف الأول<br>
-        3️⃣ اضغط "توقيع المعاملة"<br>
-        4️⃣ انسخ التوقيع والصقه في الملف الأول
-    </div>
-    
-    <div class="input-group">
-        <label>🔑 المفتاح الخاص الفرعي (Derived Private Key):</label>
-        <input type="password" id="privateKey" placeholder="أدخل المفتاح الخاص هنا (بدون 0x)..." autocomplete="off">
-    </div>
-    
-    <div class="input-group">
-        <label>📝 المعاملة غير الموقعة (من الملف الأول):</label>
-        <textarea id="unsignedTx" placeholder="الصق كود المعاملة JSON هنا..."></textarea>
-    </div>
-    
-    <button class="btn" onclick="signTransaction()">✍️ توقيع المعاملة</button>
-    
-    <div class="input-group">
-        <label>✅ التوقيع (Signature):</label>
-        <div class="signature-output" id="signatureOutput"></div>
-        <button class="copy-btn" id="copyBtn" onclick="copySignature()">📋 نسخ التوقيع</button>
-    </div>
-    
-    <div class="status-message" id="statusMessage"></div>
-</div>
+    <script>
+        let tronWeb;
 
-<script>
-    let tronWeb;
-    
-    async function initTronWeb() {
-        try {
-            const HttpProvider = TronWeb.providers.HttpProvider;
-            const fullNode = new HttpProvider('https://api.trongrid.io');
-            const solidityNode = new HttpProvider('https://api.trongrid.io');
-            const eventServer = new HttpProvider('https://api.trongrid.io');
+        function log(m) {
+            const d = document.getElementById('debugLog');
+            d.innerHTML += `<div>> ${m}</div>`;
+            d.scrollTop = d.scrollHeight;
+        }
+
+        function showStatus(m, type) {
+            const s = document.getElementById('statusMessage');
+            s.textContent = m;
+            s.className = 'status-message status-' + type;
+        }
+
+        async function signTransaction() {
+            const privKey = document.getElementById('privateKey').value.trim();
+            const jsonStr = document.getElementById('unsignedJson').value.trim();
             
-            tronWeb = new TronWeb(fullNode, solidityNode, eventServer);
-        } catch (e) {
-            console.error('خطأ في تهيئة TronWeb:', e);
-        }
-    }
-    
-    window.onload = () => {
-        initTronWeb();
-    };
-    
-    async function signTransaction() {
-        const privateKey = document.getElementById('privateKey').value.trim();
-        const unsignedTxText = document.getElementById('unsignedTx').value.trim();
-        
-        if (!privateKey) {
-            showStatus('يرجى إدخال المفتاح الخاص', 'error');
-            return;
-        }
-        
-        if (!unsignedTxText) {
-            showStatus('يرجى إدخال المعاملة غير الموقعة', 'error');
-            return;
-        }
-        
-        try {
-            // تحليل المعاملة
-            let unsignedTx;
+            if (!privKey || !jsonStr) {
+                return showStatus('❌ يرجى إدخال المفتاح الخاص وكود المعاملة', 'error');
+            }
+
+            log('جاري تهيئة الموقّع...');
             try {
-                unsignedTx = JSON.parse(unsignedTxText);
-            } catch (e) {
-                showStatus('خطأ: المعاملة ليست بصيغة JSON صحيحة', 'error');
-                return;
-            }
-            
-            // إزالة بادئة 0x إذا كانت موجودة
-            let key = privateKey;
-            if (key.startsWith('0x')) {
-                key = key.substring(2);
-            }
-            
-            // التوقيع
-            const signedTx = await tronWeb.trx.sign(unsignedTx, key);
-            
-            // استخراج التوقيع
-            if (signedTx.signature && signedTx.signature.length > 0) {
-                const signature = signedTx.signature[0];
-                document.getElementById('signatureOutput').textContent = signature;
-                document.getElementById('signatureOutput').classList.add('show');
-                document.getElementById('copyBtn').classList.add('show');
-                showStatus('✓ تم التوقيع بنجاح!', 'success');
-            } else {
-                showStatus('خطأ: لم يتم استخراج التوقيع', 'error');
-            }
-        } catch (e) {
-            showStatus('خطأ في التوقيع: ' + e.message, 'error');
-            console.error(e);
-        }
-    }
-    
-    function copySignature() {
-        const signature = document.getElementById('signatureOutput').textContent;
-        
-        if (!signature) {
-            showStatus('لا يوجد توقيع للنسخ', 'error');
-            return;
-        }
-        
-        navigator.clipboard.writeText(signature).then(() => {
-            showStatus('✓ تم نسخ التوقيع بنجاح!', 'success');
-        }).catch(() => {
-            // طريقة بديلة
-            const textarea = document.createElement('textarea');
-            textarea.value = signature;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            showStatus('✓ تم نسخ التوقيع بنجاح!', 'success');
-        });
-    }
-    
-    function showStatus(message, type) {
-        const statusEl = document.getElementById('statusMessage');
-        statusEl.textContent = message;
-        statusEl.className = 'status-message show status-' + type;
-        setTimeout(() => {
-            statusEl.classList.remove('show');
-        }, 4000);
-    }
-</script>
+                // تهيئة TronWeb محلياً بدون إنترنت
+                tronWeb = new TronWeb({
+                    fullHost: 'https://api.trongrid.io',
+                    privateKey: privKey
+                });
 
+                log('جاري تحليل كود المعاملة...');
+                const transaction = JSON.parse(jsonStr);
+
+                log('جاري التوقيع...');
+                // استخدام TronWeb للتوقيع المباشر
+                const signedTx = await tronWeb.trx.sign(transaction, privKey);
+                
+                if (signedTx && signedTx.signature && signedTx.signature.length > 0) {
+                    const signature = signedTx.signature[0];
+                    document.getElementById('signatureOutput').textContent = signature;
+                    document.getElementById('outputSection').classList.remove('hidden');
+                    showStatus('✅ تم التوقيع بنجاح!', 'success');
+                    log('تم التوقيع بنجاح');
+                } else {
+                    throw new Error('فشل استخراج التوقيع من المعاملة');
+                }
+            } catch (e) {
+                showStatus('❌ خطأ: ' + e.message, 'error');
+                log('خطأ: ' + e.message);
+            }
+        }
+
+        function copySignature() {
+            const sig = document.getElementById('signatureOutput').textContent;
+            navigator.clipboard.writeText(sig);
+            showStatus('✅ تم نسخ التوقيع!', 'success');
+        }
+    </script>
 </body>
 </html>
