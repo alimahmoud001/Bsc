@@ -1,4 +1,4 @@
-
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -609,34 +609,78 @@
             // جلب TRX
             logDebug('💰 جاري جلب رصيد TRX...');
             const trxSun = await tronWeb.trx.getBalance(currentAddress);
-            balances.TRX = tronWeb.fromSun(trxSun);
+            let trxValue = tronWeb.fromSun(trxSun);
+            // تحويل إلى رقم عادي
+            if (typeof trxValue === 'object' && trxValue.toNumber) {
+                balances.TRX = trxValue.toNumber();
+            } else if (typeof trxValue === 'object' && trxValue.toString) {
+                balances.TRX = parseFloat(trxValue.toString());
+            } else {
+                balances.TRX = parseFloat(trxValue);
+            }
             logDebug('✅ رصيد TRX: ' + balances.TRX);
             
             // جلب USDT
             logDebug('💰 جاري جلب رصيد USDT...');
             try {
-                const contract = await tronWeb.contract().at(USDT_CONTRACT);
-                const usdtRaw = await contract.balanceOf(currentAddress).call();
-                let usdtValue = 0;
-                
-                if (usdtRaw && typeof usdtRaw === 'object') {
-                    if (usdtRaw.toNumber) {
-                        usdtValue = usdtRaw.toNumber();
-                    } else if (usdtRaw._hex) {
-                        usdtValue = parseInt(usdtRaw._hex, 16);
-                    } else if (usdtRaw.toString) {
-                        usdtValue = parseInt(usdtRaw.toString());
+                // محاولة 1: استخدام contract().at()
+                try {
+                    const contract = await tronWeb.contract().at(USDT_CONTRACT);
+                    const usdtRaw = await contract.balanceOf(currentAddress).call();
+                    let usdtValue = 0;
+                    
+                    if (usdtRaw && typeof usdtRaw === 'object') {
+                        if (usdtRaw.toNumber && typeof usdtRaw.toNumber === 'function') {
+                            usdtValue = usdtRaw.toNumber();
+                        } else if (usdtRaw._hex) {
+                            usdtValue = parseInt(usdtRaw._hex, 16);
+                        } else if (usdtRaw.toString && typeof usdtRaw.toString === 'function') {
+                            usdtValue = parseInt(usdtRaw.toString());
+                        } else {
+                            usdtValue = parseInt(usdtRaw);
+                        }
+                    } else if (typeof usdtRaw === 'number') {
+                        usdtValue = usdtRaw;
+                    } else if (typeof usdtRaw === 'string') {
+                        usdtValue = parseInt(usdtRaw);
                     }
-                } else if (typeof usdtRaw === 'number') {
-                    usdtValue = usdtRaw;
-                } else if (typeof usdtRaw === 'string') {
-                    usdtValue = parseInt(usdtRaw);
+                    
+                    balances.USDT = Math.max(0, usdtValue / 1e6);
+                    logDebug('✅ رصيد USDT: ' + balances.USDT);
+                } catch (contractError) {
+                    logDebug('⚠️ طريقة 1 فشلت: ' + contractError.message);
+                    // محاولة 2: استخدام API مباشر
+                    try {
+                        const response = await fetch('https://api.trongrid.io/v1/accounts/' + currentAddress, {
+                            headers: { 'TRON-PRO-API-KEY': API_KEY }
+                        });
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.data && data.data[0] && data.data[0].trc20) {
+                                const usdtData = data.data[0].trc20.find(t => t[USDT_CONTRACT]);
+                                if (usdtData && usdtData[USDT_CONTRACT]) {
+                                    balances.USDT = usdtData[USDT_CONTRACT] / 1e6;
+                                    logDebug('✅ USDT (من API): ' + balances.USDT);
+                                } else {
+                                    balances.USDT = 0;
+                                    logDebug('✅ USDT: 0');
+                                }
+                            } else {
+                                balances.USDT = 0;
+                                logDebug('✅ USDT: 0');
+                            }
+                        } else {
+                            balances.USDT = 0;
+                            logDebug('✅ USDT: 0');
+                        }
+                    } catch (apiError) {
+                        logDebug('⚠️ طريقة 2 أيضاً فشلت: ' + apiError.message);
+                        balances.USDT = 0;
+                        logDebug('✅ USDT: 0');
+                    }
                 }
-                
-                balances.USDT = usdtValue / 1e6;
-                logDebug('✅ رصيد USDT: ' + balances.USDT);
             } catch (e) {
-                logDebug('⚠️ لم يتم جلب USDT: ' + e.message);
+                logDebug('⚠️ خطأ عام في USDT: ' + e.message);
                 balances.USDT = 0;
             }
             
@@ -648,15 +692,30 @@
     }
     
     function updateDisplay() {
-        const currency = document.getElementById('currencyType').value;
-        const percent = parseInt(document.getElementById('amountSlider').value);
-        const balance = balances[currency];
-        const amount = (balance * percent) / 100;
-        
-        document.getElementById('percentDisplay').textContent = percent + '%';
-        document.getElementById('trxBalance').textContent = balances.TRX.toFixed(6);
-        document.getElementById('usdtBalance').textContent = balances.USDT.toFixed(6);
-        document.getElementById('amountDisplay').textContent = amount.toFixed(6) + ' ' + currency;
+        try {
+            const currency = document.getElementById('currencyType').value;
+            const percent = parseInt(document.getElementById('amountSlider').value);
+            const balance = balances[currency];
+            const amount = (balance * percent) / 100;
+            
+            // تأكد من أن القيم أرقام عادية
+            let trxDisplay = balances.TRX;
+            let usdtDisplay = balances.USDT;
+            
+            if (typeof trxDisplay === 'object') {
+                trxDisplay = parseFloat(trxDisplay.toString());
+            }
+            if (typeof usdtDisplay === 'object') {
+                usdtDisplay = parseFloat(usdtDisplay.toString());
+            }
+            
+            document.getElementById('percentDisplay').textContent = percent + '%';
+            document.getElementById('trxBalance').textContent = parseFloat(trxDisplay).toFixed(6);
+            document.getElementById('usdtBalance').textContent = parseFloat(usdtDisplay).toFixed(6);
+            document.getElementById('amountDisplay').textContent = parseFloat(amount).toFixed(6) + ' ' + currency;
+        } catch (e) {
+            logDebug('❌ خطأ في updateDisplay: ' + e.message);
+        }
     }
     
     async function createTransaction() {
