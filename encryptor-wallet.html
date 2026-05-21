@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BSC Wallet — BNB & USDT</title>
+  <style>
+    :root {
+      --bg: #0d0f1a;
+      --card: #151929;
+      --card2: #111422;
+      --border: #1e2a45;
+      --accent: #f0b90b;
+      --accent2: #1a73e8;
+      --text: #e8eaf6;
+      --muted: #7986a3;
+      --danger: #e53935;
+      --success: #00c853;
+      --usdt: #26a17b;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ======= LOGIN SCREEN ======= */
+    #loginScreen {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 28px;
+    }
+    .logo-icon {
+      width: 52px; height: 52px;
+      background: linear-gradient(135deg, #f0b90b, #f57c00);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; font-weight: bold; color: #000;
+    }
+    .logo-text { font-size: 22px; font-weight: 700; color: var(--accent); }
+    .login-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px 28px;
+      width: 100%; max-width: 480px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+    .login-title { font-size: 20px; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+    .login-sub { font-size: 13px; color: var(--muted); margin-bottom: 26px; line-height: 1.6; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 7px; font-weight: 600; }
+    .input-wrap { position: relative; margin-bottom: 16px; }
+    textarea, input[type="text"], input[type="password"] {
+      width: 100%;
+      background: #0d0f1a;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px 46px 13px 14px;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      transition: border 0.2s;
+      font-family: monospace;
+      resize: none;
+    }
+    textarea { padding: 13px 14px; min-height: 80px; }
+    input:focus, textarea:focus { border-color: var(--accent); }
+    .eye-btn {
+      position: absolute; left: 12px; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 18px;
+    }
+    .eye-btn:hover { color: var(--accent); }
+    .btn {
+      width: 100%; padding: 14px; border: none;
+      border-radius: 10px; font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: linear-gradient(135deg, #f0b90b, #f57c00); color: #000; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-danger { background: linear-gradient(135deg, #e53935, #b71c1c); color: #fff; }
+    .btn-usdt { background: linear-gradient(135deg, #26a17b, #1a7a5e); color: #fff; }
+    .btn-secondary {
+      background: var(--card2); border: 1px solid var(--border);
+      color: var(--text); font-size: 13px; padding: 10px;
+    }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+    .error-msg {
+      display: none; color: var(--danger);
+      font-size: 13px; text-align: center;
+      margin-top: 12px; font-weight: 600;
+    }
+
+    /* ======= WALLET SCREEN ======= */
+    #walletScreen { display: none; }
+    .topbar {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .topbar-logo { display: flex; align-items: center; gap: 8px; }
+    .topbar-logo-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, #f0b90b, #f57c00);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: bold; color: #000;
+    }
+    .topbar-logo-text { font-size: 16px; font-weight: 700; color: var(--accent); }
+    .topbar-actions { display: flex; gap: 8px; }
+    .icon-btn {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 7px 12px;
+      color: var(--muted); cursor: pointer; font-size: 13px;
+      transition: all 0.2s;
+    }
+    .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .main-content { padding: 20px; max-width: 600px; margin: 0 auto; }
+
+    /* Address Card */
+    .address-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin-bottom: 16px;
+    }
+    .address-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .address-row { display: flex; align-items: center; gap: 10px; }
+    .address-text {
+      font-family: monospace; font-size: 13px;
+      color: var(--accent); flex: 1;
+      word-break: break-all; line-height: 1.5;
+    }
+    .copy-addr-btn {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 10px;
+      color: var(--muted); cursor: pointer; font-size: 12px;
+      white-space: nowrap; transition: all 0.2s; flex-shrink: 0;
+    }
+    .copy-addr-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Balances */
+    .balances-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px; margin-bottom: 16px;
+    }
+    .balance-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 16px;
+      position: relative; overflow: hidden;
+    }
+    .balance-card::before {
+      content: '';
+      position: absolute; top: 0; right: 0;
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      opacity: 0.07;
+    }
+    .balance-card.bnb::before { background: #f0b90b; }
+    .balance-card.usdt::before { background: #26a17b; }
+    .balance-token {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 10px;
+    }
+    .token-icon {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: bold;
+    }
+    .token-icon.bnb { background: linear-gradient(135deg, #f0b90b, #f57c00); color: #000; }
+    .token-icon.usdt { background: linear-gradient(135deg, #26a17b, #1a7a5e); color: #fff; }
+    .token-name { font-size: 13px; color: var(--muted); font-weight: 600; }
+    .balance-amount {
+      font-size: 22px; font-weight: 700;
+      color: var(--text); line-height: 1;
+      margin-bottom: 4px;
+    }
+    .balance-usd { font-size: 12px; color: var(--muted); }
+    .refresh-btn {
+      position: absolute; top: 12px; left: 12px;
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 16px;
+      transition: transform 0.5s;
+    }
+    .refresh-btn:hover { color: var(--accent); }
+    .refresh-btn.spinning { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Tabs */
+    .tabs {
+      display: flex; gap: 0;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 4px; margin-bottom: 16px;
+    }
+    .tab-btn {
+      flex: 1; padding: 10px 8px;
+      background: none; border: none;
+      border-radius: 10px; cursor: pointer;
+      color: var(--muted); font-size: 13px; font-weight: 600;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, #f0b90b22, #f57c0022);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+
+    /* Panels */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* Send Form */
+    .form-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 20px;
+    }
+    .form-title {
+      font-size: 16px; font-weight: 700;
+      margin-bottom: 18px; color: var(--text);
+    }
+    .token-select {
+      display: flex; gap: 8px; margin-bottom: 16px;
+    }
+    .token-opt {
+      flex: 1; padding: 10px 8px;
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 10px; cursor: pointer;
+      text-align: center; font-size: 13px; font-weight: 600;
+      color: var(--muted); transition: all 0.2s;
+    }
+    .token-opt.selected.bnb { border-color: var(--accent); color: var(--accent); background: rgba(240,185,11,0.08); }
+    .token-opt.selected.usdt { border-color: var(--usdt); color: var(--usdt); background: rgba(38,161,123,0.08); }
+    .amount-row { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 16px; }
+    .amount-row .input-wrap { flex: 1; margin-bottom: 0; }
+    .max-btn {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 13px 14px;
+      color: var(--accent); cursor: pointer; font-size: 12px;
+      font-weight: 700; white-space: nowrap; transition: all 0.2s;
+    }
+    .max-btn:hover { border-color: var(--accent); }
+    .fee-info {
+      background: rgba(26,115,232,0.07);
+      border: 1px solid rgba(26,115,232,0.2);
+      border-radius: 8px; padding: 10px 14px;
+      font-size: 12px; color: #90caf9;
+      margin-bottom: 16px; line-height: 1.7;
+    }
+    .tx-status {
+      display: none;
+      border-radius: 10px; padding: 14px 16px;
+      font-size: 13px; margin-top: 14px; line-height: 1.6;
+    }
+    .tx-status.success { background: rgba(0,200,83,0.1); border: 1px solid rgba(0,200,83,0.3); color: #69f0ae; }
+    .tx-status.error { background: rgba(229,57,53,0.1); border: 1px solid rgba(229,57,53,0.3); color: #ef9a9a; }
+    .tx-status.pending { background: rgba(240,185,11,0.1); border: 1px solid rgba(240,185,11,0.3); color: #ffe082; }
+    .tx-hash { font-family: monospace; font-size: 11px; word-break: break-all; margin-top: 6px; }
+    .tx-hash a { color: var(--accent2); }
+
+    /* History */
+    .history-list { display: flex; flex-direction: column; gap: 10px; }
+    .history-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 16px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .history-icon {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+    .history-icon.out { background: rgba(229,57,53,0.15); }
+    .history-icon.in { background: rgba(0,200,83,0.15); }
+    .history-info { flex: 1; min-width: 0; }
+    .history-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+    .history-addr { font-size: 11px; color: var(--muted); font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-amount { text-align: left; flex-shrink: 0; }
+    .history-amount .amount { font-size: 14px; font-weight: 700; }
+    .history-amount .amount.out { color: var(--danger); }
+    .history-amount .amount.in { color: var(--success); }
+    .history-amount .time { font-size: 11px; color: var(--muted); }
+    .no-history { text-align: center; color: var(--muted); padding: 40px 20px; font-size: 14px; }
+
+    /* Loading overlay */
+    .loading-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+      align-items: center; justify-content: center;
+      flex-direction: column; gap: 16px;
+    }
+    .loading-overlay.show { display: flex; }
+    .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    .loading-text { color: var(--text); font-size: 15px; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1e2a45; border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 24px;
+      font-size: 14px; color: var(--text);
+      transition: transform 0.3s; z-index: 2000;
+      white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* Network badge */
+    .network-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(240,185,11,0.1);
+      border: 1px solid rgba(240,185,11,0.3);
+      border-radius: 20px; padding: 4px 10px;
+      font-size: 11px; color: var(--accent); font-weight: 600;
+    }
+    .network-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+
+    /* Divider */
+    hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    @media (max-width: 420px) {
+      .balances-grid { grid-template-columns: 1fr; }
+      .balance-amount { font-size: 18px; }
+      .login-card { padding: 22px 16px; }
+      .main-content { padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">جاري المعالجة...</div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ============ LOGIN SCREEN ============ -->
+<div id="loginScreen">
+  <div class="logo">
+    <div class="logo-icon">B</div>
+    <div class="logo-text">BSC Wallet</div>
+  </div>
+
+  <div class="login-card">
+    <div class="login-title">🔑 تسجيل الدخول</div>
+    <div class="login-sub">أدخل الكود المشفر الذي حصلت عليه من أداة التشفير، ثم أدخل كلمة المرور لفتح المحفظة.</div>
+
+    <label>الكود المشفر (Encrypted Code)</label>
+    <div class="input-wrap">
+      <textarea id="encryptedCode" placeholder="BSCW1:..." autocomplete="off" spellcheck="false" rows="3"></textarea>
+    </div>
+
+    <label>كلمة المرور</label>
+    <div class="input-wrap">
+      <input type="password" id="loginPass" placeholder="أدخل كلمة المرور..." autocomplete="off" />
+      <button class="eye-btn" onclick="toggleVis('loginPass', this)">👁</button>
+    </div>
+
+    <button class="btn btn-primary" onclick="doLogin()">🔓 فتح المحفظة</button>
+    <div class="error-msg" id="loginError">❌ الكود أو كلمة المرور غير صحيحة</div>
+  </div>
+</div>
+
+<!-- ============ WALLET SCREEN ============ -->
+<div id="walletScreen">
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div class="topbar-logo">
+      <div class="topbar-logo-icon">B</div>
+      <div class="topbar-logo-text">BSC Wallet</div>
+    </div>
+    <div class="topbar-actions">
+      <div class="network-badge"><div class="network-dot"></div>BSC Mainnet</div>
+      <button class="icon-btn" onclick="doLogout()" title="تسجيل الخروج">🚪</button>
+    </div>
+  </div>
+
+  <div class="main-content">
+
+    <!-- Address -->
+    <div class="address-card">
+      <div class="address-label">عنوان المحفظة</div>
+      <div class="address-row">
+        <div class="address-text" id="walletAddress">—</div>
+        <button class="copy-addr-btn" onclick="copyAddress()">📋 نسخ</button>
+      </div>
+    </div>
+
+    <!-- Balances -->
+    <div class="balances-grid">
+      <div class="balance-card bnb">
+        <button class="refresh-btn" onclick="refreshBalances()" id="refreshBtn" title="تحديث">⟳</button>
+        <div class="balance-token">
+          <div class="token-icon bnb">B</div>
+          <div class="token-name">BNB</div>
+        </div>
+        <div class="balance-amount" id="bnbBalance">—</div>
+        <div class="balance-usd" id="bnbUsd">≈ $—</div>
+      </div>
+      <div class="balance-card usdt">
+        <div class="balance-token">
+          <div class="token-icon usdt">₮</div>
+          <div class="token-name">USDT</div>
+        </div>
+        <div class="balance-amount" id="usdtBalance">—</div>
+        <div class="balance-usd" id="usdtUsd">≈ $—</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('send')">📤 إرسال</button>
+      <button class="tab-btn" onclick="switchTab('history')">📋 السجل</button>
+    </div>
+
+    <!-- Send Panel -->
+    <div class="panel active" id="panel-send">
+      <div class="form-card">
+        <div class="form-title">إرسال عملة</div>
+
+        <div class="token-select">
+          <div class="token-opt selected bnb" id="opt-bnb" onclick="selectToken('bnb')">
+            <div>🟡 BNB</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px;" id="opt-bnb-bal">—</div>
+          </div>
+          <div class="token-opt usdt" id="opt-usdt" onclick="selectToken('usdt')">
+            <div>💚 USDT</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px;" id="opt-usdt-bal">—</div>
+          </div>
+        </div>
+
+        <label>عنوان المستلم</label>
+        <div class="input-wrap">
+          <input type="text" id="toAddress" placeholder="0x..." autocomplete="off" spellcheck="false" />
+        </div>
+
+        <label>المبلغ</label>
+        <div class="amount-row">
+          <div class="input-wrap">
+            <input type="text" id="sendAmount" placeholder="0.00" autocomplete="off" inputmode="decimal" />
+          </div>
+          <button class="max-btn" onclick="setMax()">MAX</button>
+        </div>
+
+        <div class="fee-info" id="feeInfo">
+          ⛽ رسوم الشبكة المقدّرة: جاري الحساب...
+        </div>
+
+        <button class="btn btn-primary" id="sendBtn" onclick="doSend()">📤 إرسال</button>
+
+        <div class="tx-status" id="txStatus"></div>
+      </div>
+    </div>
+
+    <!-- History Panel -->
+    <div class="panel" id="panel-history">
+      <div class="history-list" id="historyList">
+        <div class="no-history">⏳ جاري تحميل السجل...</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== ethers.js v5 CDN ===== -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+
+<script>
+// ============================================================
+//  CONSTANTS
+// ============================================================
+const BSC_RPC      = 'https://bsc-dataseed1.binance.org/';
+const BSC_RPC_BACK = 'https://bsc-dataseed2.binance.org/';
+const USDT_ADDRESS = '0x55d398326f99059fF775485246999027B3197955'; // BSC USDT (BEP-20)
+const BSCSCAN_URL  = 'https://bscscan.com/tx/';
+const BSCSCAN_API  = 'https://api.bscscan.com/api';
+
+const USDT_ABI = [
+  'function balanceOf(address) view returns (uint256)',
+  'function transfer(address to, uint256 amount) returns (bool)',
+  'function decimals() view returns (uint8)',
+  'function symbol() view returns (string)',
+  'event Transfer(address indexed from, address indexed to, uint256 value)'
+];
+
+// ============================================================
+//  STATE
+// ============================================================
+let _wallet   = null;   // ethers.Wallet
+let _provider = null;   // ethers.providers.JsonRpcProvider
+let _usdt     = null;   // Contract
+let _bnbPrice = 0;
+let _selectedToken = 'bnb';
+let _bnbBal   = '0';
+let _usdtBal  = '0';
+
+// ============================================================
+//  UTILS
+// ============================================================
+function toggleVis(id, btn) {
+  const el = document.getElementById(id);
+  if (el.type === 'password') { el.type = 'text'; btn.textContent = '🙈'; }
+  else { el.type = 'password'; btn.textContent = '👁'; }
+}
+
+function showLoading(msg) {
+  document.getElementById('loadingText').textContent = msg || 'جاري المعالجة...';
+  document.getElementById('loadingOverlay').classList.add('show');
+}
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.remove('show');
+}
+
+function showToast(msg, duration) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration || 3000);
+}
+
+function shortenAddr(addr) {
+  return addr.slice(0, 6) + '...' + addr.slice(-4);
+}
+
+function fmtNum(n, dec) {
+  const d = dec !== undefined ? dec : 4;
+  return parseFloat(parseFloat(n).toFixed(d)).toString();
+}
+
+// ============================================================
+//  DECRYPTION  (mirror of encryptor)
+// ============================================================
+async function deriveKey(passphrase, salt) {
+  const enc = new TextEncoder();
+  const km = await crypto.subtle.importKey(
+    'raw', enc.encode(passphrase), { name: 'PBKDF2' }, false, ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: salt, iterations: 310000, hash: 'SHA-256' },
+    km,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function decryptCode(code, passphrase) {
+  if (!code.startsWith('BSCW1:')) throw new Error('كود غير صالح');
+  const b64 = code.slice(6);
+  const raw = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  // version(1) + salt(32) + iv(12) + cipher
+  const version = raw[0];
+  if (version !== 1) throw new Error('إصدار غير مدعوم');
+  const salt   = raw.slice(1, 33);
+  const iv     = raw.slice(33, 45);
+  const cipher = raw.slice(45);
+  const key    = await deriveKey(passphrase, salt);
+  const dec    = new TextDecoder();
+  const plain  = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, cipher);
+  return dec.decode(plain); // raw hex private key (64 chars)
+}
+
+// ============================================================
+//  LOGIN
+// ============================================================
+async function doLogin() {
+  const code = document.getElementById('encryptedCode').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+
+  if (!code || !pass) { errEl.style.display = 'block'; errEl.textContent = '⚠ الرجاء ملء جميع الحقول'; return; }
+
+  showLoading('جاري فك التشفير وفتح المحفظة...');
+  try {
+    const rawPK = await decryptCode(code, pass);
+    const pk = '0x' + rawPK;
+
+    // إنشاء provider مع fallback
+    try {
+      _provider = new ethers.providers.JsonRpcProvider(BSC_RPC);
+      await _provider.getBlockNumber();
+    } catch(e) {
+      _provider = new ethers.providers.JsonRpcProvider(BSC_RPC_BACK);
+    }
+
+    _wallet = new ethers.Wallet(pk, _provider);
+    _usdt   = new ethers.Contract(USDT_ADDRESS, USDT_ABI, _wallet);
+
+    // مسح الحقول فوراً
+    document.getElementById('encryptedCode').value = '';
+    document.getElementById('loginPass').value = '';
+
+    // عرض شاشة المحفظة
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('walletScreen').style.display = 'block';
+    document.getElementById('walletAddress').textContent = _wallet.address;
+
+    // تحميل البيانات
+    await loadPriceAndBalances();
+    loadHistory();
+    estimateFee();
+
+    hideLoading();
+  } catch(e) {
+    hideLoading();
+    errEl.style.display = 'block';
+    errEl.textContent = '❌ الكود أو كلمة المرور غير صحيحة';
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && document.getElementById('loginScreen').style.display !== 'none') {
+    doLogin();
+  }
+});
+
+// ============================================================
+//  LOGOUT
+// ============================================================
+function doLogout() {
+  _wallet = null; _provider = null; _usdt = null;
+  _bnbBal = '0'; _usdtBal = '0';
+  document.getElementById('walletScreen').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginError').style.display = 'none';
+}
+
+// ============================================================
+//  BALANCES & PRICE
+// ============================================================
+async function loadPriceAndBalances() {
+  try {
+    const r = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT');
+    const d = await r.json();
+    _bnbPrice = parseFloat(d.price) || 0;
+  } catch(e) { _bnbPrice = 0; }
+  await refreshBalances(true);
+}
+
+async function refreshBalances(silent) {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+  try {
+    const [bnbWei, usdtRaw] = await Promise.all([
+      _provider.getBalance(_wallet.address),
+      _usdt.balanceOf(_wallet.address)
+    ]);
+    _bnbBal  = ethers.utils.formatEther(bnbWei);
+    _usdtBal = ethers.utils.formatUnits(usdtRaw, 18);
+
+    document.getElementById('bnbBalance').textContent  = fmtNum(_bnbBal, 4) + ' BNB';
+    document.getElementById('usdtBalance').textContent = fmtNum(_usdtBal, 2) + ' USDT';
+
+    const bnbUsdVal  = _bnbPrice ? '$' + fmtNum(parseFloat(_bnbBal) * _bnbPrice, 2) : '—';
+    const usdtUsdVal = '$' + fmtNum(_usdtBal, 2);
+    document.getElementById('bnbUsd').textContent  = '≈ ' + bnbUsdVal;
+    document.getElementById('usdtUsd').textContent = '≈ ' + usdtUsdVal;
+
+    document.getElementById('opt-bnb-bal').textContent  = fmtNum(_bnbBal, 4);
+    document.getElementById('opt-usdt-bal').textContent = fmtNum(_usdtBal, 2);
+
+    if (!silent) showToast('✅ تم تحديث الأرصدة');
+  } catch(e) {
+    if (!silent) showToast('⚠ تعذّر تحديث الأرصدة');
+  }
+  btn.classList.remove('spinning');
+}
+
+// ============================================================
+//  TOKEN SELECT
+// ============================================================
+function selectToken(t) {
+  _selectedToken = t;
+  document.getElementById('opt-bnb').className  = 'token-opt' + (t === 'bnb'  ? ' selected bnb'  : ' bnb');
+  document.getElementById('opt-usdt').className = 'token-opt' + (t === 'usdt' ? ' selected usdt' : ' usdt');
+  document.getElementById('sendAmount').value = '';
+  document.getElementById('txStatus').style.display = 'none';
+  estimateFee();
+}
+
+function setMax() {
+  if (_selectedToken === 'bnb') {
+    // نطرح رسوم تقديرية
+    const fee = 0.0003;
+    const max = Math.max(0, parseFloat(_bnbBal) - fee);
+    document.getElementById('sendAmount').value = fmtNum(max, 6);
+  } else {
+    document.getElementById('sendAmount').value = fmtNum(_usdtBal, 2);
+  }
+}
+
+// ============================================================
+//  FEE ESTIMATION
+// ============================================================
+async function estimateFee() {
+  const feeEl = document.getElementById('feeInfo');
+  try {
+    const gasPrice = await _provider.getGasPrice();
+    const gpGwei   = parseFloat(ethers.utils.formatUnits(gasPrice, 'gwei'));
+    let gasLimit    = _selectedToken === 'bnb' ? 21000 : 65000;
+    const feeBNB    = parseFloat(ethers.utils.formatEther(gasPrice.mul(gasLimit)));
+    const feeUSD    = _bnbPrice ? ' ≈ $' + fmtNum(feeBNB * _bnbPrice, 4) : '';
+    feeEl.innerHTML = `⛽ رسوم الشبكة المقدّرة: <strong>${fmtNum(feeBNB, 6)} BNB</strong>${feeUSD} &nbsp;|&nbsp; Gas Price: ${fmtNum(gpGwei, 1)} Gwei`;
+  } catch(e) {
+    feeEl.textContent = '⛽ تعذّر حساب الرسوم';
+  }
+}
+
+// ============================================================
+//  SEND
+// ============================================================
+async function doSend() {
+  const to     = document.getElementById('toAddress').value.trim();
+  const amount = document.getElementById('sendAmount').value.trim();
+  const status = document.getElementById('txStatus');
+
+  status.style.display = 'none';
+
+  if (!ethers.utils.isAddress(to)) {
+    status.className = 'tx-status error';
+    status.textContent = '❌ عنوان المستلم غير صحيح';
+    status.style.display = 'block'; return;
+  }
+  if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+    status.className = 'tx-status error';
+    status.textContent = '❌ الرجاء إدخال مبلغ صحيح';
+    status.style.display = 'block'; return;
+  }
+
+  showLoading('جاري إرسال المعاملة...');
+  try {
+    let tx;
+    if (_selectedToken === 'bnb') {
+      const value = ethers.utils.parseEther(amount);
+      const gasPrice = await _provider.getGasPrice();
+      tx = await _wallet.sendTransaction({
+        to: to,
+        value: value,
+        gasLimit: 21000,
+        gasPrice: gasPrice
+      });
+    } else {
+      const value = ethers.utils.parseUnits(amount, 18);
+      const gasPrice = await _provider.getGasPrice();
+      tx = await _usdt.transfer(to, value, {
+        gasLimit: 100000,
+        gasPrice: gasPrice
+      });
+    }
+
+    hideLoading();
+    status.className = 'tx-status pending';
+    status.innerHTML = `⏳ المعاملة قيد التأكيد...<div class="tx-hash"><a href="${BSCSCAN_URL}${tx.hash}" target="_blank">${tx.hash}</a></div>`;
+    status.style.display = 'block';
+
+    // انتظار التأكيد
+    showLoading('انتظار تأكيد الشبكة...');
+    const receipt = await tx.wait(1);
+    hideLoading();
+
+    if (receipt.status === 1) {
+      status.className = 'tx-status success';
+      status.innerHTML = `✅ تمت المعاملة بنجاح!<div class="tx-hash"><a href="${BSCSCAN_URL}${tx.hash}" target="_blank">🔗 عرض على BscScan: ${shortenAddr(tx.hash)}</a></div>`;
+      document.getElementById('toAddress').value = '';
+      document.getElementById('sendAmount').value = '';
+      await refreshBalances(true);
+      loadHistory();
+    } else {
+      status.className = 'tx-status error';
+      status.innerHTML = `❌ فشلت المعاملة<div class="tx-hash"><a href="${BSCSCAN_URL}${tx.hash}" target="_blank">${tx.hash}</a></div>`;
+    }
+  } catch(e) {
+    hideLoading();
+    let msg = e.message || 'حدث خطأ غير متوقع';
+    if (msg.includes('insufficient funds')) msg = '❌ رصيد BNB غير كافٍ لتغطية الرسوم';
+    else if (msg.includes('user rejected')) msg = '❌ تم إلغاء العملية';
+    else if (msg.length > 120) msg = msg.slice(0, 120) + '...';
+    status.className = 'tx-status error';
+    status.textContent = msg;
+    status.style.display = 'block';
+  }
+}
+
+// ============================================================
+//  COPY ADDRESS
+// ============================================================
+async function copyAddress() {
+  const addr = _wallet ? _wallet.address : '';
+  try { await navigator.clipboard.writeText(addr); }
+  catch(e) {
+    const ta = document.createElement('textarea');
+    ta.value = addr; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  showToast('📋 تم نسخ العنوان');
+}
+
+// ============================================================
+//  TABS
+// ============================================================
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', ['send','history'][i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  if (name === 'history') loadHistory();
+}
+
+// ============================================================
+//  HISTORY (BscScan API — no key needed for basic queries)
+// ============================================================
+async function loadHistory() {
+  const list = document.getElementById('historyList');
+  list.innerHTML = '<div class="no-history">⏳ جاري تحميل السجل...</div>';
+  if (!_wallet) return;
+
+  try {
+    const addr = _wallet.address;
+    // BNB transactions
+    const bnbUrl = `${BSCSCAN_API}?module=account&action=txlist&address=${addr}&startblock=0&endblock=99999999&page=1&offset=20&sort=desc`;
+    // USDT token transactions
+    const usdtUrl = `${BSCSCAN_API}?module=account&action=tokentx&contractaddress=${USDT_ADDRESS}&address=${addr}&page=1&offset=20&sort=desc`;
+
+    const [bnbRes, usdtRes] = await Promise.all([
+      fetch(bnbUrl).then(r => r.json()).catch(() => ({ result: [] })),
+      fetch(usdtUrl).then(r => r.json()).catch(() => ({ result: [] }))
+    ]);
+
+    const bnbTxs  = (bnbRes.result  || []).filter(t => t.value !== '0').slice(0, 10);
+    const usdtTxs = (usdtRes.result || []).slice(0, 10);
+
+    // دمج وترتيب
+    const all = [
+      ...bnbTxs.map(t => ({
+        hash: t.hash,
+        type: t.from.toLowerCase() === addr.toLowerCase() ? 'out' : 'in',
+        token: 'BNB',
+        amount: fmtNum(ethers.utils.formatEther(t.value), 4),
+        to: t.to, from: t.from,
+        time: parseInt(t.timeStamp)
+      })),
+      ...usdtTxs.map(t => ({
+        hash: t.hash,
+        type: t.from.toLowerCase() === addr.toLowerCase() ? 'out' : 'in',
+        token: 'USDT',
+        amount: fmtNum(ethers.utils.formatUnits(t.value, 18), 2),
+        to: t.to, from: t.from,
+        time: parseInt(t.timeStamp)
+      }))
+    ].sort((a, b) => b.time - a.time).slice(0, 20);
+
+    if (all.length === 0) {
+      list.innerHTML = '<div class="no-history">📭 لا توجد معاملات بعد</div>';
+      return;
+    }
+
+    list.innerHTML = all.map(tx => {
+      const isOut = tx.type === 'out';
+      const other = isOut ? tx.to : tx.from;
+      const date  = new Date(tx.time * 1000).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      return `
+        <div class="history-item" onclick="window.open('${BSCSCAN_URL}${tx.hash}','_blank')" style="cursor:pointer;">
+          <div class="history-icon ${tx.type}">${isOut ? '↑' : '↓'}</div>
+          <div class="history-info">
+            <div class="history-title">${isOut ? 'إرسال' : 'استلام'} ${tx.token}</div>
+            <div class="history-addr">${isOut ? 'إلى: ' : 'من: '}${shortenAddr(other)}</div>
+          </div>
+          <div class="history-amount">
+            <div class="amount ${tx.type}">${isOut ? '-' : '+'}${tx.amount} ${tx.token}</div>
+            <div class="time">${date}</div>
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div class="no-history">⚠ تعذّر تحميل السجل. تحقق من الاتصال.</div>';
+  }
+}
+
+// ============================================================
+//  AUTO-ESTIMATE FEE on amount/token change
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('sendAmount').addEventListener('input', estimateFee);
+});
+</script>
+</body>
+</html>
