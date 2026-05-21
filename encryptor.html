@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تشفير المفتاح الخاص</title>
+  <style>
+    :root {
+      --bg: #0d0f1a;
+      --card: #151929;
+      --border: #1e2a45;
+      --accent: #f0b90b;
+      --accent2: #1a73e8;
+      --text: #e8eaf6;
+      --muted: #7986a3;
+      --danger: #e53935;
+      --success: #00c853;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 30px;
+    }
+    .logo-icon {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, #f0b90b, #f57c00);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: bold; color: #000;
+    }
+    .logo-text { font-size: 22px; font-weight: 700; color: var(--accent); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px 28px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+    .card-title {
+      font-size: 20px; font-weight: 700;
+      margin-bottom: 6px;
+      color: var(--accent);
+    }
+    .card-sub {
+      font-size: 13px; color: var(--muted);
+      margin-bottom: 28px;
+      line-height: 1.6;
+    }
+    label {
+      display: block;
+      font-size: 13px; color: var(--muted);
+      margin-bottom: 7px;
+      font-weight: 600;
+    }
+    .input-wrap {
+      position: relative;
+      margin-bottom: 18px;
+    }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      background: #0d0f1a;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px 46px 13px 14px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      transition: border 0.2s;
+      font-family: monospace;
+    }
+    input:focus { border-color: var(--accent); }
+    .eye-btn {
+      position: absolute;
+      left: 12px; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none;
+      cursor: pointer; color: var(--muted);
+      font-size: 18px; padding: 2px;
+    }
+    .eye-btn:hover { color: var(--accent); }
+    .strength-bar {
+      height: 4px;
+      border-radius: 4px;
+      background: var(--border);
+      margin-top: -12px;
+      margin-bottom: 18px;
+      overflow: hidden;
+    }
+    .strength-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 4px;
+      transition: width 0.3s, background 0.3s;
+    }
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary {
+      background: linear-gradient(135deg, #f0b90b, #f57c00);
+      color: #000;
+      margin-bottom: 14px;
+    }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-copy {
+      background: linear-gradient(135deg, #1a73e8, #0d47a1);
+      color: #fff;
+    }
+    .btn-copy:hover { opacity: 0.9; }
+    .result-box {
+      display: none;
+      margin-top: 24px;
+      background: #0a0c14;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+    }
+    .result-label {
+      font-size: 12px; color: var(--muted);
+      margin-bottom: 10px; font-weight: 600;
+    }
+    .result-code {
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--success);
+      word-break: break-all;
+      line-height: 1.7;
+      background: #060810;
+      border-radius: 8px;
+      padding: 14px;
+      border: 1px solid #1a2a1a;
+      max-height: 120px;
+      overflow-y: auto;
+      margin-bottom: 14px;
+      user-select: all;
+    }
+    .copy-success {
+      display: none;
+      color: var(--success);
+      font-size: 13px;
+      text-align: center;
+      margin-top: 8px;
+      font-weight: 600;
+    }
+    .warning-box {
+      background: rgba(229, 57, 53, 0.08);
+      border: 1px solid rgba(229, 57, 53, 0.3);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 22px;
+      font-size: 12px;
+      color: #ef9a9a;
+      line-height: 1.7;
+    }
+    .warning-box strong { color: var(--danger); }
+    .info-steps {
+      background: rgba(26, 115, 232, 0.07);
+      border: 1px solid rgba(26, 115, 232, 0.2);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 22px;
+      font-size: 12px;
+      color: #90caf9;
+      line-height: 1.8;
+    }
+    .info-steps strong { color: #64b5f6; }
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 22px 0;
+    }
+    .footer {
+      margin-top: 24px;
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+    }
+    @media (max-width: 480px) {
+      .card { padding: 22px 16px; }
+      .card-title { font-size: 17px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="logo">
+  <div class="logo-icon">B</div>
+  <div class="logo-text">BSC Wallet Encryptor</div>
+</div>
+
+<div class="card">
+  <div class="card-title">🔐 تشفير المفتاح الخاص</div>
+  <div class="card-sub">
+    أدخل مفتاحك الخاص وكلمة مرور قوية لتوليد كود مشفر آمن يمكنك استخدامه لتسجيل الدخول إلى المحفظة.
+  </div>
+
+  <div class="warning-box">
+    <strong>⚠ تحذير أمني:</strong> لا تشارك مفتاحك الخاص مع أي شخص. تأكد من أنك في بيئة آمنة وغير متصل بشبكة عامة عند إجراء هذه العملية.
+  </div>
+
+  <div class="info-steps">
+    <strong>📋 خطوات الاستخدام:</strong><br>
+    1. أدخل مفتاحك الخاص في الحقل أدناه<br>
+    2. أدخل كلمة مرور قوية (ستحتاجها عند تسجيل الدخول)<br>
+    3. اضغط "تشفير" واحفظ الكود المولّد<br>
+    4. استخدم الكود المشفر في ملف المحفظة
+  </div>
+
+  <label>المفتاح الخاص (Private Key)</label>
+  <div class="input-wrap">
+    <input type="password" id="privateKey" placeholder="0x..." autocomplete="off" spellcheck="false" />
+    <button class="eye-btn" onclick="toggleVis('privateKey', this)" title="إظهار/إخفاء">👁</button>
+  </div>
+
+  <label>كلمة المرور (ستُستخدم لفك التشفير)</label>
+  <div class="input-wrap">
+    <input type="password" id="passphrase" placeholder="أدخل كلمة مرور قوية..." autocomplete="off" />
+    <button class="eye-btn" onclick="toggleVis('passphrase', this)" title="إظهار/إخفاء">👁</button>
+  </div>
+  <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+
+  <label>تأكيد كلمة المرور</label>
+  <div class="input-wrap">
+    <input type="password" id="passphrase2" placeholder="أعد إدخال كلمة المرور..." autocomplete="off" />
+    <button class="eye-btn" onclick="toggleVis('passphrase2', this)" title="إظهار/إخفاء">👁</button>
+  </div>
+
+  <button class="btn btn-primary" onclick="encryptKey()">🔒 تشفير المفتاح الخاص</button>
+
+  <div class="result-box" id="resultBox">
+    <hr class="divider" style="margin-top:0; margin-bottom:16px;">
+    <div class="result-label">✅ الكود المشفر — انسخه واحفظه في مكان آمن:</div>
+    <div class="result-code" id="resultCode"></div>
+    <button class="btn btn-copy" onclick="copyCode()">📋 نسخ الكود إلى الحافظة</button>
+    <div class="copy-success" id="copySuccess">✔ تم النسخ بنجاح!</div>
+  </div>
+</div>
+
+<div class="footer">
+  BSC Wallet — Offline Encryption Tool &nbsp;|&nbsp; لا يتم إرسال أي بيانات عبر الإنترنت
+</div>
+
+<script>
+// ======= مؤشر قوة كلمة المرور =======
+document.getElementById('passphrase').addEventListener('input', function() {
+  const v = this.value;
+  let score = 0;
+  if (v.length >= 8) score++;
+  if (v.length >= 12) score++;
+  if (/[A-Z]/.test(v)) score++;
+  if (/[0-9]/.test(v)) score++;
+  if (/[^A-Za-z0-9]/.test(v)) score++;
+  const fill = document.getElementById('strengthFill');
+  const colors = ['#e53935','#ff7043','#ffa726','#66bb6a','#00c853'];
+  fill.style.width = (score * 20) + '%';
+  fill.style.background = colors[score - 1] || '#e53935';
+});
+
+// ======= إظهار/إخفاء النص =======
+function toggleVis(id, btn) {
+  const el = document.getElementById(id);
+  if (el.type === 'password') { el.type = 'text'; btn.textContent = '🙈'; }
+  else { el.type = 'password'; btn.textContent = '👁'; }
+}
+
+// ======= دوال التشفير AES-GCM =======
+async function deriveKey(passphrase, salt) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', enc.encode(passphrase), { name: 'PBKDF2' }, false, ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: salt, iterations: 310000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+function bufToHex(buf) {
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function hexToBuf(hex) {
+  const arr = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) arr[i / 2] = parseInt(hex.substr(i, 2), 16);
+  return arr;
+}
+
+async function encryptKey() {
+  const pk = document.getElementById('privateKey').value.trim();
+  const pass = document.getElementById('passphrase').value;
+  const pass2 = document.getElementById('passphrase2').value;
+
+  if (!pk) { alert('⚠ الرجاء إدخال المفتاح الخاص.'); return; }
+  if (!pk.match(/^(0x)?[0-9a-fA-F]{64}$/)) {
+    alert('⚠ المفتاح الخاص غير صحيح. يجب أن يكون 64 حرفاً هكساديسيمال (مع أو بدون 0x).'); return;
+  }
+  if (pass.length < 8) { alert('⚠ كلمة المرور يجب أن تكون 8 أحرف على الأقل.'); return; }
+  if (pass !== pass2) { alert('⚠ كلمتا المرور غير متطابقتين.'); return; }
+
+  try {
+    const salt = crypto.getRandomValues(new Uint8Array(32));
+    const iv   = crypto.getRandomValues(new Uint8Array(12));
+    const key  = await deriveKey(pass, salt);
+    const enc  = new TextEncoder();
+    // نشفّر المفتاح الخاص بعد إزالة 0x إن وُجد
+    const rawPK = pk.startsWith('0x') || pk.startsWith('0X') ? pk.slice(2) : pk;
+    const cipherBuf = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: iv },
+      key,
+      enc.encode(rawPK)
+    );
+    // نبني الحمولة: version(1) + salt(32) + iv(12) + cipher
+    const version = new Uint8Array([1]);
+    const payload = new Uint8Array(1 + 32 + 12 + cipherBuf.byteLength);
+    payload.set(version, 0);
+    payload.set(salt, 1);
+    payload.set(iv, 33);
+    payload.set(new Uint8Array(cipherBuf), 45);
+
+    // نحوّل إلى Base64 مع بادئة مميزة
+    const b64 = btoa(String.fromCharCode(...payload));
+    const finalCode = 'BSCW1:' + b64;
+
+    document.getElementById('resultCode').textContent = finalCode;
+    document.getElementById('resultBox').style.display = 'block';
+    document.getElementById('copySuccess').style.display = 'none';
+
+    // مسح الحقول فوراً بعد التشفير
+    document.getElementById('privateKey').value = '';
+    document.getElementById('passphrase').value = '';
+    document.getElementById('passphrase2').value = '';
+    document.getElementById('strengthFill').style.width = '0%';
+
+    // تمرير للنتيجة
+    document.getElementById('resultBox').scrollIntoView({ behavior: 'smooth' });
+  } catch(e) {
+    alert('حدث خطأ أثناء التشفير: ' + e.message);
+  }
+}
+
+async function copyCode() {
+  const code = document.getElementById('resultCode').textContent;
+  try {
+    await navigator.clipboard.writeText(code);
+  } catch(e) {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = code;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  const s = document.getElementById('copySuccess');
+  s.style.display = 'block';
+  setTimeout(() => { s.style.display = 'none'; }, 3000);
+}
+</script>
+</body>
+</html>
