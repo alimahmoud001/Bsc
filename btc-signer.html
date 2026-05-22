@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>موقع التوقيع المشفر</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #000; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .btn-yellow { background-color: #FFD700; color: #000; font-weight: bold; }
+        .btn-yellow:hover { background-color: #FFC800; }
+        .card { background-color: #1a1a1a; border: 1px solid #333; border-radius: 15px; }
+        input, textarea { background-color: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 8px; padding: 10px; width: 100%; }
+    </style>
+</head>
+<body class="p-4 flex flex-col items-center min-h-screen">
+
+    <div class="w-full max-w-md card p-6 mt-6">
+        <h2 class="text-2xl font-bold mb-6 text-center text-[#FFD700]">جهاز التوقيع (Signer)</h2>
+        
+        <div class="mb-6">
+            <label class="block text-sm mb-2 text-gray-400">أدخل المفتاح الخاص الفرعي (Private Key):</label>
+            <input type="password" id="private-key" placeholder="المفتاح الخاص (WIF or Hex)">
+            <p class="text-[10px] text-red-400 mt-1">* تنبيه: لا تشارك مفتاحك الخاص مع أي طرف ثالث.</p>
+        </div>
+
+        <div class="mb-6 border-t border-[#333] pt-4">
+            <label class="block text-sm mb-2 text-gray-400">لصق بيانات المعاملة غير الموقعة:</label>
+            <textarea id="unsigned-tx-input" rows="4" placeholder="الصق الكود من الملف الأول هنا..." class="font-mono text-xs"></textarea>
+        </div>
+
+        <button onclick="signTransaction()" class="w-full btn-yellow py-3 rounded-lg mb-6">توقيع المعاملة وتشفيرها</button>
+
+        <div id="signature-area" class="hidden border-t border-[#333] pt-4">
+            <div id="tx-summary" class="mb-4 p-3 bg-[#2a2a2a] rounded text-xs text-gray-300">
+                <!-- ملخص المعاملة سيظهر هنا -->
+            </div>
+            <label class="block text-sm mb-2 text-[#FFD700]">التوقيع الرقمي المشفر (جاهز للنسخ):</label>
+            <textarea id="signature-output" rows="4" readonly class="font-mono text-xs mb-3 bg-[#1a3a1a] border-green-900"></textarea>
+            <button onclick="copySignature()" class="w-full bg-green-700 text-white py-2 rounded-lg text-sm">نسخ التوقيع</button>
+            <p class="text-[10px] text-gray-500 mt-4 text-center">انسخ هذا التوقيع واذهب للملف الأول لإكمال البث.</p>
+        </div>
+    </div>
+
+    <script>
+        function signTransaction() {
+            const privKey = document.getElementById('private-key').value;
+            const unsignedTx = document.getElementById('unsigned-tx-input').value;
+
+            if (!privKey || !unsignedTx) {
+                alert("يرجى إدخال المفتاح الخاص وبيانات المعاملة");
+                return;
+            }
+
+            try {
+                const txData = JSON.parse(atob(unsignedTx));
+                
+                // عرض ملخص المعاملة للتأكيد
+                document.getElementById('tx-summary').innerHTML = `
+                    <p><b>العملة:</b> ${txData.asset}</p>
+                    <p><b>المبلغ:</b> ${txData.amount}</p>
+                    <p><b>المستلم:</b> ${txData.recipient.substring(0, 15)}...</p>
+                `;
+
+                const timestamp = Date.now();
+                
+                // تكوين كود التوقيع (محاكاة للتوقيع الرقمي ECDSA)
+                const signaturePayload = {
+                    tx_hash: btoa(unsignedTx).substring(0, 16),
+                    signer_timestamp: timestamp,
+                    status: "AUTHORIZED",
+                    proof: "SIG_" + Math.random().toString(36).substring(2, 20).toUpperCase(),
+                    asset: txData.asset
+                };
+
+                const encryptedSignature = btoa(JSON.stringify(signaturePayload));
+                
+                document.getElementById('signature-output').value = encryptedSignature;
+                document.getElementById('signature-area').classList.remove('hidden');
+                
+                alert("تم توليد التوقيع المشفر بنجاح");
+            } catch (e) {
+                alert("خطأ في بيانات المعاملة: تأكد من نسخ الكود بشكل صحيح");
+            }
+        }
+
+        function copySignature() {
+            const copyText = document.getElementById('signature-output');
+            copyText.select();
+            document.execCommand("copy");
+            alert("تم نسخ التوقيع بنجاح");
+        }
+    </script>
+</body>
+</html>
