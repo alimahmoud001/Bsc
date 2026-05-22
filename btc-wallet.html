@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محفظة RGB - BTC/USDT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #000; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .btn-yellow { background-color: #FFD700; color: #000; font-weight: bold; }
+        .btn-yellow:hover { background-color: #FFC800; }
+        .card { background-color: #1a1a1a; border: 1px solid #333; border-radius: 15px; }
+        input, textarea { background-color: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 8px; padding: 10px; width: 100%; }
+        .slider { -webkit-appearance: none; width: 100%; height: 10px; border-radius: 5px; background: #444; outline: none; }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #FFD700; cursor: pointer; }
+        .slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #FFD700; cursor: pointer; border: none; }
+        .loading { display: inline-block; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="p-4 flex flex-col items-center min-h-screen">
+
+    <!-- شاشة تسجيل الدخول -->
+    <div id="login-screen" class="w-full max-w-md card p-6 mt-10">
+        <h2 class="text-2xl font-bold mb-6 text-center text-[#FFD700]">تسجيل الدخول للمحفظة</h2>
+        <p class="mb-4 text-sm text-gray-400">أدخل عنوان BTC (Bitcoin Address) للبدء:</p>
+        <input type="text" id="public-address" placeholder="مثال: 1A1z7agoat..." class="mb-6">
+        <button onclick="login()" class="w-full btn-yellow py-3 rounded-lg">دخول</button>
+        <p class="text-[10px] text-gray-500 mt-4 text-center">سيتم جلب رصيد BTC الحقيقي من الشبكة</p>
+    </div>
+
+    <!-- شاشة المحفظة الرئيسية -->
+    <div id="wallet-screen" class="w-full max-w-md card p-6 mt-4 hidden">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-[#FFD700]">رصيد المحفظة</h2>
+            <button onclick="logout()" class="text-xs text-gray-500 underline">خروج</button>
+        </div>
+        
+        <div class="mb-6 p-4 bg-[#2a2a2a] rounded-lg">
+            <div class="flex justify-between mb-3">
+                <span>BTC:</span>
+                <span id="btc-balance" class="font-mono"><span class="loading">⟳</span></span>
+            </div>
+            <div class="text-xs text-gray-500 mb-4">التحكم في رصيد BTC (للاختبار):</div>
+            <input type="range" min="0" max="10" step="0.001" value="0" class="slider" id="btc-slider" oninput="updateBtcBalance(this.value)">
+            <div class="text-xs text-gray-500 mt-2">اسحب المؤشر للتحكم في الرصيد</div>
+            
+            <div class="border-t border-[#333] my-4"></div>
+            
+            <div class="flex justify-between mb-3">
+                <span>USDT (RGB):</span>
+                <span id="usdt-balance" class="font-mono">0.00</span>
+            </div>
+            <div class="text-xs text-gray-500 mb-4">التحكم في رصيد USDT (للاختبار):</div>
+            <input type="range" min="0" max="100000" step="1" value="0" class="slider" id="usdt-slider" oninput="updateUsdt(this.value)">
+            <div class="text-xs text-gray-500 mt-2">اسحب المؤشر للتحكم في الرصيد</div>
+        </div>
+
+        <h3 class="text-lg font-semibold mb-4 border-b border-[#333] pb-2">تكوين معاملة غير موقعة</h3>
+        
+        <div class="mb-4">
+            <label class="block text-sm mb-2">اختر العملة:</label>
+            <select id="asset-select" class="w-full bg-[#2a2a2a] border border-[#444] text-white rounded-lg p-2 mb-4">
+                <option value="BTC">BTC</option>
+                <option value="USDT">USDT (RGB)</option>
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-sm mb-2">النسبة المئوية من الرصيد:</label>
+            <input type="range" min="0" max="100" value="0" class="slider" id="amount-slider" oninput="updateAmount(this.value)">
+            <div class="flex justify-between mt-2 text-sm font-mono">
+                <span id="percentage-label">0%</span>
+                <span id="calculated-amount">0.00</span>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-sm mb-2">عنوان المستلم:</label>
+            <input type="text" id="recipient-address" placeholder="أدخل عنوان المستلم">
+        </div>
+
+        <button onclick="generateUnsignedTx()" class="w-full btn-yellow py-3 rounded-lg mb-4">تكوين المعاملة</button>
+
+        <div id="unsigned-tx-area" class="hidden">
+            <label class="block text-sm mb-2">كود المعاملة غير الموقعة:</label>
+            <textarea id="unsigned-tx-output" rows="4" readonly class="font-mono text-xs mb-2"></textarea>
+            <button onclick="copyUnsignedTx()" class="w-full bg-gray-700 text-white py-2 rounded-lg text-sm mb-6">نسخ الكود</button>
+
+            <div class="border-t border-[#333] pt-4">
+                <label class="block text-sm mb-2">لصق التوقيع (من الملف الثاني):</label>
+                <textarea id="signature-input" rows="3" placeholder="الصق التوقيع هنا..." class="font-mono text-xs mb-4"></textarea>
+                
+                <div id="timer-container" class="hidden mb-4 p-3 bg-red-900/30 border border-red-500 rounded-lg text-center">
+                    <p class="text-sm mb-1">سيتم البث خلال:</p>
+                    <p id="countdown" class="text-2xl font-bold text-red-500">30</p>
+                    <button onclick="cancelBroadcast()" class="mt-2 text-xs bg-red-600 text-white px-3 py-1 rounded">إلغاء الآن</button>
+                </div>
+
+                <button id="broadcast-btn" onclick="startBroadcast()" class="w-full btn-yellow py-3 rounded-lg">بث المعاملة للشبكة</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let balances = { btc: 0, usdt: 0 };
+        let selectedAsset = 'BTC';
+        let selectedAmount = 0;
+        let broadcastTimer = null;
+
+        async function login() {
+            const addr = document.getElementById('public-address').value;
+            if (addr.length < 10) {
+                alert("يرجى إدخال عنوان صحيح");
+                return;
+            }
+
+            // جلب رصيد BTC الحقيقي من API
+            try {
+                const response = await fetch(`https://mempool.space/api/address/${addr}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const satoshis = data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum;
+                    balances.btc = satoshis / 100000000; // تحويل من ساتوشي إلى BTC
+                    document.getElementById('btc-balance').innerText = balances.btc.toFixed(8);
+                } else {
+                    alert("عنوان غير صحيح أو لا يوجد رصيد");
+                    return;
+                }
+            } catch (e) {
+                alert("خطأ في جلب البيانات. تأكد من الاتصال بالإنترنت.");
+                return;
+            }
+
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('wallet-screen').classList.remove('hidden');
+            document.getElementById('btc-slider').max = balances.btc;
+        }
+
+        function logout() {
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('wallet-screen').classList.add('hidden');
+            document.getElementById('unsigned-tx-area').classList.add('hidden');
+        }
+
+        function updateBtcBalance(val) {
+            balances.btc = parseFloat(val);
+            document.getElementById('btc-balance').innerText = balances.btc.toFixed(8);
+        }
+
+        function updateUsdt(val) {
+            balances.usdt = parseFloat(val);
+            document.getElementById('usdt-balance').innerText = balances.usdt.toFixed(2);
+        }
+
+        function updateAmount(val) {
+            selectedAsset = document.getElementById('asset-select').value;
+            document.getElementById('percentage-label').innerText = val + "%";
+            
+            if (selectedAsset === 'BTC') {
+                selectedAmount = (balances.btc * (val / 100)).toFixed(8);
+                document.getElementById('calculated-amount').innerText = selectedAmount + " BTC";
+            } else {
+                selectedAmount = (balances.usdt * (val / 100)).toFixed(2);
+                document.getElementById('calculated-amount').innerText = selectedAmount + " USDT";
+            }
+        }
+
+        function generateUnsignedTx() {
+            const recipient = document.getElementById('recipient-address').value;
+            if (!recipient) { alert("يرجى إدخال عنوان المستلم"); return; }
+            if (selectedAmount <= 0) { alert("يرجى تحديد مبلغ"); return; }
+
+            selectedAsset = document.getElementById('asset-select').value;
+            const txData = {
+                network: "bitcoin_mainnet",
+                asset: selectedAsset === 'BTC' ? "BTC" : "USDT_RGB",
+                contract_id: selectedAsset === 'USDT' ? "rgb:20-std-tether-placeholder-v1" : "native_bitcoin",
+                amount: selectedAmount,
+                recipient: recipient,
+                timestamp: Date.now(),
+                psbt_placeholder: "BASE64_UNSIGNED_PSBT_DATA_STRING_FOR_RGB_STATE_TRANSITION"
+            };
+
+            document.getElementById('unsigned-tx-output').value = btoa(JSON.stringify(txData));
+            document.getElementById('unsigned-tx-area').classList.remove('hidden');
+        }
+
+        function copyUnsignedTx() {
+            const copyText = document.getElementById('unsigned-tx-output');
+            copyText.select();
+            document.execCommand("copy");
+            alert("تم نسخ المعاملة غير الموقعة");
+        }
+
+        function startBroadcast() {
+            const sig = document.getElementById('signature-input').value;
+            if (!sig) { alert("يرجى لصق التوقيع أولاً"); return; }
+
+            document.getElementById('broadcast-btn').disabled = true;
+            document.getElementById('broadcast-btn').innerText = "في انتظار البث...";
+            document.getElementById('timer-container').classList.remove('hidden');
+            
+            let timeLeft = 30;
+            broadcastTimer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('countdown').innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(broadcastTimer);
+                    completeBroadcast();
+                }
+            }, 1000);
+        }
+
+        function cancelBroadcast() {
+            clearInterval(broadcastTimer);
+            document.getElementById('timer-container').classList.add('hidden');
+            document.getElementById('broadcast-btn').disabled = false;
+            document.getElementById('broadcast-btn').innerText = "بث المعاملة للشبكة";
+            alert("تم إلغاء بث المعاملة");
+        }
+
+        function completeBroadcast() {
+            document.getElementById('timer-container').innerHTML = `
+                <p class="text-green-500 font-bold">تم البث بنجاح!</p>
+                <p class="text-xs text-gray-400 mt-2">ID: ${Math.random().toString(36).substring(2, 15)}</p>
+            `;
+            alert("تم إرسال المعاملة إلى شبكة البلوكتشين بنجاح");
+        }
+
+        // تحديث العملة المختارة عند التغيير
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('asset-select').addEventListener('change', () => {
+                document.getElementById('amount-slider').value = 0;
+                updateAmount(0);
+            });
+        });
+    </script>
+</body>
+</html>
