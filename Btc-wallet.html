@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محفظة RGB - BTC/USDT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #000; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .btn-yellow { background-color: #FFD700; color: #000; font-weight: bold; }
+        .btn-yellow:hover { background-color: #FFC800; }
+        .card { background-color: #1a1a1a; border: 1px solid #333; border-radius: 15px; }
+        input, textarea { background-color: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 8px; padding: 10px; width: 100%; }
+        .slider { -webkit-appearance: none; width: 100%; height: 10px; border-radius: 5px; background: #444; outline: none; }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #FFD700; cursor: pointer; }
+    </style>
+</head>
+<body class="p-4 flex flex-col items-center min-h-screen">
+
+    <!-- شاشة تسجيل الدخول -->
+    <div id="login-screen" class="w-full max-w-md card p-6 mt-10">
+        <h2 class="text-2xl font-bold mb-6 text-center text-[#FFD700]">تسجيل الدخول للمحفظة</h2>
+        <p class="mb-4 text-sm text-gray-400">أدخل العنوان العام (Public Address) للبدء:</p>
+        <input type="text" id="public-address" placeholder="عنوان BTC / RGB العام" class="mb-6">
+        <button onclick="login()" class="w-full btn-yellow py-3 rounded-lg">دخول</button>
+    </div>
+
+    <!-- شاشة المحفظة الرئيسية -->
+    <div id="wallet-screen" class="w-full max-w-md card p-6 mt-4 hidden">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-[#FFD700]">رصيد المحفظة</h2>
+            <button onclick="logout()" class="text-xs text-gray-500 underline">خروج</button>
+        </div>
+        
+        <div class="mb-6 p-4 bg-[#2a2a2a] rounded-lg">
+            <div class="flex justify-between mb-2">
+                <span>BTC:</span>
+                <span id="btc-balance" class="font-mono">0.00452000</span>
+            </div>
+            <div class="flex justify-between">
+                <span>USDT (RGB):</span>
+                <span id="usdt-balance" class="font-mono">1,250.00</span>
+            </div>
+        </div>
+
+        <h3 class="text-lg font-semibold mb-4 border-b border-[#333] pb-2">تكوين معاملة غير موقعة</h3>
+        
+        <div class="mb-4">
+            <label class="block text-sm mb-2">النسبة المئوية للمبلغ:</label>
+            <input type="range" min="0" max="100" value="0" class="slider" id="amount-slider" oninput="updateAmount(this.value)">
+            <div class="flex justify-between mt-2 text-sm font-mono">
+                <span id="percentage-label">0%</span>
+                <span id="calculated-amount">0.00 USDT</span>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-sm mb-2">عنوان المستلم:</label>
+            <input type="text" id="recipient-address" placeholder="أدخل عنوان المستلم">
+        </div>
+
+        <button onclick="generateUnsignedTx()" class="w-full btn-yellow py-3 rounded-lg mb-4">تكوين المعاملة</button>
+
+        <div id="unsigned-tx-area" class="hidden">
+            <label class="block text-sm mb-2">كود المعاملة غير الموقعة:</label>
+            <textarea id="unsigned-tx-output" rows="4" readonly class="font-mono text-xs mb-2"></textarea>
+            <button onclick="copyUnsignedTx()" class="w-full bg-gray-700 text-white py-2 rounded-lg text-sm mb-6">نسخ الكود</button>
+
+            <div class="border-t border-[#333] pt-4">
+                <label class="block text-sm mb-2">لصق التوقيع (من الملف الثاني):</label>
+                <textarea id="signature-input" rows="3" placeholder="الصق التوقيع هنا..." class="font-mono text-xs mb-4"></textarea>
+                
+                <div id="timer-container" class="hidden mb-4 p-3 bg-red-900/30 border border-red-500 rounded-lg text-center">
+                    <p class="text-sm mb-1">سيتم البث خلال:</p>
+                    <p id="countdown" class="text-2xl font-bold text-red-500">30</p>
+                    <button onclick="cancelBroadcast()" class="mt-2 text-xs bg-red-600 text-white px-3 py-1 rounded">إلغاء الآن</button>
+                </div>
+
+                <button id="broadcast-btn" onclick="startBroadcast()" class="w-full btn-yellow py-3 rounded-lg">بث المعاملة للشبكة</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let balances = { btc: 0.00452000, usdt: 1250.00 };
+        let selectedAmount = 0;
+        let broadcastTimer = null;
+
+        function login() {
+            const addr = document.getElementById('public-address').value;
+            if (addr.length < 10) {
+                alert("يرجى إدخال عنوان صحيح");
+                return;
+            }
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('wallet-screen').classList.remove('hidden');
+        }
+
+        function logout() {
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('wallet-screen').classList.add('hidden');
+        }
+
+        function updateAmount(val) {
+            document.getElementById('percentage-label').innerText = val + "%";
+            selectedAmount = (balances.usdt * (val / 100)).toFixed(2);
+            document.getElementById('calculated-amount').innerText = selectedAmount + " USDT";
+        }
+
+        function generateUnsignedTx() {
+            const recipient = document.getElementById('recipient-address').value;
+            if (!recipient) { alert("يرجى إدخال عنوان المستلم"); return; }
+            if (selectedAmount <= 0) { alert("يرجى تحديد مبلغ"); return; }
+
+            const txData = {
+                network: "bitcoin_mainnet",
+                asset: "USDT_RGB",
+                contract_id: "rgb:20-std-tether-placeholder-v1",
+                amount: selectedAmount,
+                recipient: recipient,
+                timestamp: Date.now(),
+                psbt_placeholder: "BASE64_UNSIGNED_PSBT_DATA_STRING_FOR_RGB_STATE_TRANSITION"
+            };
+
+            document.getElementById('unsigned-tx-output').value = btoa(JSON.stringify(txData));
+            document.getElementById('unsigned-tx-area').classList.remove('hidden');
+        }
+
+        function copyUnsignedTx() {
+            const copyText = document.getElementById('unsigned-tx-output');
+            copyText.select();
+            document.execCommand("copy");
+            alert("تم نسخ المعاملة غير الموقعة");
+        }
+
+        function startBroadcast() {
+            const sig = document.getElementById('signature-input').value;
+            if (!sig) { alert("يرجى لصق التوقيع أولاً"); return; }
+
+            document.getElementById('broadcast-btn').disabled = true;
+            document.getElementById('broadcast-btn').innerText = "في انتظار البث...";
+            document.getElementById('timer-container').classList.remove('hidden');
+            
+            let timeLeft = 30;
+            broadcastTimer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('countdown').innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(broadcastTimer);
+                    completeBroadcast();
+                }
+            }, 1000);
+        }
+
+        function cancelBroadcast() {
+            clearInterval(broadcastTimer);
+            document.getElementById('timer-container').classList.add('hidden');
+            document.getElementById('broadcast-btn').disabled = false;
+            document.getElementById('broadcast-btn').innerText = "بث المعاملة للشبكة";
+            alert("تم إلغاء بث المعاملة");
+        }
+
+        function completeBroadcast() {
+            document.getElementById('timer-container').innerHTML = `
+                <p class="text-green-500 font-bold">تم البث بنجاح!</p>
+                <p class="text-xs text-gray-400 mt-2">ID: ${Math.random().toString(36).substring(2, 15)}</p>
+            `;
+            alert("تم إرسال المعاملة إلى شبكة البلوكتشين بنجاح");
+        }
+    </script>
+</body>
+</html>
