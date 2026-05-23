@@ -11,8 +11,10 @@
         .btn-yellow { background-color: #ffcc00; color: #000; font-weight: bold; transition: 0.3s; }
         .btn-yellow:hover { background-color: #e6b800; }
         .card { background-color: #1a1a1a; border: 1px solid #333; border-radius: 12px; }
-        input, textarea { background-color: #222; border: 1px solid #444; color: #fff; border-radius: 8px; }
-        input:focus, textarea:focus { border-color: #ffcc00; outline: none; }
+        input, textarea, select { background-color: #222; border: 1px solid #444; color: #fff; border-radius: 8px; }
+        input:focus, textarea:focus, select:focus { border-color: #ffcc00; outline: none; }
+        .currency-btn { border: 1px solid #444; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: 0.3s; }
+        .currency-btn.active { background-color: #ffcc00; color: #000; border-color: #ffcc00; }
     </style>
 </head>
 <body class="p-4 flex flex-col items-center min-h-screen">
@@ -32,20 +34,32 @@
                 <span class="text-gray-400">العنوان:</span>
                 <span id="display-address" class="text-xs truncate w-40 text-left"></span>
             </div>
-            <div class="text-center py-4">
-                <h3 class="text-gray-400 text-sm">رصيد USDT</h3>
-                <div class="text-4xl font-bold text-[#ffcc00] my-2" id="usdt-balance">0.00</div>
-                <p class="text-xs text-gray-500" id="sol-balance">رصيد SOL: 0.00</p>
+            <div class="grid grid-cols-2 gap-4 text-center">
+                <div class="p-2 border border-gray-800 rounded-lg">
+                    <h3 class="text-gray-400 text-xs">رصيد USDT</h3>
+                    <div class="text-xl font-bold text-[#ffcc00]" id="usdt-balance">0.00</div>
+                </div>
+                <div class="p-2 border border-gray-800 rounded-lg">
+                    <h3 class="text-gray-400 text-xs">رصيد SOL</h3>
+                    <div class="text-xl font-bold text-[#ffcc00]" id="sol-balance">0.00</div>
+                </div>
             </div>
         </div>
 
         <div class="card p-6 mb-4">
             <h4 class="font-bold mb-4">تكوين معاملة جديدة</h4>
+            
+            <label class="text-xs text-gray-400 mb-2 block">اختر العملة:</label>
+            <div class="flex gap-2 mb-4">
+                <button id="btn-usdt" onclick="setCurrency('USDT')" class="currency-btn active flex-1">USDT</button>
+                <button id="btn-sol" onclick="setCurrency('SOL')" class="currency-btn flex-1">SOL</button>
+            </div>
+
             <label class="text-xs text-gray-400">عنوان المستلم:</label>
             <input type="text" id="recipient-input" class="w-full p-2 mb-4 text-sm" placeholder="عنوان المستلم">
             
             <label class="text-xs text-gray-400 flex justify-between">
-                <span>المبلغ:</span>
+                <span>المبلغ (<span id="selected-currency-label">USDT</span>):</span>
                 <span id="percent-label" class="text-[#ffcc00]">0%</span>
             </label>
             <input type="range" id="amount-slider" min="0" max="100" value="0" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[#ffcc00] mb-2">
@@ -80,10 +94,11 @@
 
     <script>
         const USDT_MINT = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB';
-        const TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
         let connection = new solanaWeb3.Connection("https://api.mainnet-beta.solana.com", "confirmed");
         let userPubKey = null;
         let usdtBalanceRaw = 0;
+        let solBalanceRaw = 0;
+        let selectedCurrency = 'USDT';
         let broadcastTimer = null;
 
         async function login() {
@@ -104,7 +119,8 @@
             
             // SOL Balance
             const sol = await connection.getBalance(userPubKey);
-            document.getElementById('sol-balance').innerText = `رصيد SOL: ${(sol / solanaWeb3.LAMPORTS_PER_SOL).toFixed(4)}`;
+            solBalanceRaw = sol / solanaWeb3.LAMPORTS_PER_SOL;
+            document.getElementById('sol-balance').innerText = solBalanceRaw.toFixed(4);
 
             // USDT Balance
             try {
@@ -113,16 +129,32 @@
                     const info = accounts.value[0].account.data.parsed.info;
                     usdtBalanceRaw = info.tokenAmount.uiAmount;
                     document.getElementById('usdt-balance').innerText = usdtBalanceRaw.toFixed(2);
+                } else {
+                    usdtBalanceRaw = 0;
+                    document.getElementById('usdt-balance').innerText = "0.00";
                 }
             } catch (e) {
                 console.error(e);
             }
         }
 
+        function setCurrency(curr) {
+            selectedCurrency = curr;
+            document.getElementById('selected-currency-label').innerText = curr;
+            document.getElementById('btn-usdt').classList.toggle('active', curr === 'USDT');
+            document.getElementById('btn-sol').classList.toggle('active', curr === 'SOL');
+            
+            // Reset slider and amount
+            document.getElementById('amount-slider').value = 0;
+            document.getElementById('percent-label').innerText = '0%';
+            document.getElementById('amount-input').value = '';
+        }
+
         document.getElementById('amount-slider').addEventListener('input', (e) => {
             const percent = e.target.value;
             document.getElementById('percent-label').innerText = percent + '%';
-            const amount = (usdtBalanceRaw * (percent / 100)).toFixed(2);
+            const baseBalance = (selectedCurrency === 'USDT') ? usdtBalanceRaw : solBalanceRaw;
+            const amount = (baseBalance * (percent / 100)).toFixed(selectedCurrency === 'SOL' ? 6 : 2);
             document.getElementById('amount-input').value = amount;
         });
 
@@ -137,28 +169,15 @@
 
             try {
                 const recipient = new solanaWeb3.PublicKey(recipientStr);
-                const transaction = new solanaWeb3.Transaction();
-                
-                // Get Associated Token Addresses
-                // Note: Simplified for this example, assuming accounts exist. 
-                // In production, you'd check/create ATA.
-                
-                // We'll create a simple transfer instruction logic here
-                // For the sake of "Unsigned Tx Code", we'll serialize the message
-                
-                // Since we need to build a real instruction, we'll use a placeholder logic 
-                // that generates a base64 of the transaction message.
-                
                 const { blockhash } = await connection.getLatestBlockhash();
-                transaction.recentBlockhash = blockhash;
-                transaction.feePayer = userPubKey;
 
-                // This is a simplified "Unsigned Tx" string
                 const txData = {
+                    type: selectedCurrency,
                     from: userPubKey.toBase58(),
                     to: recipient.toBase58(),
                     amount: amount,
-                    mint: USDT_MINT,
+                    mint: selectedCurrency === 'USDT' ? USDT_MINT : 'SOL',
+                    blockhash: blockhash,
                     nonce: Date.now()
                 };
 
@@ -208,9 +227,7 @@
         }
 
         async function finishBroadcast() {
-            // Here you would normally combine the tx and signature and send
-            // For this UI demo, we show success.
-            alert('جاري البث للشبكة... (تمت المحاكاة بنجاح)');
+            alert(`جاري بث معاملة ${selectedCurrency} للشبكة... (تمت المحاكاة بنجاح)`);
             document.getElementById('timer-container').innerHTML = '<p class="text-green-500 font-bold">تم بث المعاملة بنجاح!</p>';
         }
     </script>
