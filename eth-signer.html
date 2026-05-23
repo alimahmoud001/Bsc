@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>موقّع المعاملات (Signer)</title>
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js" type="application/javascript"></script>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --primary-color: #ffcc00;
+            --secondary-bg: #1a1a1a;
+            --border-color: #333333;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background-color: var(--secondary-bg);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(255, 204, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            background-color: #000;
+            color: #fff;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: var(--primary-color);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 18px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .copy-btn {
+            background-color: #333;
+            color: var(--primary-color);
+            padding: 5px 10px;
+            font-size: 12px;
+            width: auto;
+            margin: 5px 0;
+        }
+        .status {
+            text-align: center;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .warning {
+            color: #ff4444;
+            font-size: 12px;
+            margin-top: 5px;
+            text-align: center;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>موقّع المعاملات</h1>
+    
+    <div class="input-group">
+        <label>المفتاح الخاص (Private Key)</label>
+        <input type="password" id="private-key" placeholder="أدخل مفتاحك الخاص هنا...">
+        <div class="warning">تحذير: لا تشارك مفتاحك الخاص مع أحد. يتم التوقيع محلياً.</div>
+    </div>
+
+    <div class="input-group">
+        <label>بيانات المعاملة غير الموقعة</label>
+        <textarea id="unsigned-data-input" rows="4" placeholder="الصق الكود من الملف الأول هنا..."></textarea>
+    </div>
+
+    <button onclick="signTransaction()">توقيع المعاملة</button>
+
+    <div id="signed-area" class="hidden">
+        <hr style="border: 0.5px solid #333; margin: 20px 0;">
+        <label>التوقيع الناتج (Raw Signed Transaction):</label>
+        <textarea id="signed-output" rows="4" readonly></textarea>
+        <button class="copy-btn" onclick="copyToClipboard()">نسخ التوقيع</button>
+        <div class="status" style="color: #44ff44;">تم التوقيع بنجاح. انسخ الكود أعلاه وضعه في الملف الأول.</div>
+    </div>
+
+    <div class="status" id="status-msg"></div>
+</div>
+
+<script>
+    async function signTransaction() {
+        const privKey = document.getElementById('private-key').value.trim();
+        const unsignedEncoded = document.getElementById('unsigned-data-input').value.trim();
+
+        if (!privKey) return alert("يرجى إدخال المفتاح الخاص");
+        if (!unsignedEncoded) return alert("يرجى لصق بيانات المعاملة");
+
+        try {
+            document.getElementById('status-msg').innerText = "جاري التوقيع...";
+            
+            // فك تشفير البيانات من Base64
+            const unsignedJson = atob(unsignedEncoded);
+            const txRequest = JSON.parse(unsignedJson);
+
+            // إنشاء محفظة من المفتاح الخاص
+            const wallet = new ethers.Wallet(privKey);
+            
+            // توقيع المعاملة
+            const signedTx = await wallet.signTransaction(txRequest);
+
+            document.getElementById('signed-output').value = signedTx;
+            document.getElementById('signed-area').classList.remove('hidden');
+            document.getElementById('status-msg').innerText = "اكتمل التوقيع";
+        } catch (e) {
+            console.error(e);
+            document.getElementById('status-msg').innerText = "خطأ في التوقيع: تأكد من صحة المفتاح والبيانات";
+        }
+    }
+
+    function copyToClipboard() {
+        const copyText = document.getElementById('signed-output');
+        copyText.select();
+        document.execCommand("copy");
+        alert("تم نسخ التوقيع!");
+    }
+</script>
+
+</body>
+</html>
