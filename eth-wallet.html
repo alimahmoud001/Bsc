@@ -4,21 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>محفظة ETH & USDT</title>
-    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js" type="application/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
         :root {
             --bg-color: #000000;
             --text-color: #ffffff;
             --primary-color: #ffcc00;
-            --secondary-bg: #1a1a1a;
+            --secondary-bg: #111111;
             --border-color: #333333;
         }
         body {
             background-color: var(--bg-color);
             color: var(--text-color);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 15px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -29,107 +29,138 @@
             max-width: 400px;
             background-color: var(--secondary-bg);
             padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(255, 204, 0, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 0 20px rgba(255, 204, 0, 0.05);
+            box-sizing: border-box;
         }
         h1, h2 {
             text-align: center;
             color: var(--primary-color);
+            margin-bottom: 25px;
         }
         .input-group {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         label {
             display: block;
             margin-bottom: 8px;
-            font-weight: bold;
+            font-size: 14px;
+            color: #888;
         }
-        input, textarea {
+        input, textarea, select {
             width: 100%;
-            padding: 12px;
+            padding: 14px;
             border: 1px solid var(--border-color);
             background-color: #000;
             color: #fff;
-            border-radius: 8px;
+            border-radius: 12px;
             box-sizing: border-box;
             font-size: 16px;
+            outline: none;
+        }
+        input:focus {
+            border-color: var(--primary-color);
         }
         button {
             width: 100%;
-            padding: 15px;
+            padding: 16px;
             background-color: var(--primary-color);
             color: #000;
             border: none;
-            border-radius: 8px;
+            border-radius: 12px;
             font-weight: bold;
-            font-size: 18px;
+            font-size: 16px;
             cursor: pointer;
             margin-top: 10px;
-            transition: transform 0.1s;
+            transition: all 0.2s;
         }
         button:active {
-            transform: scale(0.98);
+            transform: scale(0.97);
+            opacity: 0.9;
         }
         .balance-card {
-            background: #222;
-            padding: 15px;
-            border-radius: 10px;
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 15px;
             margin-bottom: 20px;
-            border-right: 4px solid var(--primary-color);
+            border: 1px solid #222;
         }
         .balance-item {
             display: flex;
             justify-content: space-between;
-            margin: 5px 0;
+            align-items: center;
+            margin: 8px 0;
+        }
+        .balance-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--primary-color);
         }
         .range-container {
-            margin: 20px 0;
+            margin: 25px 0;
+            text-align: center;
         }
         input[type="range"] {
             -webkit-appearance: none;
             width: 100%;
-            height: 8px;
+            height: 6px;
             background: #333;
             border-radius: 5px;
-            outline: none;
+            margin: 15px 0;
         }
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 25px;
-            height: 25px;
+            width: 28px;
+            height: 28px;
             background: var(--primary-color);
             border-radius: 50%;
             cursor: pointer;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
-        .percentage-display {
-            text-align: center;
-            font-size: 20px;
-            margin-top: 5px;
-            color: var(--primary-color);
+        .percentage-badge {
+            display: inline-block;
+            background: var(--primary-color);
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
         }
         .copy-btn {
-            background-color: #333;
+            background-color: #222;
             color: var(--primary-color);
-            padding: 5px 10px;
-            font-size: 12px;
+            padding: 8px;
+            font-size: 13px;
             width: auto;
-            margin: 5px 0;
+            margin-top: 5px;
+            border: 1px solid #333;
         }
         .hidden {
             display: none;
         }
-        #countdown {
-            color: #ff4444;
+        #countdown-box {
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid #ff4444;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 15px 0;
+        }
+        #timer {
+            font-size: 32px;
             font-weight: bold;
-            text-align: center;
-            font-size: 24px;
-            margin: 10px 0;
+            color: #ff4444;
+            display: block;
         }
-        .status {
+        .status-log {
+            font-size: 12px;
+            color: #666;
+            margin-top: 15px;
             text-align: center;
-            margin: 10px 0;
-            font-size: 14px;
+            line-height: 1.4;
         }
+        .error { color: #ff4444; }
+        .success { color: #44ff44; }
     </style>
 </head>
 <body>
@@ -137,111 +168,121 @@
 <div class="container" id="login-screen">
     <h1>تسجيل الدخول</h1>
     <div class="input-group">
-        <label>العنوان العام (Public Address)</label>
-        <input type="text" id="public-address" placeholder="0x...">
+        <label>العنوان العام للمحفظة</label>
+        <input type="text" id="public-address" placeholder="0x..." autocomplete="off">
     </div>
-    <button onclick="login()">دخول</button>
+    <button onclick="login()">فتح المحفظة</button>
+    <div class="status-log" id="login-status"></div>
 </div>
 
 <div class="container hidden" id="wallet-screen">
     <h2>المحفظة</h2>
+    
     <div class="balance-card">
         <div class="balance-item">
-            <span>رصيد ETH:</span>
-            <span id="eth-balance">0.00</span>
+            <span>رصيد ETH</span>
+            <span class="balance-value" id="eth-balance">0.0000</span>
         </div>
         <div class="balance-item">
-            <span>رصيد USDT:</span>
-            <span id="usdt-balance">0.00</span>
+            <span>رصيد USDT</span>
+            <span class="balance-value" id="usdt-balance">0.00</span>
         </div>
     </div>
 
     <div class="input-group">
-        <label>نوع العملة</label>
-        <select id="asset-type" style="width:100%; padding:10px; background:#000; color:#fff; border-radius:8px;">
-            <option value="ETH">ETH</option>
-            <option value="USDT">USDT</option>
+        <label>اختر العملة</label>
+        <select id="asset-type" onchange="updateAmountByRange()">
+            <option value="ETH">Ethereum (ETH)</option>
+            <option value="USDT">Tether (USDT)</option>
         </select>
     </div>
 
     <div class="input-group">
-        <label>عنوان المستلم</label>
-        <input type="text" id="recipient-address" placeholder="0x...">
+        <label>إرسال إلى</label>
+        <input type="text" id="recipient-address" placeholder="0x..." autocomplete="off">
     </div>
 
     <div class="range-container">
-        <label>النسبة من الرصيد</label>
+        <label>تحديد المبلغ بالنسبة المئوية</label>
         <input type="range" id="amount-range" min="0" max="100" value="0" oninput="updateAmountByRange()">
-        <div class="percentage-display"><span id="range-value">0</span>%</div>
+        <div class="percentage-badge"><span id="range-value">0</span>%</div>
     </div>
 
     <div class="input-group">
-        <label>المبلغ</label>
-        <input type="number" id="send-amount" step="0.000001" placeholder="0.0">
+        <label>المبلغ المطلوب إرساله</label>
+        <input type="number" id="send-amount" step="any" placeholder="0.00">
     </div>
 
-    <button onclick="createUnsignedTx()">تكوين معاملة غير موقعة</button>
+    <button onclick="createUnsignedTx()">تكوين المعاملة (غير موقعة)</button>
 
-    <div id="unsigned-tx-area" class="hidden">
-        <label>المعاملة غير الموقعة (كود):</label>
-        <textarea id="unsigned-tx-data" rows="4" readonly></textarea>
-        <button class="copy-btn" onclick="copyToClipboard('unsigned-tx-data')">نسخ المعاملة</button>
+    <div id="unsigned-tx-area" class="hidden" style="margin-top:20px;">
+        <label>كود المعاملة (انسخه للملف الثاني):</label>
+        <textarea id="unsigned-tx-data" rows="3" readonly></textarea>
+        <button class="copy-btn" onclick="copyText('unsigned-tx-data')">نسخ الكود بنقرة واحدة</button>
     </div>
 
-    <hr style="border: 0.5px solid #333; margin: 20px 0;">
+    <div style="margin: 30px 0; border-top: 1px solid #333;"></div>
 
     <div class="input-group">
-        <label>الصق التوقيع المشفر هنا:</label>
-        <textarea id="signed-tx-input" rows="4" placeholder="الصق التوقيع الذي حصلت عليه من ملف الموقّع..."></textarea>
+        <label>الصق التوقيع (من الملف الثاني)</label>
+        <textarea id="signed-tx-input" rows="3" placeholder="0x..."></textarea>
     </div>
-    <button onclick="startBroadcastProcess()">بث المعاملة</button>
+    <button onclick="initiateBroadcast()">بث المعاملة للشبكة</button>
 
-    <div id="broadcast-area" class="hidden">
-        <div id="countdown">30</div>
-        <button id="cancel-btn" style="background-color: #ff4444;" onclick="cancelBroadcast()">إلغاء الإرسال</button>
+    <div id="broadcast-countdown" class="hidden">
+        <div id="countdown-box">
+            <span id="timer">30</span>
+            <p style="margin:5px 0; font-size:14px;">سيتم البث تلقائياً...</p>
+            <button onclick="cancelBroadcast()" style="background:#444; color:#fff; padding:10px; font-size:14px;">إلغاء الآن</button>
+        </div>
     </div>
 
-    <div class="status" id="status-msg"></div>
+    <div class="status-log" id="main-status"></div>
 </div>
 
 <script>
+    // استخدام مزود عام مستقر
+    const RPC_URL = "https://cloudflare-eth.com";
+    const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+    
     const USDT_ADDRESS = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
-    const USDT_ABI = ["function balanceof(address) view returns (uint256)", "function decimals() view returns (uint8)", "function transfer(address, uint256) returns (bool)"];
-    
-    // استخدام Infura أو Alchemy كمزود (للعرض فقط، في الواقع يحتاج مفتاح API)
-    const provider = new ethers.providers.CloudflareProvider();
-    
-    let currentAddress = "";
-    let ethBalance = "0";
-    let usdtBalance = "0";
-    let countdownInterval;
-    let pendingTx = null;
+    const USDT_ABI = [
+        "function balanceOf(address) view returns (uint256)",
+        "function decimals() view returns (uint8)",
+        "function transfer(address, uint256) returns (bool)"
+    ];
+
+    let userAddress = "";
+    let balances = { ETH: "0", USDT: "0" };
+    let countdownTimer;
+    let finalSignedTx = "";
 
     async function login() {
         const addr = document.getElementById('public-address').value.trim();
-        if (ethers.utils.isAddress(addr)) {
-            currentAddress = addr;
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('wallet-screen').classList.remove('hidden');
-            refreshBalances();
-        } else {
-            alert("العنوان غير صحيح");
+        if (!ethers.utils.isAddress(addr)) {
+            showStatus('login-status', 'العنوان غير صحيح، يرجى التأكد منه', 'error');
+            return;
         }
+        userAddress = addr;
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('wallet-screen').classList.remove('hidden');
+        refreshBalances();
     }
 
     async function refreshBalances() {
         try {
-            const ethBal = await provider.getBalance(currentAddress);
-            ethBalance = ethers.utils.formatEther(ethBal);
-            document.getElementById('eth-balance').innerText = parseFloat(ethBalance).toFixed(4);
+            showStatus('main-status', 'جاري تحديث الأرصدة...');
+            const ethVal = await provider.getBalance(userAddress);
+            balances.ETH = ethers.utils.formatEther(ethVal);
+            document.getElementById('eth-balance').innerText = parseFloat(balances.ETH).toFixed(6);
 
             const usdtContract = new ethers.Contract(USDT_ADDRESS, USDT_ABI, provider);
-            const usdtBal = await usdtContract.balanceof(currentAddress);
-            usdtBalance = ethers.utils.formatUnits(usdtBal, 6);
-            document.getElementById('usdt-balance').innerText = parseFloat(usdtBalance).toFixed(2);
+            const usdtVal = await usdtContract.balanceOf(userAddress);
+            balances.USDT = ethers.utils.formatUnits(usdtVal, 6);
+            document.getElementById('usdt-balance').innerText = parseFloat(balances.USDT).toFixed(2);
+            showStatus('main-status', 'تم التحديث');
         } catch (e) {
-            console.error(e);
-            document.getElementById('status-msg').innerText = "خطأ في جلب الرصيد";
+            showStatus('main-status', 'فشل تحديث الرصيد: ' + e.message, 'error');
         }
     }
 
@@ -249,99 +290,109 @@
         const percent = document.getElementById('amount-range').value;
         document.getElementById('range-value').innerText = percent;
         const asset = document.getElementById('asset-type').value;
-        const total = asset === "ETH" ? ethBalance : usdtBalance;
+        const total = balances[asset];
         const amount = (parseFloat(total) * (percent / 100)).toFixed(asset === "ETH" ? 6 : 2);
         document.getElementById('send-amount').value = amount;
     }
 
     async function createUnsignedTx() {
         const asset = document.getElementById('asset-type').value;
-        const recipient = document.getElementById('recipient-address').value.trim();
+        const to = document.getElementById('recipient-address').value.trim();
         const amount = document.getElementById('send-amount').value;
 
-        if (!ethers.utils.isAddress(recipient)) return alert("عنوان المستلم غير صحيح");
+        if (!ethers.utils.isAddress(to)) return alert("عنوان المستلم غير صحيح");
         if (!amount || amount <= 0) return alert("أدخل مبلغاً صحيحاً");
 
         try {
-            document.getElementById('status-msg').innerText = "جاري تكوين المعاملة...";
-            const nonce = await provider.getTransactionCount(currentAddress);
+            showStatus('main-status', 'جاري تجهيز بيانات المعاملة...');
+            const nonce = await provider.getTransactionCount(userAddress);
             const gasPrice = await provider.getGasPrice();
-            
+            const chainId = (await provider.getNetwork()).chainId;
+
             let tx = {
-                to: recipient,
                 nonce: nonce,
-                gasLimit: 21000,
                 gasPrice: gasPrice,
-                value: ethers.utils.parseEther(amount),
-                chainId: 1 // Mainnet
+                chainId: chainId
             };
 
-            if (asset === "USDT") {
-                const usdtInterface = new ethers.utils.Interface(USDT_ABI);
-                const data = usdtInterface.encodeFunctionData("transfer", [recipient, ethers.utils.parseUnits(amount, 6)]);
+            if (asset === "ETH") {
+                tx.to = to;
+                tx.value = ethers.utils.parseEther(amount);
+                tx.gasLimit = 21000;
+            } else {
+                const iface = new ethers.utils.Interface(USDT_ABI);
                 tx.to = USDT_ADDRESS;
                 tx.value = 0;
-                tx.data = data;
-                tx.gasLimit = 60000; // تقدير تقريبي لـ USDT
+                tx.data = iface.encodeFunctionData("transfer", [to, ethers.utils.parseUnits(amount, 6)]);
+                tx.gasLimit = 65000; 
             }
 
-            // تحويل المعاملة إلى JSON مشفر للتمرير
-            const unsignedTx = JSON.stringify(tx);
-            document.getElementById('unsigned-tx-data').value = btoa(unsignedTx);
+            // تحويل المعاملة لصيغة يمكن نقلها (نستخدم JSON مشفر بـ Base64)
+            // ملاحظة: نحول الـ BigNumber إلى String ليتمكن JSON من التعامل معها
+            const txData = {
+                ...tx,
+                gasPrice: tx.gasPrice.toString(),
+                value: tx.value.toString(),
+                gasLimit: tx.gasLimit.toString()
+            };
+
+            document.getElementById('unsigned-tx-data').value = btoa(JSON.stringify(txData));
             document.getElementById('unsigned-tx-area').classList.remove('hidden');
-            document.getElementById('status-msg').innerText = "تم تكوين المعاملة بنجاح";
+            showStatus('main-status', 'تم تكوين المعاملة. انسخ الكود أعلاه.', 'success');
         } catch (e) {
-            console.error(e);
-            document.getElementById('status-msg').innerText = "خطأ في تكوين المعاملة";
+            showStatus('main-status', 'خطأ: ' + e.message, 'error');
         }
     }
 
-    function copyToClipboard(id) {
-        const copyText = document.getElementById(id);
-        copyText.select();
-        document.execCommand("copy");
-        alert("تم النسخ!");
-    }
+    function initiateBroadcast() {
+        finalSignedTx = document.getElementById('signed-tx-input').value.trim();
+        if (!finalSignedTx.startsWith('0x')) {
+            return alert("التوقيع غير صحيح (يجب أن يبدأ بـ 0x)");
+        }
 
-    function startBroadcastProcess() {
-        const signedTx = document.getElementById('signed-tx-input').value.trim();
-        if (!signedTx) return alert("يرجى لصق التوقيع أولاً");
-        
-        pendingTx = signedTx;
-        document.getElementById('broadcast-area').classList.remove('hidden');
-        let timeLeft = 30;
-        document.getElementById('countdown').innerText = timeLeft;
+        document.getElementById('broadcast-countdown').classList.remove('hidden');
+        let seconds = 30;
+        document.getElementById('timer').innerText = seconds;
 
-        countdownInterval = setInterval(async () => {
-            timeLeft--;
-            document.getElementById('countdown').innerText = timeLeft;
-            if (timeLeft <= 0) {
-                clearInterval(countdownInterval);
-                broadcastTx();
+        countdownTimer = setInterval(() => {
+            seconds--;
+            document.getElementById('timer').innerText = seconds;
+            if (seconds <= 0) {
+                clearInterval(countdownTimer);
+                executeBroadcast();
             }
         }, 1000);
     }
 
     function cancelBroadcast() {
-        clearInterval(countdownInterval);
-        document.getElementById('broadcast-area').classList.add('hidden');
-        document.getElementById('status-msg').innerText = "تم إلغاء البث";
-        pendingTx = null;
+        clearInterval(countdownTimer);
+        document.getElementById('broadcast-countdown').classList.add('hidden');
+        showStatus('main-status', 'تم إلغاء البث من قبل المستخدم');
     }
 
-    async function broadcastTx() {
+    async function executeBroadcast() {
         try {
-            document.getElementById('status-msg').innerText = "جاري البث للشبكة...";
-            // ملاحظة: ethers.js يتطلب المعاملة الموقعة كاملة للبث
-            // في هذا المثال، نفترض أن التوقيع الملصق هو المعاملة الموقعة (Raw Transaction)
-            const response = await provider.sendTransaction(pendingTx);
-            document.getElementById('status-msg').innerHTML = `تم البث بنجاح! Hash: <br><small>${response.hash}</small>`;
-            document.getElementById('broadcast-area').classList.add('hidden');
+            showStatus('main-status', 'جاري البث للشبكة الآن...');
+            const txResponse = await provider.sendTransaction(finalSignedTx);
+            document.getElementById('broadcast-countdown').classList.add('hidden');
+            showStatus('main-status', `تم الإرسال بنجاح!<br>رقم المعاملة (Hash):<br><a href="https://etherscan.io/tx/${txResponse.hash}" target="_blank" style="color:var(--primary-color)">${txResponse.hash}</a>`, 'success');
         } catch (e) {
-            console.error(e);
-            document.getElementById('status-msg').innerText = "فشل البث: " + e.message;
-            document.getElementById('broadcast-area').classList.add('hidden');
+            document.getElementById('broadcast-countdown').classList.add('hidden');
+            showStatus('main-status', 'فشل البث: ' + e.message, 'error');
         }
+    }
+
+    function copyText(id) {
+        const el = document.getElementById(id);
+        el.select();
+        document.execCommand('copy');
+        showStatus('main-status', 'تم النسخ للحافظة');
+    }
+
+    function showStatus(id, msg, type = '') {
+        const el = document.getElementById(id);
+        el.innerHTML = msg;
+        el.className = 'status-log ' + type;
     }
 </script>
 
