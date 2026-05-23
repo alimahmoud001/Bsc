@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>توقيع المعاملات - Solana</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tweetnacl/1.0.3/nacl.min.js"></script>
+    <style>
+        body { background-color: #000; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .btn-yellow { background-color: #ffcc00; color: #000; font-weight: bold; transition: 0.3s; }
+        .btn-yellow:hover { background-color: #e6b800; }
+        .card { background-color: #1a1a1a; border: 1px solid #333; border-radius: 12px; }
+        input, textarea { background-color: #222; border: 1px solid #444; color: #fff; border-radius: 8px; }
+        input:focus, textarea:focus { border-color: #ffcc00; outline: none; }
+    </style>
+</head>
+<body class="p-4 flex flex-col items-center min-h-screen">
+
+    <div class="w-full max-w-md card p-6 mt-4">
+        <h2 class="text-2xl font-bold text-center mb-6 text-[#ffcc00]">توقيع المعاملة</h2>
+        
+        <label class="text-xs text-gray-400">المفتاح الخاص (Private Key):</label>
+        <input type="password" id="private-key-input" class="w-full p-3 mb-4 text-sm" placeholder="أدخل المفتاح الخاص هنا">
+
+        <label class="text-xs text-gray-400">بيانات المعاملة غير الموقعة:</label>
+        <textarea id="unsigned-data-input" class="w-full p-2 text-[10px] h-24 mb-4" placeholder="ألصق الكود من الملف الأول هنا"></textarea>
+
+        <button onclick="signData()" class="w-full btn-yellow p-3 rounded-lg mb-6">توقيع المعاملة وإثبات الملكية</button>
+
+        <div id="signed-area" class="hidden">
+            <label class="text-xs text-gray-400">التوقيع الناتج (انسخه للملف الأول):</label>
+            <div class="relative">
+                <textarea id="signed-output" class="w-full p-2 text-[10px] h-24 mb-2" readonly></textarea>
+                <button onclick="copyText('signed-output')" class="absolute top-1 left-1 bg-gray-800 text-xs px-2 py-1 rounded text-[#ffcc00]">نسخ التوقيع</button>
+            </div>
+            <p class="text-[10px] text-gray-500 mt-2">هذا التوقيع يثبت ملكيتك للعنوان ويسمح ببث المعاملة.</p>
+        </div>
+    </div>
+
+    <script>
+        function copyText(id) {
+            const copyText = document.getElementById(id);
+            copyText.select();
+            navigator.clipboard.writeText(copyText.value);
+            alert('تم نسخ التوقيع');
+        }
+
+        function signData() {
+            const privKeyStr = document.getElementById('private-key-input').value.trim();
+            const unsignedData = document.getElementById('unsigned-data-input').value.trim();
+
+            if (!privKeyStr || !unsignedData) {
+                alert('يرجى إدخال كافة البيانات');
+                return;
+            }
+
+            try {
+                // Decode private key from Base58
+                // Using bs58 via solanaWeb3 if available or simple decoding
+                // Most Solana private keys are 64-byte arrays in base58
+                const secretKey = solanaWeb3.utils.decodeBS58(privKeyStr);
+                const keypair = solanaWeb3.Keypair.fromSecretKey(secretKey);
+
+                // Sign the unsigned data string
+                const messageBytes = new TextEncoder().encode(unsignedData);
+                const signature = nacl.sign.detached(messageBytes, keypair.secretKey);
+                
+                // Combine signature with some metadata for verification
+                const signedResult = {
+                    signature: solanaWeb3.utils.encodeBS58(signature),
+                    publicKey: keypair.publicKey.toBase58(),
+                    originalData: unsignedData,
+                    timestamp: Date.now()
+                };
+
+                document.getElementById('signed-output').value = btoa(JSON.stringify(signedResult));
+                document.getElementById('signed-area').classList.remove('hidden');
+            } catch (e) {
+                alert('خطأ في التوقيع: تأكد من صحة المفتاح الخاص');
+                console.error(e);
+            }
+        }
+    </script>
+</body>
+</html>
