@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محفظة إيثيريوم المتعددة</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode/html5-qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --btn-color: #FFD700;
+            --text-color: #FFFFFF;
+            --card-bg: #1A1A1A;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 450px;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.1);
+            box-sizing: border-box;
+        }
+        h2 { text-align: center; color: var(--btn-color); margin-bottom: 20px; font-size: 1.2rem; }
+        .input-group { margin-bottom: 15px; position: relative; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; }
+        
+        .input-with-btn {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        input, select {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #333;
+            background: #222;
+            color: white;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 0.9rem;
+        }
+        .qr-btn-small {
+            width: 45px;
+            height: 45px;
+            background-color: var(--btn-color);
+            color: black;
+            border: none;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .qr-btn-small svg { width: 24px; height: 24px; }
+
+        .main-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--btn-color);
+            color: black;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 1rem;
+        }
+        .main-btn:active { opacity: 0.8; }
+        
+        .qr-reader-container {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 1000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        #reader { width: 300px; border: 2px solid var(--btn-color); border-radius: 10px; overflow: hidden; }
+        
+        .balance-item {
+            background: #222;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-right: 4px solid var(--btn-color);
+            font-size: 0.9rem;
+        }
+        .coin-info { display: flex; align-items: center; gap: 10px; }
+        .coin-icon { width: 32px; height: 32px; border-radius: 50%; background: #333; }
+        .balance-val { font-weight: bold; color: var(--btn-color); text-align: left; }
+
+        .slider-container { margin-top: 15px; background: #222; padding: 10px; border-radius: 8px; }
+        .slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: #444;
+            border-radius: 5px;
+            outline: none;
+            margin: 15px 0;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: var(--btn-color);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        
+        .hidden { display: none; }
+        .loading { color: var(--btn-color); text-align: center; padding: 20px; }
+        .countdown { font-size: 32px; color: var(--btn-color); text-align: center; margin: 15px 0; font-weight: bold; }
+        
+        textarea {
+            width: 100%;
+            background: #111;
+            color: #aaa;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            resize: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="address-entry">
+    <div style="text-align: center; margin-bottom: 15px;">
+        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19 7H5C3.89543 7 3 7.89543 3 9V18C3 19.1046 3.89543 20 5 20H19C20.1046 20 21 19.1046 21 18V9C21 7.89543 20.1046 7 19 7Z" stroke="#FFD700" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M16 14C16.5523 14 17 13.5523 17 13C17 12.4477 16.5523 12 16 12C15.4477 12 15 12.4477 15 13C15 13.5523 15.4477 14 16 14Z" fill="#FFD700"/>
+            <path d="M3 12H7" stroke="#FFD700" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M21 12H17" stroke="#FFD700" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M19 7V5C19 4.46957 18.7893 3.96086 18.4142 3.58579C18.0391 3.21071 17.5304 3 17 3H7C6.46957 3 5.96086 3.21071 5.58579 3.58579C5.21071 3.96086 5 4.46957 5 5V7" stroke="#FFD700" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </div>
+    <h2>فتح المحفظة</h2>
+    <div class="input-group">
+        <label>عنوان إيثيريوم</label>
+        <div class="input-with-btn">
+            <input type="text" id="eth-address" placeholder="0x...">
+            <button class="qr-btn-small" onclick="startScanner('eth-address')" title="تصوير QR">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 7h10v10H7z"/></svg>
+            </button>
+        </div>
+    </div>
+    <button class="main-btn" onclick="loadWallet()">عرض الأرصدة الفعلية</button>
+</div>
+
+<div class="container hidden" id="wallet-view">
+    <button onclick="location.reload()" style="background: #333; color: white; border: none; padding: 8px 15px; border-radius: 5px; margin-bottom: 15px; cursor: pointer;">← رجوع</button>
+    <h2>الأرصدة (فوق 0)</h2>
+    <div id="balances-list">
+        <div class="loading" id="loading-balances">جاري فحص الشبكات...</div>
+    </div>
+
+    <div id="no-balances" class="hidden" style="text-align: center; padding: 20px; color: #888;">لا توجد أرصدة في العناوين المفحوصة</div>
+
+    <hr style="border: 0.5px solid #333; margin: 25px 0;">
+
+    <h2>إرسال عملات</h2>
+    <div class="input-group">
+        <label>الشبكة</label>
+        <select id="network-select" onchange="updateTokenOptions()">
+            <option value="ethereum">Ethereum</option>
+            <option value="polygon">Polygon</option>
+            <option value="celo">Celo</option>
+            <option value="bsc">BSC</option>
+            <option value="blast">Blast</option>
+            <option value="linea">Linea</option>
+            <option value="base">Base</option>
+            <option value="optimism">Optimism</option>
+            <option value="arbitrum">Arbitrum</option>
+            <option value="avalanche">Avalanche</option>
+            <option value="opbnb">opBNB</option>
+            <option value="scroll">Scroll</option>
+        </select>
+    </div>
+
+    <div class="input-group">
+        <label>العملة / الرمز</label>
+        <select id="token-select"></select>
+    </div>
+
+    <div class="input-group">
+        <label>عنوان المستقبل</label>
+        <div class="input-with-btn">
+            <input type="text" id="to-address" placeholder="0x...">
+            <button class="qr-btn-small" onclick="startScanner('to-address')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 7h10v10H7z"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label>الكمية</label>
+        <input type="number" id="amount" step="any" placeholder="0.0">
+        <div class="slider-container">
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+                <span>النسبة: <span id="slider-val" style="color: var(--btn-color); font-weight: bold;">0</span>%</span>
+                <span>من الرصيد المتاح</span>
+            </div>
+            <input type="range" min="0" max="100" value="0" class="slider" id="amount-slider">
+        </div>
+    </div>
+
+    <button class="main-btn" onclick="createUnsignedTx()">تكوين معاملة</button>
+
+    <div id="unsigned-tx-area" class="hidden" style="margin-top: 20px; border-top: 1px dashed #444; padding-top: 20px;">
+        <h3 style="color: var(--btn-color); font-size: 1rem;">المعاملة غير الموقعة</h3>
+        <textarea id="unsigned-tx-data" rows="3" readonly></textarea>
+        <button class="main-btn" onclick="copyToClipboard('unsigned-tx-data')" style="background: #333; color: white; margin-bottom: 15px;">نسخ البيانات</button>
+        <div id="unsigned-qr" style="background: white; padding: 10px; border-radius: 8px; display: flex; justify-content: center;"></div>
+        
+        <div style="margin-top: 30px; background: #222; padding: 15px; border-radius: 10px;">
+            <h3 style="color: var(--btn-color); font-size: 1rem; margin-top: 0;">لصق التوقيع للبث</h3>
+            <div class="input-with-btn">
+                <input type="text" id="signed-signature" placeholder="الصق التوقيع هنا...">
+                <button class="qr-btn-small" onclick="startScanner('signed-signature')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 7h10v10H7z"/></svg>
+                </button>
+            </div>
+            <button class="main-btn" onclick="prepareBroadcast()" style="background-color: #28a745; color: white; margin-top: 15px;">بث المعاملة للشبكة</button>
+        </div>
+    </div>
+</div>
+
+<div class="qr-reader-container" id="scanner-modal">
+    <div id="reader"></div>
+    <button class="main-btn" onclick="stopScanner()" style="width: 200px; background: #ff4444; color: white;">إغلاق الكاميرا</button>
+</div>
+
+<div id="broadcast-modal" class="qr-reader-container">
+    <div class="container" style="text-align: center;">
+        <h2 id="status-title">مراجعة المعاملة</h2>
+        <div class="countdown" id="timer">30</div>
+        <p style="font-size: 0.9rem; color: #ccc;">سيتم البث التلقائي خلال الثواني المتبقية</p>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button class="main-btn" onclick="cancelBroadcast()" style="background: #ff4444; color: white; margin-top: 0;">إلغاء</button>
+            <button class="main-btn" onclick="broadcastNow()" style="background: #28a745; color: white; margin-top: 0;">بث الآن</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const INFURA_KEY = "482a7c1c7cc14ec78699c3f1c231b0cd";
+    const networks = {
+        ethereum: { id: 1, rpc: `https://mainnet.infura.io/v3/${INFURA_KEY}`, symbol: "ETH", usdt: "0xdac17f958d2ee523a2206206994597c13d831ec7", icon: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png" },
+        polygon: { id: 137, rpc: `https://polygon-mainnet.infura.io/v3/${INFURA_KEY}`, symbol: "POL", usdt: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f", icon: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/info/logo.png" },
+        celo: { id: 42220, rpc: `https://celo-mainnet.infura.io/v3/${INFURA_KEY}`, symbol: "CELO", usdt: "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e", icon: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/celo/info/logo.png" },
+        bsc: { id: 56, rpc: `https://bsc-mainnet.infura.io/v3/${INFURA_KEY}`, symbol: "BNB", usdt: "0x55d398326f99059fF775485246999027B3197955", icon: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/binance/info/logo.png" },
+        blast: { id: 81457, rpc: `https://blast-mainnet.infura.io/v3/${INFURA_KEY}`, symbol: "ETH", usdt: "0x4300000000000000000000000000000000000003", icon: "https://blastscan.io/images/logo.svg" },
+        linea: { id: 59144, rpc: `https://linea-mainnet.infura.io/v3/${INFURA_KEY}`, symbol: "ETH", usdt: "0xA219439258ca9da29E9Cc4cE5596924745e12B93", icon: "https://lineascan.build/images/logo.svg" },
+        base: { id: 8453, rpc: `https://base-mainnet.infura.io/v3/${INFURA_KEY}`, symbol: "ETH", usdt: "0xfde4C9625610a0EE5f221ec6738c7af10f256ca6", icon: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/info/logo.png" },
+        optimism: { id: 10, rpc: `https://optimism-mainnet.infura.io/v3/${INFURA_KEY}`, symbol: "ETH", usdt: "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58", icon: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/optimism/info/logo.png" },
+        arbitrum: { id: 42161, rpc: `https://arbitrum-mainnet.infura.io/v3/${INFURA_KEY}`, symbol: "ETH", usdt: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", icon: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/arbitrum/info/logo.png" },
+        avalanche: { id: 43114, rpc: `https://avalanche-mainnet.infura.io/v3/${INFURA_KEY}`, symbol: "AVAX", usdt: "0x9702230A8Ea53601f5CD2dc00fDBc13d4df4A8c7", icon: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/avalanchec/info/logo.png" },
+        opbnb: { id: 204, rpc: `https://opbnb-mainnet.infura.io/v3/${INFURA_KEY}`, symbol: "BNB", usdt: "0x9e5AAC1Ba1a2e6aEd6b32689DFcF62A509Ca93f3", icon: "https://opbnbscan.com/images/logo.svg" },
+        scroll: { id: 534352, rpc: `https://scroll-mainnet.infura.io/v3/${INFURA_KEY}`, symbol: "ETH", usdt: "0xf55BEC9cafDbE8730f096Aa55dad6d22d44099df", icon: "https://scrollscan.com/images/logo.svg" }
+    };
+
+    const USDT_ICON = "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xdAC17F958D2ee523a2206206994597C13D831ec7/logo.png";
+
+    let currentAddress = "";
+    let balances = {};
+    let html5QrCode;
+    let broadcastTimer;
+    let countdown = 30;
+
+    const ERC20_ABI = ["function balanceOf(address owner) view returns (uint256)", "function decimals() view returns (uint8)", "function transfer(address to, uint256 amount) returns (bool)"];
+
+    async function loadWallet() {
+        const addr = document.getElementById('eth-address').value.trim();
+        if (!ethers.utils.isAddress(addr)) return alert("عنوان غير صحيح");
+        currentAddress = addr;
+        document.getElementById('address-entry').classList.add('hidden');
+        document.getElementById('wallet-view').classList.remove('hidden');
+        updateTokenOptions();
+        await refreshBalances();
+    }
+
+    async function refreshBalances() {
+        const list = document.getElementById('balances-list');
+        list.innerHTML = '<div class="loading">جاري فحص 12 شبكة...</div>';
+        balances = {};
+        let foundAny = false;
+
+        for (const [name, net] of Object.entries(networks)) {
+            try {
+                const provider = new ethers.providers.JsonRpcProvider(net.rpc);
+                
+                // Native Balance
+                const ethBal = await provider.getBalance(currentAddress);
+                const formattedEth = ethers.utils.formatEther(ethBal);
+                if (parseFloat(formattedEth) > 0) {
+                    balances[`${name}_native`] = formattedEth;
+                    addBalanceUI(net.symbol, formattedEth, net.icon);
+                    foundAny = true;
+                }
+
+                // USDT Balance
+                if (net.usdt) {
+                    const contract = new ethers.Contract(net.usdt, ERC20_ABI, provider);
+                    const usdtBal = await contract.balanceOf(currentAddress);
+                    const decimals = await contract.decimals();
+                    const formattedUsdt = ethers.utils.formatUnits(usdtBal, decimals);
+                    if (parseFloat(formattedUsdt) > 0) {
+                        balances[`${name}_usdt`] = formattedUsdt;
+                        addBalanceUI(`USDT-${name}`, formattedUsdt, USDT_ICON);
+                        foundAny = true;
+                    }
+                }
+            } catch (e) { console.error(`Error loading ${name}:`, e); }
+        }
+        
+        const loadingDiv = document.querySelector('.loading');
+        if (loadingDiv) loadingDiv.remove();
+        if (!foundAny) document.getElementById('no-balances').classList.remove('hidden');
+    }
+
+    function addBalanceUI(symbol, amount, iconUrl) {
+        const div = document.createElement('div');
+        div.className = 'balance-item';
+        div.innerHTML = `
+            <div class="coin-info">
+                <img src="${iconUrl}" class="coin-icon" onerror="this.src='https://via.placeholder.com/32?text=?'">
+                <span>${symbol}</span>
+            </div>
+            <div class="balance-val">${parseFloat(amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 6})}</div>
+        `;
+        document.getElementById('balances-list').appendChild(div);
+    }
+
+    function updateTokenOptions() {
+        const net = document.getElementById('network-select').value;
+        const tokenSelect = document.getElementById('token-select');
+        tokenSelect.innerHTML = `<option value="native">${networks[net].symbol}</option>
+                                 <option value="usdt">USDT-${net}</option>`;
+    }
+
+    document.getElementById('amount-slider').oninput = function() {
+        const percent = this.value;
+        document.getElementById('slider-val').innerText = percent;
+        const net = document.getElementById('network-select').value;
+        const type = document.getElementById('token-select').value;
+        const balance = balances[`${net}_${type}`] || 0;
+        document.getElementById('amount').value = (balance * percent / 100);
+    };
+
+    async function createUnsignedTx() {
+        const netKey = document.getElementById('network-select').value;
+        const tokenType = document.getElementById('token-select').value;
+        const to = document.getElementById('to-address').value.trim();
+        const amount = document.getElementById('amount').value;
+        
+        if (!ethers.utils.isAddress(to)) return alert("عنوان المستقبل غير صحيح");
+        if (!amount || amount <= 0) return alert("ادخل كمية صحيحة");
+
+        const net = networks[netKey];
+        const provider = new ethers.providers.JsonRpcProvider(net.rpc);
+        const nonce = await provider.getTransactionCount(currentAddress);
+        const gasPrice = await provider.getGasPrice();
+
+        let tx = {
+            to: to,
+            value: 0,
+            gasLimit: 21000,
+            gasPrice: gasPrice,
+            nonce: nonce,
+            chainId: net.id
+        };
+
+        if (tokenType === 'native') {
+            tx.value = ethers.utils.parseEther(amount.toString());
+        } else {
+            const contract = new ethers.Contract(net.usdt, ERC20_ABI, provider);
+            const decimals = await contract.decimals();
+            tx.to = net.usdt;
+            tx.data = contract.interface.encodeFunctionData("transfer", [to, ethers.utils.parseUnits(amount.toString(), decimals)]);
+            tx.gasLimit = 65000;
+        }
+
+        const unsignedTx = ethers.utils.serializeTransaction(tx);
+        document.getElementById('unsigned-tx-data').value = unsignedTx;
+        document.getElementById('unsigned-tx-area').classList.remove('hidden');
+        
+        const qrDiv = document.getElementById('unsigned-qr');
+        qrDiv.innerHTML = "";
+        QRCode.toCanvas(document.createElement('canvas'), unsignedTx, { width: 220, margin: 1 }, (err, canvas) => {
+            if (err) console.error(err);
+            qrDiv.appendChild(canvas);
+        });
+        
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+
+    function copyToClipboard(id) {
+        const copyText = document.getElementById(id);
+        copyText.select();
+        document.execCommand("copy");
+        alert("تم النسخ بنجاح");
+    }
+
+    function startScanner(targetId) {
+        document.getElementById('scanner-modal').style.display = 'flex';
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText) => {
+                document.getElementById(targetId).value = decodedText;
+                stopScanner();
+            },
+            (errorMessage) => {}
+        ).catch(err => {
+            alert("خطأ في الكاميرا: " + err);
+            stopScanner();
+        });
+    }
+
+    function stopScanner() {
+        if (html5QrCode) {
+            html5QrCode.stop().then(() => {
+                document.getElementById('scanner-modal').style.display = 'none';
+            }).catch(() => {
+                document.getElementById('scanner-modal').style.display = 'none';
+            });
+        } else {
+            document.getElementById('scanner-modal').style.display = 'none';
+        }
+    }
+
+    function prepareBroadcast() {
+        const sig = document.getElementById('signed-signature').value.trim();
+        if (!sig) return alert("يرجى إدخال التوقيع أولاً");
+        
+        document.getElementById('broadcast-modal').style.display = 'flex';
+        countdown = 30;
+        document.getElementById('timer').innerText = countdown;
+        
+        broadcastTimer = setInterval(() => {
+            countdown--;
+            document.getElementById('timer').innerText = countdown;
+            if (countdown <= 0) {
+                broadcastNow();
+            }
+        }, 1000);
+    }
+
+    function cancelBroadcast() {
+        clearInterval(broadcastTimer);
+        document.getElementById('broadcast-modal').style.display = 'none';
+        alert("تم إلغاء البث");
+    }
+
+    async function broadcastNow() {
+        clearInterval(broadcastTimer);
+        const sig = document.getElementById('signed-signature').value.trim();
+        const netKey = document.getElementById('network-select').value;
+        const net = networks[netKey];
+        const provider = new ethers.providers.JsonRpcProvider(net.rpc);
+
+        try {
+            document.getElementById('status-title').innerText = "جاري البث...";
+            const tx = await provider.sendTransaction(sig);
+            alert("تم بث المعاملة بنجاح! الهاش: " + tx.hash);
+            document.getElementById('broadcast-modal').style.display = 'none';
+            refreshBalances();
+        } catch (e) {
+            alert("خطأ في البث: " + e.message);
+            document.getElementById('broadcast-modal').style.display = 'none';
+        }
+    }
+</script>
+
+</body>
+</html>

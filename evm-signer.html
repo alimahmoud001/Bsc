@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>موقع المعاملات الآمن</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode/html5-qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --btn-color: #FFD700;
+            --text-color: #FFFFFF;
+            --card-bg: #1A1A1A;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 450px;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.1);
+            box-sizing: border-box;
+        }
+        h2 { text-align: center; color: var(--btn-color); margin-bottom: 20px; font-size: 1.2rem; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; }
+        
+        .input-with-btn {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        textarea, input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #333;
+            background: #222;
+            color: white;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        .qr-btn-small {
+            width: 45px;
+            height: 45px;
+            background-color: var(--btn-color);
+            color: black;
+            border: none;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .qr-btn-small svg { width: 24px; height: 24px; }
+
+        .main-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--btn-color);
+            color: black;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 1rem;
+        }
+        .main-btn:active { opacity: 0.8; }
+        
+        .qr-reader-container {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 1000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        #reader { width: 300px; border: 2px solid var(--btn-color); border-radius: 10px; overflow: hidden; }
+        
+        #result-area {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px dashed #444;
+            display: none;
+        }
+        #signed-qr-result {
+            margin-top: 20px;
+            text-align: center;
+            background: white;
+            padding: 10px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+        }
+        #signed-qr-result canvas { width: 220px !important; height: auto !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>توقيع المعاملات (أوفلاين)</h2>
+    
+    <div class="input-group">
+        <label>المفتاح الخاص (Private Key)</label>
+        <div class="input-with-btn">
+            <input type="password" id="private-key" placeholder="0x...">
+            <button class="qr-btn-small" onclick="startScanner('private-key')" title="تصوير QR">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 7h10v10H7z"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label>بيانات المعاملة غير الموقعة</label>
+        <div class="input-with-btn">
+            <textarea id="unsigned-data" rows="3" placeholder="الصق البيانات هنا..."></textarea>
+            <button class="qr-btn-small" onclick="startScanner('unsigned-data')" title="تصوير QR">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 7h10v10H7z"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <button class="main-btn" onclick="signTransaction()">توقيع المعاملة الآن</button>
+
+    <div id="result-area">
+        <h3 style="color: var(--btn-color); font-size: 1rem;">التوقيع الناتج (Signed TX)</h3>
+        <textarea id="signed-output" rows="3" readonly style="color: #aaa;"></textarea>
+        <button class="main-btn" onclick="copyToClipboard('signed-output')" style="background: #333; color: white; margin-bottom: 15px;">نسخ التوقيع</button>
+        <div id="signed-qr-result"></div>
+        <p style="font-size: 0.8rem; color: #888; text-align: center; margin-top: 15px; line-height: 1.4;">
+            انسخ هذا التوقيع أو صوره، ثم الصقه في الملف الأول (المحفظة) لإتمام عملية البث للشبكة.
+        </p>
+    </div>
+</div>
+
+<div class="qr-reader-container" id="scanner-modal">
+    <div id="reader"></div>
+    <button class="main-btn" onclick="stopScanner()" style="width: 200px; background: #ff4444; color: white;">إغلاق الكاميرا</button>
+</div>
+
+<script>
+    let html5QrCode;
+
+    async function signTransaction() {
+        const pk = document.getElementById('private-key').value.trim();
+        const rawTx = document.getElementById('unsigned-data').value.trim();
+
+        if (!pk.startsWith('0x') || pk.length !== 66) {
+            return alert("المفتاح الخاص غير صحيح. يجب أن يبدأ بـ 0x ويكون بطول 66 حرفاً.");
+        }
+        if (!rawTx) return alert("يرجى إدخال بيانات المعاملة");
+
+        try {
+            const wallet = new ethers.Wallet(pk);
+            const txResponse = ethers.utils.parseTransaction(rawTx);
+            const signedTx = await wallet.signTransaction(txResponse);
+            
+            document.getElementById('signed-output').value = signedTx;
+            document.getElementById('result-area').style.display = 'block';
+            
+            const qrDiv = document.getElementById('signed-qr-result');
+            qrDiv.innerHTML = "";
+            
+            QRCode.toCanvas(document.createElement('canvas'), signedTx, { width: 220, margin: 1 }, (err, canvas) => {
+                if (err) console.error(err);
+                qrDiv.appendChild(canvas);
+            });
+            
+            window.scrollTo(0, document.body.scrollHeight);
+        } catch (e) {
+            alert("خطأ في التوقيع: " + e.message);
+        }
+    }
+
+    function copyToClipboard(id) {
+        const copyText = document.getElementById(id);
+        copyText.select();
+        document.execCommand("copy");
+        alert("تم نسخ التوقيع بنجاح");
+    }
+
+    function startScanner(targetId) {
+        document.getElementById('scanner-modal').style.display = 'flex';
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText) => {
+                document.getElementById(targetId).value = decodedText;
+                stopScanner();
+            },
+            (errorMessage) => {}
+        ).catch(err => {
+            alert("خطأ في الكاميرا: " + err);
+            stopScanner();
+        });
+    }
+
+    function stopScanner() {
+        if (html5QrCode) {
+            html5QrCode.stop().then(() => {
+                document.getElementById('scanner-modal').style.display = 'none';
+            }).catch(() => {
+                document.getElementById('scanner-modal').style.display = 'none';
+            });
+        } else {
+            document.getElementById('scanner-modal').style.display = 'none';
+        }
+    }
+</script>
+
+</body>
+</html>
