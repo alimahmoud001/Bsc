@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>موقع المعاملات TRON - آمن</title>
+    <script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --primary-color: #FFD700;
+            --text-color: #FFFFFF;
+            --card-bg: #1A1A1A;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container { width: 100%; max-width: 400px; }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #333;
+        }
+        h2 { color: var(--primary-color); text-align: center; }
+        textarea, input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #444;
+            background: #222;
+            color: white;
+            box-sizing: border-box;
+            font-family: monospace;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: black;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        .copy-area { word-break: break-all; background: #222; padding: 10px; border-radius: 5px; font-size: 12px; margin-top: 10px; border: 1px dashed var(--primary-color); }
+        .hidden { display: none; }
+        video { width: 100%; border-radius: 10px; background: #000; }
+        #signature-qr { display: flex; justify-content: center; margin: 10px; background: white; padding: 10px; border-radius: 10px; }
+        .warning { color: #FFD700; font-size: 12px; text-align: center; margin-bottom: 10px; border: 1px solid #444; padding: 5px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>توقيع المعاملة</h2>
+        <div class="warning">هذا الملف مخصص للاستخدام الآمن (يفضل بدون إنترنت)</div>
+
+        <div class="card">
+            <label>المفتاح الخاص (Private Key):</label>
+            <input type="password" id="private-key" placeholder="أدخل المفتاح الخاص أو صوره">
+            <button onclick="startScanner('key')">تصوير QR للمفتاح</button>
+            
+            <hr style="border: 0.5px solid #333; margin: 20px 0;">
+            
+            <label>بيانات المعاملة غير الموقعة:</label>
+            <textarea id="unsigned-data" rows="5" placeholder="الصق بيانات المعاملة من الملف الأول هنا"></textarea>
+            <button onclick="startScanner('tx')">تصوير QR للمعاملة</button>
+            
+            <button onclick="signTransaction()" style="font-size: 18px; margin-top: 20px;">توقيع المعاملة الآن</button>
+        </div>
+
+        <div id="result-section" class="card hidden">
+            <h3>التوقيع الناتج:</h3>
+            <div id="signature-text" class="copy-area"></div>
+            <div id="signature-qr"></div>
+            <button onclick="copyText('signature-text')">نسخ التوقيع</button>
+            <p style="font-size: 12px; text-align: center;">قم بنسخ هذا التوقيع ولصقه في الملف الأول لإتمام البث.</p>
+        </div>
+
+        <!-- ماسح QR -->
+        <div id="scanner-section" class="card hidden">
+            <video id="video" playsinline></video>
+            <button onclick="stopScanner()">إغلاق الكاميرا</button>
+        </div>
+    </div>
+
+    <script>
+        // استخدام TronWeb محلياً للتوقيع فقط
+        const tronWeb = new TronWeb({
+            fullHost: 'https://api.trongrid.io'
+        });
+
+        async function signTransaction() {
+            const privKey = document.getElementById('private-key').value;
+            const txData = document.getElementById('unsigned-data').value;
+
+            if(!privKey || !txData) {
+                alert('يرجى إدخال المفتاح الخاص وبيانات المعاملة');
+                return;
+            }
+
+            try {
+                const tx = JSON.parse(txData);
+                // التوقيع باستخدام المفتاح الخاص
+                const signedTx = await tronWeb.trx.sign(tx, privKey);
+                
+                // استخراج التوقيع فقط (عادة ما يكون أول عنصر في مصفوفة signature)
+                const signature = signedTx.signature[0];
+                
+                document.getElementById('signature-text').innerText = signature;
+                document.getElementById('result-section').classList.remove('hidden');
+
+                QRCode.toCanvas(document.createElement('canvas'), signature, { width: 250 }, function (error, canvas) {
+                    const qrDiv = document.getElementById('signature-qr');
+                    qrDiv.innerHTML = '';
+                    qrDiv.appendChild(canvas);
+                });
+            } catch (e) {
+                alert('خطأ في التوقيع: تأكد من صحة المفتاح والبيانات. ' + e);
+            }
+        }
+
+        function copyText(id) {
+            const text = document.getElementById(id).innerText;
+            navigator.clipboard.writeText(text).then(() => alert('تم نسخ التوقيع!'));
+        }
+
+        // ماسح QR
+        let scanningFor = '';
+        function startScanner(target) {
+            scanningFor = target;
+            document.getElementById('scanner-section').classList.remove('hidden');
+            const video = document.getElementById('video');
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(function(stream) {
+                video.srcObject = stream;
+                video.setAttribute("playsinline", true);
+                video.play();
+                requestAnimationFrame(tick);
+            });
+        }
+
+        function tick() {
+            const video = document.getElementById('video');
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                const canvas = document.createElement("canvas");
+                canvas.height = video.videoHeight;
+                canvas.width = video.videoWidth;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                if (code) {
+                    if(scanningFor === 'key') document.getElementById('private-key').value = code.data;
+                    if(scanningFor === 'tx') document.getElementById('unsigned-data').value = code.data;
+                    stopScanner();
+                    return;
+                }
+            }
+            if(!document.getElementById('scanner-section').classList.contains('hidden')) requestAnimationFrame(tick);
+        }
+
+        function stopScanner() {
+            const video = document.getElementById('video');
+            if(video.srcObject) video.srcObject.getTracks().forEach(track => track.stop());
+            document.getElementById('scanner-section').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
