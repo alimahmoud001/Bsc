@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محفظة TRON - الإصدار النهائي المضمون</title>
+    
+    <!-- تضمين Buffer يدوياً لضمان عدم فقدانه -->
+    <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.min.js"></script>
+    <script>
+        // تعريف Buffer بشكل قاطع قبل تحميل أي مكتبة أخرى
+        if (typeof window !== 'undefined' && typeof buffer !== 'undefined') {
+            window.Buffer = buffer.Buffer;
+        }
+    </script>
+    
+    <!-- تحميل المكتبات الأساسية -->
+    <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.0/dist/TronWeb.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <style>
+        :root { --bg: #000; --gold: #FFD700; --card: #111; --text: #fff; --red: #ff4444; }
+        * { box-sizing: border-box; font-family: sans-serif; }
+        body { background: var(--bg); color: var(--text); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        .container { width: 100%; max-width: 420px; }
+        .card { background: var(--card); padding: 25px; border-radius: 20px; margin-bottom: 20px; border: 1px solid #222; }
+        h1, h2 { text-align: center; color: var(--gold); margin: 0 0 15px 0; }
+        input, select, textarea { width: 100%; padding: 15px; margin: 10px 0; border-radius: 12px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 16px; outline: none; }
+        button { width: 100%; padding: 18px; margin: 10px 0; border-radius: 12px; border: none; background: var(--gold); color: #000; font-weight: bold; font-size: 17px; cursor: pointer; }
+        button:active { opacity: 0.8; }
+        button.sec { background: #222; color: #fff; border: 1px solid #333; }
+        button.danger { background: var(--red); color: #fff; }
+        .hidden { display: none !important; }
+        .qr-box { background: #fff; padding: 15px; border-radius: 15px; display: flex; justify-content: center; margin: 15px auto; width: fit-content; }
+        .balance-card { text-align: center; padding: 25px; background: #0a0a0a; border-radius: 20px; border: 1px solid #333; margin: 15px 0; }
+        .val-trx { font-size: 32px; font-weight: bold; color: var(--gold); }
+        .val-usdt { font-size: 20px; color: #00ff88; margin-top: 10px; font-weight: bold; }
+        .copy-box { background: #000; padding: 12px; border-radius: 10px; word-break: break-all; font-family: monospace; font-size: 11px; border: 1px dashed #444; color: #888; margin: 10px 0; text-align: center; }
+        #reader { width: 100%; border-radius: 15px; overflow: hidden; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="loader" style="text-align:center; color:var(--gold); padding:20px;">جاري التهيئة...</div>
+
+    <!-- دخول -->
+    <div id="loginView" class="card hidden">
+        <h1>دخول</h1>
+        <input type="text" id="addrInput" placeholder="أدخل العنوان العام T..." spellcheck="false">
+        <button onclick="doLogin()">دخول</button>
+    </div>
+
+    <!-- الرئيسية -->
+    <div id="mainView" class="card hidden">
+        <div id="addrLabel" style="font-size:10px; color:#555; text-align:center; margin-bottom:10px;"></div>
+        <div class="balance-card">
+            <div id="trxLabel" class="val-trx">0.00 TRX</div>
+            <div id="usdtLabel" class="val-usdt">0.00 USDT</div>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <button onclick="showView('receiveView')">استقبال</button>
+            <button onclick="showView('sendView')">إرسال</button>
+        </div>
+        <button class="sec" onclick="refreshData()">تحديث ↻</button>
+        <button class="sec" onclick="logout()" style="color:var(--red);">خروج</button>
+    </div>
+
+    <!-- استقبال -->
+    <div id="receiveView" class="card hidden">
+        <h2>استقبال</h2>
+        <div id="recvQr" class="qr-box"></div>
+        <div id="recvTxt" class="copy-box"></div>
+        <button onclick="copy('recvTxt')">نسخ العنوان</button>
+        <button class="sec" onclick="showView('mainView')">رجوع</button>
+    </div>
+
+    <!-- إرسال -->
+    <div id="sendView" class="card hidden">
+        <h2>إرسال جديد</h2>
+        <select id="asset">
+            <option value="TRX">TRX</option>
+            <option value="USDT">USDT (TRC20)</option>
+        </select>
+        <input type="number" id="amt" placeholder="الكمية">
+        <input type="text" id="to" placeholder="عنوان المستلم T...">
+        <button onclick="prepareTx()">تكوين المعاملة</button>
+        <button class="sec" onclick="showView('mainView')">إلغاء</button>
+    </div>
+
+    <!-- المعاملة -->
+    <div id="txView" class="card hidden">
+        <h2>المعاملة</h2>
+        <div id="txQr" class="qr-box"></div>
+        <div id="txData" class="copy-box" style="max-height:80px; overflow:auto;"></div>
+        <button onclick="copy('txData')">نسخ</button>
+        <button onclick="showView('sigInputView')">إدخال التوقيع</button>
+        <button class="sec" onclick="showView('sendView')">رجوع</button>
+    </div>
+
+    <!-- إدخال التوقيع -->
+    <div id="sigInputView" class="card hidden">
+        <h2>بث</h2>
+        <div id="reader"></div>
+        <button id="scanBtn" onclick="startScan()">تصوير QR</button>
+        <textarea id="sigIn" placeholder="ألصق التوقيع هنا..." rows="3"></textarea>
+        <button onclick="confirmStep()">بث الآن</button>
+        <button class="sec" onclick="showView('mainView')">إلغاء</button>
+    </div>
+
+    <!-- عد تنازلي -->
+    <div id="waitView" class="card hidden">
+        <h2>تأكيد</h2>
+        <div id="timer" style="font-size:60px; text-align:center; color:var(--red); font-weight:bold; margin:20px;">30</div>
+        <button class="danger" onclick="stopWait()">إلغاء</button>
+    </div>
+</div>
+
+<script>
+    let tron;
+    const USDT_CONTRACT = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
+    let myAddr = '';
+    let rawTx = null;
+    let timer = null;
+    let scanner = null;
+
+    window.onload = () => {
+        const init = setInterval(() => {
+            if (window.TronWeb && window.Buffer) {
+                clearInterval(init);
+                tron = new TronWeb({ fullHost: 'https://api.trongrid.io' });
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('loginView').classList.remove('hidden');
+            }
+        }, 500);
+    };
+
+    async function doLogin() {
+        const val = document.getElementById('addrInput').value.trim();
+        if (tron.isAddress(val)) {
+            myAddr = val;
+            document.getElementById('addrLabel').innerText = val;
+            showView('mainView');
+            refreshData();
+        } else { alert("خطأ في العنوان"); }
+    }
+
+    async function refreshData() {
+        if (!myAddr) return;
+        try {
+            const trx = await tron.trx.getBalance(myAddr);
+            document.getElementById('trxLabel').innerText = (trx / 1e6).toFixed(2) + " TRX";
+            
+            // استدعاء مباشر لـ API لتجنب مشاكل Buffer في العقود
+            const res = await fetch('https://api.trongrid.io/wallet/triggerconstantcontract', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    owner_address: tron.address.toHex(myAddr),
+                    contract_address: tron.address.toHex(USDT_CONTRACT),
+                    function_selector: 'balanceOf(address)',
+                    parameter: tron.address.toHex(myAddr).padStart(64, '0'),
+                    visible: false
+                })
+            });
+            const data = await res.json();
+            if (data.constant_result && data.constant_result[0]) {
+                const bal = BigInt('0x' + data.constant_result[0]);
+                document.getElementById('usdtLabel').innerText = (Number(bal) / 1e6).toFixed(2) + " USDT";
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    async function prepareTx() {
+        const asset = document.getElementById('asset').value;
+        const amount = document.getElementById('amt').value;
+        const to = document.getElementById('to').value.trim();
+        if (!amount || !to) return alert("أكمل البيانات");
+
+        try {
+            if (asset === 'TRX') {
+                rawTx = await tron.transactionBuilder.sendTrx(to, Math.floor(amount * 1e6), myAddr);
+            } else {
+                // تكوين معاملة USDT بطريقة JSON-RPC مباشرة لتجاوز مشاكل Buffer في المتصفح
+                const trigger = await fetch('https://api.trongrid.io/wallet/triggersmartcontract', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        owner_address: tron.address.toHex(myAddr),
+                        contract_address: tron.address.toHex(USDT_CONTRACT),
+                        function_selector: 'transfer(address,uint256)',
+                        parameter: tron.address.toHex(to).padStart(64, '0') + BigInt(Math.floor(amount * 1e6)).toString(16).padStart(64, '0'),
+                        fee_limit: 100000000,
+                        visible: false
+                    })
+                });
+                const data = await trigger.json();
+                if (!data.result || !data.result.result) throw new Error("فشل تكوين المعاملة");
+                rawTx = data.transaction;
+            }
+
+            const txStr = JSON.stringify(rawTx);
+            document.getElementById('txData').innerText = txStr;
+            const qr = document.getElementById('txQr');
+            qr.innerHTML = "";
+            new QRCode(qr, { text: txStr, width: 180, height: 180 });
+            showView('txView');
+        } catch (e) { alert("خطأ: " + e.message); }
+    }
+
+    function confirmStep() {
+        const sig = document.getElementById('sigIn').value.trim();
+        if (!sig) return alert("أدخل التوقيع");
+        showView('waitView');
+        let sec = 30;
+        document.getElementById('timer').innerText = sec;
+        timer = setInterval(async () => {
+            sec--;
+            document.getElementById('timer').innerText = sec;
+            if (sec <= 0) {
+                clearInterval(timer);
+                await sendNow();
+            }
+        }, 1000);
+    }
+
+    async function sendNow() {
+        try {
+            const sig = document.getElementById('sigIn').value.trim();
+            rawTx.signature = [sig];
+            const res = await tron.trx.sendRawTransaction(rawTx);
+            if (res.result) {
+                alert("تم البث بنجاح!\nID: " + res.txid);
+                showView('mainView');
+                refreshData();
+            } else { alert("فشل البث: " + JSON.stringify(res)); showView('mainView'); }
+        } catch (e) { alert("خطأ: " + e.message); showView('mainView'); }
+    }
+
+    function stopWait() { clearInterval(timer); alert("تم الإلغاء"); showView('mainView'); }
+
+    function startScan() {
+        document.getElementById('reader').style.display = 'block';
+        scanner = new Html5Qrcode("reader");
+        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (t) => {
+            document.getElementById('sigIn').value = t;
+            stopScan();
+        }, () => {});
+    }
+
+    function stopScan() { if (scanner) scanner.stop().then(() => { document.getElementById('reader').style.display = 'none'; }); }
+
+    function copy(id) {
+        const t = document.getElementById(id).innerText;
+        navigator.clipboard.writeText(t).then(() => alert("تم النسخ"));
+    }
+
+    function showView(id) {
+        ['loginView', 'mainView', 'receiveView', 'sendView', 'txView', 'sigInputView', 'waitView'].forEach(v => {
+            document.getElementById(v).classList.add('hidden');
+        });
+        document.getElementById(id).classList.remove('hidden');
+        if (id === 'receiveView') {
+            const qr = document.getElementById('recvQr');
+            qr.innerHTML = "";
+            new QRCode(qr, { text: myAddr, width: 180, height: 180 });
+            document.getElementById('recvTxt').innerText = myAddr;
+        }
+        stopScan();
+    }
+
+    function logout() { myAddr = ''; showView('loginView'); }
+</script>
+
+</body>
+</html>

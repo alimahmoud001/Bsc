@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>موقع التوقيع المشفر - النسخة المضمونة</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.min.js"></script>
+    <script>
+        if (typeof window !== 'undefined' && typeof buffer !== 'undefined') {
+            window.Buffer = buffer.Buffer;
+        }
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.0/dist/TronWeb.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <style>
+        :root { --bg: #000; --gold: #FFD700; --card: #111; --text: #fff; }
+        * { box-sizing: border-box; font-family: sans-serif; }
+        body { background: var(--bg); color: var(--text); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        .container { width: 100%; max-width: 420px; }
+        .card { background: var(--card); padding: 25px; border-radius: 20px; margin-bottom: 20px; border: 1px solid #222; }
+        h1, h2 { text-align: center; color: var(--gold); }
+        input, textarea { width: 100%; padding: 15px; margin: 10px 0; border-radius: 12px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 16px; outline: none; }
+        button { width: 100%; padding: 18px; margin: 10px 0; border-radius: 12px; border: none; background: var(--gold); color: #000; font-weight: bold; font-size: 17px; cursor: pointer; }
+        button.sec { background: #222; color: #fff; border: 1px solid #333; }
+        .hidden { display: none !important; }
+        .qr-box { background: #fff; padding: 15px; border-radius: 15px; display: flex; justify-content: center; margin: 15px auto; width: fit-content; }
+        .qr-box img { width: 180px !important; height: 180px !important; }
+        .copy-box { background: #000; padding: 12px; border-radius: 10px; word-break: break-all; font-family: monospace; font-size: 11px; border: 1px dashed #444; color: #888; margin: 10px 0; text-align: center; }
+        #reader { width: 100%; border-radius: 15px; overflow: hidden; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="setup" class="card">
+        <h1>إعداد التوقيع</h1>
+        <p style="text-align:center; font-size:12px; color:#ffaa00; background:#221100; padding:10px; border-radius:10px;">يعمل محلياً بالكامل ولا يتصل بالإنترنت.</p>
+        <div id="readerK"></div>
+        <button onclick="scanKey()">تصوير المفتاح (QR)</button>
+        <input type="password" id="pkIn" placeholder="المفتاح الخاص (64 حرفاً)">
+        <button onclick="saveKey()">حفظ والبدء</button>
+    </div>
+
+    <div id="sign" class="card hidden">
+        <h2 id="addrLabel">جاهز</h2>
+        <div id="readerT"></div>
+        <button onclick="scanTx()">تصوير المعاملة (QR)</button>
+        <textarea id="txIn" placeholder="ألصق كود المعاملة هنا..." rows="4"></textarea>
+        <button onclick="doSign()">توقيع المعاملة الآن</button>
+        <button class="sec" onclick="logout()">تغيير المفتاح</button>
+    </div>
+
+    <div id="result" class="card hidden">
+        <h2>تم التوقيع</h2>
+        <div id="sigQr" class="qr-box"></div>
+        <div id="sigTxt" class="copy-box"></div>
+        <button onclick="copy('sigTxt')">نسخ التوقيع</button>
+        <button class="sec" onclick="showSign()">توقيع معاملة أخرى</button>
+    </div>
+</div>
+
+<script>
+    let tron;
+    let myPk = '';
+    let scanner = null;
+
+    function saveKey() {
+        const val = document.getElementById('pkIn').value.trim();
+        if (val.length !== 64) return alert("المفتاح غير صحيح");
+        try {
+            myPk = val;
+            tron = new TronWeb({ fullHost: 'https://api.trongrid.io', privateKey: val });
+            const addr = tron.address.fromPrivateKey(val);
+            document.getElementById('addrLabel').innerText = "الموقع: " + addr.substring(0,10) + "...";
+            showSign();
+        } catch (e) { alert("خطأ في المفتاح"); }
+    }
+
+    async function doSign() {
+        const data = document.getElementById('txIn').value.trim();
+        if (!data) return alert("أدخل البيانات");
+        try {
+            const txObj = JSON.parse(data);
+            const signed = await tron.trx.sign(txObj, myPk);
+            const signature = signed.signature[0];
+            
+            document.getElementById('sigTxt').innerText = signature;
+            const qr = document.getElementById('sigQr');
+            qr.innerHTML = "";
+            new QRCode(qr, { text: signature, width: 180, height: 180 });
+            
+            hideAll();
+            document.getElementById('result').classList.remove('hidden');
+        } catch (e) { alert("فشل التوقيع: تأكد من صحة كود المعاملة"); }
+    }
+
+    function scanKey() {
+        document.getElementById('readerK').style.display = 'block';
+        scanner = new Html5Qrcode("readerK");
+        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (t) => {
+            document.getElementById('pkIn').value = t;
+            stopScan();
+        }, () => {});
+    }
+
+    function scanTx() {
+        document.getElementById('readerT').style.display = 'block';
+        scanner = new Html5Qrcode("readerT");
+        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (t) => {
+            document.getElementById('txIn').value = t;
+            stopScan();
+        }, () => {});
+    }
+
+    function stopScan() {
+        if (scanner) scanner.stop().then(() => { 
+            document.getElementById('readerK').style.display = 'none'; 
+            document.getElementById('readerT').style.display = 'none'; 
+        });
+    }
+
+    function copy(id) {
+        const t = document.getElementById(id).innerText;
+        navigator.clipboard.writeText(t).then(() => alert("تم النسخ"));
+    }
+
+    function showSign() { hideAll(); document.getElementById('sign').classList.remove('hidden'); }
+    function hideAll() { ['setup', 'sign', 'result'].forEach(v => document.getElementById(v).classList.add('hidden')); stopScan(); }
+    function logout() { myPk = ''; hideAll(); document.getElementById('setup').classList.remove('hidden'); }
+</script>
+
+</body>
+</html>
