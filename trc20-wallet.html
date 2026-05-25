@@ -1,20 +1,17 @@
-<!DOCTYPE html>
+ali_mahmoud
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>محفظة TRON - الإصدار النهائي المضمون</title>
+    <title>محفظة TRON المارنة V6.1</title>
     
-    <!-- تضمين Buffer يدوياً لضمان عدم فقدانه -->
     <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.min.js"></script>
     <script>
-        // تعريف Buffer بشكل قاطع قبل تحميل أي مكتبة أخرى
         if (typeof window !== 'undefined' && typeof buffer !== 'undefined') {
             window.Buffer = buffer.Buffer;
         }
     </script>
     
-    <!-- تحميل المكتبات الأساسية -->
     <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.0/dist/TronWeb.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -33,11 +30,13 @@
         button.danger { background: var(--red); color: #fff; }
         .hidden { display: none !important; }
         .qr-box { background: #fff; padding: 15px; border-radius: 15px; display: flex; justify-content: center; margin: 15px auto; width: fit-content; }
+        .qr-box img { width: 180px !important; height: 180px !important; }
         .balance-card { text-align: center; padding: 25px; background: #0a0a0a; border-radius: 20px; border: 1px solid #333; margin: 15px 0; }
         .val-trx { font-size: 32px; font-weight: bold; color: var(--gold); }
         .val-usdt { font-size: 20px; color: #00ff88; margin-top: 10px; font-weight: bold; }
         .copy-box { background: #000; padding: 12px; border-radius: 10px; word-break: break-all; font-family: monospace; font-size: 11px; border: 1px dashed #444; color: #888; margin: 10px 0; text-align: center; }
         #reader { width: 100%; border-radius: 15px; overflow: hidden; }
+        .label-hint { font-size: 12px; color: #666; margin-top: 10px; text-align: right; }
     </style>
 </head>
 <body>
@@ -47,7 +46,7 @@
 
     <!-- دخول -->
     <div id="loginView" class="card hidden">
-        <h1>دخول</h1>
+        <h1>دخول المحفظة</h1>
         <input type="text" id="addrInput" placeholder="أدخل العنوان العام T..." spellcheck="false">
         <button onclick="doLogin()">دخول</button>
     </div>
@@ -91,29 +90,31 @@
 
     <!-- المعاملة -->
     <div id="txView" class="card hidden">
-        <h2>المعاملة</h2>
+        <h2>المعاملة غير الموقعة</h2>
         <div id="txQr" class="qr-box"></div>
         <div id="txData" class="copy-box" style="max-height:80px; overflow:auto;"></div>
-        <button onclick="copy('txData')">نسخ</button>
-        <button onclick="showView('sigInputView')">إدخال التوقيع</button>
+        <button onclick="copy('txData')">نسخ كود المعاملة</button>
+        <button onclick="showView('sigInputView')">التالي: إدخال التوقيع</button>
         <button class="sec" onclick="showView('sendView')">رجوع</button>
     </div>
 
     <!-- إدخال التوقيع -->
     <div id="sigInputView" class="card hidden">
-        <h2>بث</h2>
+        <h2>بث المعاملة</h2>
+        <p class="label-hint">يمكنك لصق التوقيع أدناه أو تصويره:</p>
+        <textarea id="sigIn" placeholder="ألصق التوقيع (Signature) هنا..." rows="4"></textarea>
         <div id="reader"></div>
-        <button id="scanBtn" onclick="startScan()">تصوير QR</button>
-        <textarea id="sigIn" placeholder="ألصق التوقيع هنا..." rows="3"></textarea>
-        <button onclick="confirmStep()">بث الآن</button>
+        <button id="scanBtn" onclick="startScan()" class="sec">تصوير التوقيع (QR)</button>
+        <button onclick="confirmStep()">تأكيد وبث المعاملة</button>
         <button class="sec" onclick="showView('mainView')">إلغاء</button>
     </div>
 
     <!-- عد تنازلي -->
     <div id="waitView" class="card hidden">
-        <h2>تأكيد</h2>
+        <h2>تأكيد البث</h2>
+        <p style="text-align:center;">سيتم البث تلقائياً خلال:</p>
         <div id="timer" style="font-size:60px; text-align:center; color:var(--red); font-weight:bold; margin:20px;">30</div>
-        <button class="danger" onclick="stopWait()">إلغاء</button>
+        <button class="danger" onclick="stopWait()">إيقاف البث (تراجع)</button>
     </div>
 </div>
 
@@ -151,8 +152,6 @@
         try {
             const trx = await tron.trx.getBalance(myAddr);
             document.getElementById('trxLabel').innerText = (trx / 1e6).toFixed(2) + " TRX";
-            
-            // استدعاء مباشر لـ API لتجنب مشاكل Buffer في العقود
             const res = await fetch('https://api.trongrid.io/wallet/triggerconstantcontract', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -182,7 +181,6 @@
             if (asset === 'TRX') {
                 rawTx = await tron.transactionBuilder.sendTrx(to, Math.floor(amount * 1e6), myAddr);
             } else {
-                // تكوين معاملة USDT بطريقة JSON-RPC مباشرة لتجاوز مشاكل Buffer في المتصفح
                 const trigger = await fetch('https://api.trongrid.io/wallet/triggersmartcontract', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -211,7 +209,7 @@
 
     function confirmStep() {
         const sig = document.getElementById('sigIn').value.trim();
-        if (!sig) return alert("أدخل التوقيع");
+        if (!sig) return alert("يرجى لصق التوقيع أولاً");
         showView('waitView');
         let sec = 30;
         document.getElementById('timer').innerText = sec;
