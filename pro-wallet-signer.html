@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>جهاز التوقيع - الملف الثاني (بدون إنترنت)</title>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --border: #2a2a2a;
+    --yellow: #f5c518;
+    --yellow-dark: #d4a017;
+    --blue: #1e90ff;
+    --text: #e8e8e8;
+    --text-muted: #888;
+    --success: #22c55e;
+    --error: #ef4444;
+  }
+  body { background:var(--bg); color:var(--text); font-family:'Segoe UI',Tahoma,sans-serif; font-size:14px; min-height:100vh; padding:16px; }
+
+  .header { text-align:center; padding:20px 0 24px; }
+  .header h1 { font-size:22px; font-weight:800; color:var(--yellow); }
+  .header p { color:var(--text-muted); font-size:13px; margin-top:6px; }
+  .offline-badge { display:inline-block; background:rgba(239,68,68,0.15); color:var(--error); border:1px solid rgba(239,68,68,0.3); padding:4px 14px; border-radius:20px; font-size:11px; font-weight:700; margin-top:8px; }
+
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:18px; margin-bottom:14px; }
+  .card-title { font-size:12px; color:var(--text-muted); margin-bottom:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; }
+
+  input, textarea {
+    width:100%; background:var(--surface2); border:1px solid var(--border);
+    color:var(--text); padding:12px 14px; border-radius:10px; font-size:13px;
+    outline:none; font-family:monospace; direction:ltr;
+  }
+  input:focus, textarea:focus { border-color:var(--yellow); }
+  textarea { resize:vertical; min-height:100px; }
+
+  .btn { width:100%; padding:14px; border-radius:12px; border:none; cursor:pointer; font-size:15px; font-weight:700; transition:all 0.2s; }
+  .btn-yellow { background:var(--yellow); color:#000; }
+  .btn-yellow:hover { background:var(--yellow-dark); }
+  .btn-outline { background:transparent; border:1px solid var(--border); color:var(--text); }
+  .btn-sm { width:auto; padding:8px 16px; font-size:12px; border-radius:8px; }
+  .btn-blue { background:var(--blue); color:#fff; }
+
+  .input-row { display:flex; gap:8px; align-items:flex-start; }
+  .input-row textarea, .input-row input { flex:1; }
+  .qr-btn { background:var(--surface2); border:1px solid var(--border); color:var(--yellow); padding:12px 14px; border-radius:10px; cursor:pointer; font-size:18px; white-space:nowrap; flex-shrink:0; margin-top:0; }
+  .qr-btn:hover { border-color:var(--yellow); }
+
+  .copy-wrap { display:flex; gap:8px; align-items:stretch; }
+  .copy-wrap textarea { flex:1; }
+  .copy-btn { background:var(--yellow); color:#000; border:none; padding:12px 16px; border-radius:10px; cursor:pointer; font-weight:700; font-size:13px; white-space:nowrap; flex-shrink:0; min-width:70px; }
+  .copy-btn:hover { background:var(--yellow-dark); }
+
+  label { display:block; font-size:12px; color:var(--text-muted); margin-bottom:6px; font-weight:600; }
+  .row { margin-bottom:14px; }
+
+  .qr-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.95); z-index:999; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
+  .qr-overlay h3 { color:var(--yellow); margin-bottom:16px; font-size:16px; }
+  #qrVideo { width:100%; max-width:320px; border-radius:12px; border:2px solid var(--yellow); }
+  .qr-close { margin-top:16px; background:var(--error); color:#fff; border:none; padding:10px 32px; border-radius:10px; cursor:pointer; font-size:14px; }
+
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--surface); border:1px solid var(--yellow); color:var(--text); padding:10px 20px; border-radius:10px; z-index:9999; font-size:13px; pointer-events:none; max-width:90%; text-align:center; }
+  .toast.error { border-color:var(--error); }
+  .toast.success { border-color:var(--success); }
+
+  .sep { border:none; border-top:1px solid var(--border); margin:14px 0; }
+  .text-center { text-align:center; }
+  .mt-8 { margin-top:8px; }
+
+  .step-num { display:inline-flex; width:26px; height:26px; background:var(--yellow); color:#000; border-radius:50%; align-items:center; justify-content:center; font-weight:800; font-size:13px; margin-left:8px; flex-shrink:0; }
+  .step-header { display:flex; align-items:center; margin-bottom:12px; font-weight:700; font-size:15px; }
+
+  .sig-result { background:var(--surface2); border:1px solid var(--success); border-radius:12px; padding:16px; }
+  .sig-result-label { font-size:11px; color:var(--success); font-weight:700; margin-bottom:8px; text-transform:uppercase; }
+
+  .tx-preview { background:var(--surface2); border-radius:8px; padding:10px; font-size:11px; color:var(--text-muted); line-height:1.8; border:1px solid var(--border); }
+  .tx-preview span { color:var(--text); font-weight:600; }
+
+  .key-type-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+  .key-type-btn { background:var(--surface2); border:2px solid var(--border); color:var(--text); padding:10px 8px; border-radius:10px; cursor:pointer; font-size:12px; font-weight:600; text-align:center; transition:all 0.2s; }
+  .key-type-btn.selected { border-color:var(--yellow); background:rgba(245,197,24,0.1); color:var(--yellow); }
+
+  .warning-box { background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); border-radius:10px; padding:12px; font-size:12px; color:#f59e0b; line-height:1.6; margin-bottom:14px; }
+
+  canvas { max-width:100%; border-radius:8px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>جهاز التوقيع</h1>
+  <p>وقّع المعاملات دون الاتصال بالإنترنت</p>
+  <div class="offline-badge">يُستخدم بدون إنترنت</div>
+</div>
+
+<div class="warning-box">
+  تحذير: احتفظ بهذا الملف على جهاز غير متصل بالإنترنت. المفتاح الخاص حساس جداً ولا يُرسل أبداً عبر الشبكة.
+</div>
+
+<!-- Step 1: Private Key -->
+<div class="card">
+  <div class="step-header"><span class="step-num">١</span>المفتاح الخاص</div>
+
+  <div class="key-type-grid">
+    <div class="key-type-btn selected" onclick="selectKeyType('evm')" id="kt-evm">⬡ EVM</div>
+    <div class="key-type-btn" onclick="selectKeyType('sol')" id="kt-sol">◎ سولانا</div>
+    <div class="key-type-btn" onclick="selectKeyType('trx')" id="kt-trx">🔺 ترون</div>
+    <div class="key-type-btn" onclick="selectKeyType('btc')" id="kt-btc">₿ بتكوين</div>
+    <div class="key-type-btn" onclick="selectKeyType('ltc')" id="kt-ltc">Ł ليتكوين</div>
+  </div>
+
+  <div class="row">
+    <label>الصق المفتاح الخاص (فرعي وليس موسع)</label>
+    <div class="input-row">
+      <input type="password" id="inp-privkey" placeholder="المفتاح الخاص..." autocomplete="off" oninput="onKeyInput()">
+      <button class="qr-btn" onclick="openQR('inp-privkey')">📷</button>
+    </div>
+  </div>
+
+  <div id="key-address-display" style="display:none;margin-top:8px">
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">العنوان المشتق:</div>
+    <div id="derived-address" style="font-size:12px;color:var(--yellow);word-break:break-all;background:var(--surface2);padding:8px;border-radius:8px;font-family:monospace;border:1px solid var(--border)"></div>
+  </div>
+</div>
+
+<!-- Step 2: Unsigned TX -->
+<div class="card">
+  <div class="step-header"><span class="step-num">٢</span>بيانات المعاملة غير الموقعة</div>
+  <div class="row">
+    <label>الصق أو امسح بيانات المعاملة</label>
+    <div class="input-row">
+      <textarea id="inp-unsigned-tx" placeholder='{"type":"evm-native","chainId":1,...}' rows="5" oninput="parseTxPreview()"></textarea>
+      <button class="qr-btn" onclick="openQR('inp-unsigned-tx')">📷</button>
+    </div>
+  </div>
+
+  <!-- TX Preview -->
+  <div id="tx-preview-box" style="display:none">
+    <div class="card-title">معاينة المعاملة</div>
+    <div class="tx-preview" id="tx-preview-content"></div>
+  </div>
+</div>
+
+<!-- Step 3: Sign -->
+<div class="card">
+  <div class="step-header"><span class="step-num">٣</span>توقيع المعاملة</div>
+  <button class="btn btn-yellow" onclick="signTransaction()">توقيع المعاملة</button>
+</div>
+
+<!-- Step 4: Result -->
+<div class="card" id="sig-result-card" style="display:none">
+  <div class="step-header"><span class="step-num">٤</span>التوقيع الناتج</div>
+
+  <div class="sig-result">
+    <div class="sig-result-label">التوقيع / المعاملة الموقعة</div>
+    <div class="copy-wrap">
+      <textarea id="sig-output" readonly rows="5" style="font-size:11px"></textarea>
+      <button class="copy-btn" onclick="copyText(document.getElementById('sig-output').value)">نسخ</button>
+    </div>
+  </div>
+
+  <div class="mt-8 text-center">
+    <button class="btn btn-outline btn-sm" onclick="showQRForSig()">عرض كـ QR Code</button>
+  </div>
+</div>
+
+<!-- QR Scanner Overlay -->
+<div id="qr-overlay" class="qr-overlay" style="display:none">
+  <h3>📷 امسح رمز QR</h3>
+  <video id="qrVideo" autoplay playsinline muted></video>
+  <canvas id="qrCanvas" style="display:none"></canvas>
+  <button class="qr-close" onclick="closeQR()">إغلاق</button>
+</div>
+
+<!-- QR Display Overlay -->
+<div id="qr-display-overlay" class="qr-overlay" style="display:none">
+  <h3 id="qr-display-title">التوقيع QR</h3>
+  <canvas id="qr-display-canvas"></canvas>
+  <button class="qr-close" onclick="closeQRDisplay()">إغلاق</button>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast" style="display:none"></div>
+
+<script>
+// ================================================================
+// ERC20 ABI (minimal)
+// ================================================================
+const ERC20_ABI = [
+  'function transfer(address to, uint256 amount) returns (bool)',
+];
+
+const USDT_DECIMALS = {
+  eth:6, polygon:6, celo:6, bep20:18, blast:6, linea:6,
+  base:6, optimism:6, arbitrum:6, avalanche:6, opbnb:6, scroll:6
+};
+
+let keyType = 'evm';
+let currentPrivKey = null;
+let currentWallet = null;
+
+// ================================================================
+// KEY TYPE
+// ================================================================
+function selectKeyType(type) {
+  keyType = type;
+  document.querySelectorAll('.key-type-btn').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('kt-'+type).classList.add('selected');
+  onKeyInput();
+}
+
+function onKeyInput() {
+  const key = document.getElementById('inp-privkey').value.trim();
+  currentPrivKey = key;
+  currentWallet = null;
+
+  if (!key) {
+    document.getElementById('key-address-display').style.display = 'none';
+    return;
+  }
+
+  if (keyType === 'evm') {
+    try {
+      const wallet = new ethers.Wallet(key.startsWith('0x') ? key : '0x'+key);
+      currentWallet = wallet;
+      document.getElementById('derived-address').textContent = wallet.address;
+      document.getElementById('key-address-display').style.display = 'block';
+    } catch(e) {
+      document.getElementById('derived-address').textContent = 'مفتاح غير صالح';
+      document.getElementById('key-address-display').style.display = 'block';
+    }
+  } else {
+    document.getElementById('derived-address').textContent = `[نوع ${keyType}: لاحقاً]`;
+    document.getElementById('key-address-display').style.display = 'block';
+  }
+}
+
+// ================================================================
+// TX PREVIEW
+// ================================================================
+function parseTxPreview() {
+  const raw = document.getElementById('inp-unsigned-tx').value.trim();
+  if (!raw) { document.getElementById('tx-preview-box').style.display='none'; return; }
+  try {
+    const tx = JSON.parse(raw);
+    let html = '';
+    const add = (label, val) => val !== undefined ? html += `${label}: <span>${val}</span><br>` : '';
+    add('النوع', tx.type);
+    add('الشبكة', tx.network);
+    add('من', tx.from);
+    add('إلى', tx.to || tx.recipient);
+    add('المبلغ', (tx.valueEth && tx.valueEth !== '0' ? tx.valueEth : tx.amount) + ' ' + (tx.symbol || ''));
+    if (tx.nonce !== undefined) add('Nonce', tx.nonce);
+    if (tx.chainId) add('Chain ID', tx.chainId);
+    document.getElementById('tx-preview-content').innerHTML = html;
+    document.getElementById('tx-preview-box').style.display = 'block';
+  } catch(e) {
+    document.getElementById('tx-preview-box').style.display = 'none';
+  }
+}
+
+// ================================================================
+// SIGNING
+// ================================================================
+async function signTransaction() {
+  const key = document.getElementById('inp-privkey').value.trim();
+  const txRaw = document.getElementById('inp-unsigned-tx').value.trim();
+
+  if (!key) { toast('أدخل المفتاح الخاص أولاً'); return; }
+  if (!txRaw) { toast('أدخل بيانات المعاملة'); return; }
+
+  let txObj;
+  try { txObj = JSON.parse(txRaw); } catch(e) { toast('بيانات المعاملة غير صالحة (JSON)'); return; }
+
+  try {
+    let signature = '';
+
+    if (keyType === 'evm' && (txObj.type === 'evm-native' || txObj.type === 'evm-erc20')) {
+      const privKey = key.startsWith('0x') ? key : '0x'+key;
+      const wallet = new ethers.Wallet(privKey);
+
+      const tx = {
+        to: txObj.to,
+        value: txObj.value || '0x0',
+        nonce: txObj.nonce,
+        gasLimit: txObj.gasLimit,
+        gasPrice: txObj.gasPrice,
+        chainId: txObj.chainId,
+      };
+      if (txObj.data) tx.data = txObj.data;
+
+      const signedTx = await wallet.signTransaction(tx);
+      signature = signedTx;
+
+      toast('تم التوقيع بنجاح!', 2000, 'success');
+    } else if (keyType === 'btc' && txObj.type === 'btc') {
+      // Simple message signing for BTC (without bitcoinjs-lib)
+      signature = await signMessage(key, txRaw);
+      toast('تم التوقيع (BTC: توقيع رسالة)', 2000, 'success');
+    } else if (keyType === 'ltc' && txObj.type === 'ltc') {
+      signature = await signMessage(key, txRaw);
+      toast('تم التوقيع (LTC: توقيع رسالة)', 2000, 'success');
+    } else if (keyType === 'sol' && txObj.type === 'sol') {
+      // Solana signing placeholder
+      signature = JSON.stringify({ type:'sol-signed', network:'solana', payload: txRaw, note:'يتطلب @solana/web3.js للتوقيع الكامل' });
+      toast('ملاحظة: تم إنشاء هيكل التوقيع (يتطلب @solana/web3.js)', 3000);
+    } else if (keyType === 'trx' && txObj.type === 'trx') {
+      signature = JSON.stringify({ type:'trx-signed', network:'tron', payload: txRaw, note:'يتطلب TronWeb للتوقيع الكامل' });
+      toast('ملاحظة: تم إنشاء هيكل التوقيع (يتطلب TronWeb)', 3000);
+    } else {
+      // Fallback: generic message signing
+      signature = await signMessage(key, txRaw);
+      toast('تم التوقيع', 2000, 'success');
+    }
+
+    document.getElementById('sig-output').value = signature;
+    document.getElementById('sig-result-card').style.display = 'block';
+    document.getElementById('sig-result-card').scrollIntoView({behavior:'smooth'});
+
+  } catch(e) {
+    toast('خطأ في التوقيع: ' + e.message, 5000, 'error');
+  }
+}
+
+async function signMessage(privKey, message) {
+  // Use ethers to sign an arbitrary message (works as proof-of-ownership)
+  try {
+    const pk = privKey.startsWith('0x') ? privKey : '0x'+privKey;
+    const wallet = new ethers.Wallet(pk);
+    const msgHash = ethers.utils.id(message);
+    const sig = await wallet.signMessage(ethers.utils.arrayify(msgHash));
+    return JSON.stringify({
+      type: 'signed-message',
+      signer: wallet.address,
+      messageHash: msgHash,
+      signature: sig,
+      payload: message,
+    }, null, 2);
+  } catch(e) {
+    throw new Error('فشل التوقيع: ' + e.message);
+  }
+}
+
+// ================================================================
+// QR CODE DISPLAY
+// ================================================================
+function showQRForSig() {
+  const sig = document.getElementById('sig-output').value;
+  if (!sig) { toast('لا يوجد توقيع'); return; }
+
+  // Split large data into chunks if needed
+  if (sig.length > 800) {
+    toast('التوقيع كبير - سيتم عرضه مع ضغط للـ QR', 2000);
+  }
+
+  const canvas = document.getElementById('qr-display-canvas');
+  QRCode.toCanvas(canvas, sig.length > 2000 ? sig.substring(0, 2000) : sig, {
+    width: 280, margin: 2,
+    errorCorrectionLevel: 'L',
+    color: {dark:'#000000', light:'#ffffff'}
+  }, (err) => {
+    if (err) {
+      // If too large, show hash instead
+      const hash = ethers.utils.id(sig);
+      QRCode.toCanvas(canvas, hash, { width: 280, margin: 2, color:{dark:'#000000',light:'#ffffff'} }, () => {});
+      toast('التوقيع كبير جداً - تم عرض البصمة بدلاً منه، انسخه يدوياً', 5000, 'error');
+      return;
+    }
+    document.getElementById('qr-display-title').textContent = 'التوقيع';
+    document.getElementById('qr-display-overlay').style.display = 'flex';
+  });
+}
+
+// ================================================================
+// QR SCANNER
+// ================================================================
+let qrTargetId = null;
+let qrStream = null;
+let qrScanInterval = null;
+
+function openQR(targetInputId) {
+  qrTargetId = targetInputId;
+  document.getElementById('qr-overlay').style.display = 'flex';
+  startQRScan();
+}
+
+async function startQRScan() {
+  try {
+    qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    const video = document.getElementById('qrVideo');
+    video.srcObject = qrStream;
+    video.play();
+
+    const canvas = document.getElementById('qrCanvas');
+    const ctx = canvas.getContext('2d');
+
+    qrScanInterval = setInterval(() => {
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imgData.data, imgData.width, imgData.height);
+        if (code) {
+          const el = document.getElementById(qrTargetId);
+          if (el) {
+            el.value = code.data;
+            el.dispatchEvent(new Event('input', {bubbles:true}));
+          }
+          closeQR();
+          toast('تم قراءة الرمز بنجاح', 2000, 'success');
+        }
+      }
+    }, 300);
+  } catch(e) {
+    toast('تعذر فتح الكاميرا: ' + e.message, 4000, 'error');
+    closeQR();
+  }
+}
+
+function closeQR() {
+  clearInterval(qrScanInterval);
+  if (qrStream) { qrStream.getTracks().forEach(t=>t.stop()); qrStream = null; }
+  document.getElementById('qr-overlay').style.display = 'none';
+}
+
+function closeQRDisplay() {
+  document.getElementById('qr-display-overlay').style.display = 'none';
+}
+
+// ================================================================
+// UTILITIES
+// ================================================================
+function copyText(text) {
+  if (!text) { toast('لا يوجد نص للنسخ'); return; }
+  navigator.clipboard.writeText(text).then(() => toast('تم النسخ', 1500, 'success')).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    toast('تم النسخ', 1500, 'success');
+  });
+}
+
+function toast(msg, duration=3000, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast' + (type ? ' '+type : '');
+  el.style.display = 'block';
+  el.style.opacity = '1';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => {
+    el.style.opacity = '0';
+    setTimeout(() => el.style.display = 'none', 300);
+  }, duration);
+}
+</script>
+</body>
+</html>

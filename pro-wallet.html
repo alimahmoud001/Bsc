@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>محفظة التشفير - الملف الأول</title>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --border: #2a2a2a;
+    --yellow: #f5c518;
+    --yellow-dark: #d4a017;
+    --blue: #1e90ff;
+    --blue-dark: #1270cc;
+    --text: #e8e8e8;
+    --text-muted: #888;
+    --success: #22c55e;
+    --error: #ef4444;
+    --warning: #f59e0b;
+  }
+  body { background:var(--bg); color:var(--text); font-family:'Segoe UI',Tahoma,sans-serif; font-size:14px; min-height:100vh; }
+  .screen { display:none; min-height:100vh; padding:16px; }
+  .screen.active { display:block; }
+
+  /* Header */
+  .header { display:flex; align-items:center; justify-content:space-between; padding:12px 0; margin-bottom:20px; border-bottom:1px solid var(--border); }
+  .header h1 { font-size:18px; font-weight:700; color:var(--yellow); }
+  .back-btn { background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:6px 14px; border-radius:8px; cursor:pointer; font-size:13px; }
+
+  /* Cards */
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:18px; margin-bottom:14px; }
+  .card-title { font-size:13px; color:var(--text-muted); margin-bottom:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; }
+
+  /* Inputs */
+  input, select, textarea {
+    width:100%; background:var(--surface2); border:1px solid var(--border);
+    color:var(--text); padding:12px 14px; border-radius:10px; font-size:14px;
+    outline:none; font-family:inherit; direction:ltr;
+  }
+  input:focus, select:focus, textarea:focus { border-color:var(--yellow); }
+  select option { background:var(--surface2); }
+  textarea { resize:vertical; min-height:80px; }
+
+  /* Buttons */
+  .btn { width:100%; padding:14px; border-radius:12px; border:none; cursor:pointer; font-size:15px; font-weight:700; transition:all 0.2s; letter-spacing:0.3px; }
+  .btn-yellow { background:var(--yellow); color:#000; }
+  .btn-yellow:hover { background:var(--yellow-dark); }
+  .btn-blue { background:var(--blue); color:#fff; }
+  .btn-blue:hover { background:var(--blue-dark); }
+  .btn-outline { background:transparent; border:1px solid var(--border); color:var(--text); }
+  .btn-outline:hover { border-color:var(--yellow); color:var(--yellow); }
+  .btn-sm { width:auto; padding:8px 16px; font-size:13px; border-radius:8px; }
+  .btn-danger { background:#ef4444; color:#fff; }
+  .btn-danger:hover { background:#dc2626; }
+  .btn-success { background:var(--success); color:#fff; }
+
+  /* Network selector */
+  .network-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .net-btn {
+    background:var(--surface2); border:2px solid var(--border); color:var(--text);
+    padding:10px 8px; border-radius:10px; cursor:pointer; font-size:12px; font-weight:600;
+    text-align:center; transition:all 0.2s; display:flex; flex-direction:column; align-items:center; gap:4px;
+  }
+  .net-btn .net-icon { font-size:20px; }
+  .net-btn:hover { border-color:var(--yellow); color:var(--yellow); }
+  .net-btn.selected { border-color:var(--yellow); background:rgba(245,197,24,0.1); color:var(--yellow); }
+
+  /* Balance display */
+  .balance-item { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); }
+  .balance-item:last-child { border-bottom:none; }
+  .balance-symbol { display:flex; align-items:center; gap:8px; }
+  .coin-icon { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; }
+  .balance-amount { font-size:16px; font-weight:700; color:var(--yellow); }
+  .balance-usd { font-size:11px; color:var(--text-muted); }
+
+  /* QR Scanner */
+  .qr-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.95); z-index:999; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
+  .qr-overlay h3 { color:var(--yellow); margin-bottom:16px; font-size:16px; }
+  #qrVideo { width:100%; max-width:320px; border-radius:12px; border:2px solid var(--yellow); }
+  .qr-close { margin-top:16px; background:var(--error); color:#fff; border:none; padding:10px 32px; border-radius:10px; cursor:pointer; font-size:14px; }
+
+  /* QR Code display */
+  .qr-display { display:flex; flex-direction:column; align-items:center; gap:10px; padding:12px; }
+  #qrCanvas canvas, canvas { border-radius:8px; }
+
+  /* Input row with QR button */
+  .input-row { display:flex; gap:8px; align-items:center; }
+  .input-row input { flex:1; }
+  .qr-btn { background:var(--surface2); border:1px solid var(--border); color:var(--yellow); padding:12px 14px; border-radius:10px; cursor:pointer; font-size:18px; white-space:nowrap; flex-shrink:0; }
+  .qr-btn:hover { border-color:var(--yellow); }
+
+  /* Slider */
+  .slider-wrap { padding:4px 0; }
+  input[type=range] { -webkit-appearance:none; background:var(--border); height:6px; border-radius:3px; border:none; padding:0; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:22px; height:22px; border-radius:50%; background:var(--yellow); cursor:pointer; border:2px solid #000; }
+  .slider-labels { display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-top:4px; }
+
+  /* Copy button */
+  .copy-wrap { display:flex; gap:8px; align-items:stretch; }
+  .copy-wrap input, .copy-wrap textarea { flex:1; font-size:12px; }
+  .copy-btn { background:var(--yellow); color:#000; border:none; padding:12px 14px; border-radius:10px; cursor:pointer; font-weight:700; font-size:13px; white-space:nowrap; flex-shrink:0; }
+  .copy-btn:hover { background:var(--yellow-dark); }
+
+  /* Token selector */
+  .token-btn {
+    background:var(--surface2); border:1px solid var(--border); color:var(--text);
+    padding:10px 14px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600;
+    display:flex; align-items:center; gap:6px; transition:all 0.2s;
+  }
+  .token-btn.selected { border-color:var(--yellow); color:var(--yellow); background:rgba(245,197,24,0.08); }
+  .token-grid { display:flex; flex-wrap:wrap; gap:6px; }
+
+  /* Countdown */
+  .countdown-bar { width:100%; height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin:10px 0; }
+  .countdown-fill { height:100%; background:var(--error); border-radius:3px; transition:width 1s linear; }
+  .countdown-num { font-size:28px; font-weight:900; color:var(--error); text-align:center; }
+
+  /* Toast */
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--surface); border:1px solid var(--yellow); color:var(--text); padding:10px 20px; border-radius:10px; z-index:9999; font-size:13px; transition:opacity 0.3s; pointer-events:none; max-width:90%; text-align:center; }
+  .toast.error { border-color:var(--error); }
+  .toast.success { border-color:var(--success); }
+
+  /* Status badge */
+  .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+  .badge-yellow { background:rgba(245,197,24,0.15); color:var(--yellow); border:1px solid rgba(245,197,24,0.3); }
+  .badge-green { background:rgba(34,197,94,0.15); color:var(--success); border:1px solid rgba(34,197,94,0.3); }
+  .badge-red { background:rgba(239,68,68,0.15); color:var(--error); border:1px solid rgba(239,68,68,0.3); }
+  .badge-blue { background:rgba(30,144,255,0.15); color:var(--blue); border:1px solid rgba(30,144,255,0.3); }
+
+  /* Separator */
+  .sep { border:none; border-top:1px solid var(--border); margin:14px 0; }
+
+  /* Loading */
+  .spinner { display:inline-block; width:18px; height:18px; border:2px solid var(--border); border-top-color:var(--yellow); border-radius:50%; animation:spin 0.8s linear infinite; vertical-align:middle; margin-left:6px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* Address display */
+  .addr-display { font-size:11px; color:var(--text-muted); word-break:break-all; background:var(--surface2); padding:8px; border-radius:8px; border:1px solid var(--border); font-family:monospace; }
+
+  /* Scrollable balances */
+  .balances-list { max-height:50vh; overflow-y:auto; padding-right:2px; }
+  .balances-list::-webkit-scrollbar { width:4px; }
+  .balances-list::-webkit-scrollbar-track { background:var(--surface2); border-radius:2px; }
+  .balances-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  /* Tabs */
+  .tabs { display:flex; gap:6px; margin-bottom:14px; }
+  .tab { flex:1; padding:10px; background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; text-align:center; transition:all 0.2s; }
+  .tab.active { background:rgba(245,197,24,0.1); border-color:var(--yellow); color:var(--yellow); }
+
+  label { display:block; font-size:12px; color:var(--text-muted); margin-bottom:6px; font-weight:600; }
+  .row { margin-bottom:14px; }
+  .flex-row { display:flex; gap:8px; align-items:center; justify-content:space-between; }
+  .text-center { text-align:center; }
+  .mt-8 { margin-top:8px; }
+  .mt-12 { margin-top:12px; }
+
+  /* Welcome */
+  .welcome-icon { font-size:64px; text-align:center; margin:20px 0 10px; }
+  .welcome-title { font-size:24px; font-weight:800; color:var(--yellow); text-align:center; margin-bottom:8px; }
+  .welcome-sub { color:var(--text-muted); text-align:center; font-size:14px; line-height:1.6; margin-bottom:24px; }
+
+  /* Network icons colors */
+  .eth-icon { background:#627eea22; color:#627eea; }
+  .bnb-icon { background:#f3ba2f22; color:#f3ba2f; }
+  .sol-icon { background:#9945ff22; color:#9945ff; }
+  .trx-icon { background:#e5000022; color:#e50000; }
+  .btc-icon { background:#f7931a22; color:#f7931a; }
+  .ltc-icon { background:#bfbbbb22; color:#bfbbbb; }
+  .pol-icon { background:#8247e522; color:#8247e5; }
+  .avax-icon { background:#e8413422; color:#e84134; }
+  .arb-icon { background:#2d374822; color:#96bedc; }
+  .op-icon { background:#ff040422; color:#ff0404; }
+  .base-icon { background:#0052ff22; color:#0052ff; }
+  .celo-icon { background:#fcff5222; color:#35d07f; }
+  .linea-icon { background:#61dfff22; color:#61dfff; }
+  .blast-icon { background:#fcfc0322; color:#fcfc03; }
+  .scroll-icon { background:#ffeeda22; color:#ffb800; }
+  .opbnb-icon { background:#f3ba2f22; color:#f3ba2f; }
+  .usdt-icon { background:#26a17b22; color:#26a17b; }
+</style>
+</head>
+<body>
+
+<!-- ===== SCREEN 0: Welcome / Entry ===== -->
+<div id="screen-welcome" class="screen active">
+  <div class="welcome-icon">🔐</div>
+  <div class="welcome-title">محفظة التشفير</div>
+  <div class="welcome-sub">أدخل عنوانك العام أو المفتاح الخاص لفتح المحفظة بشكل آمن</div>
+
+  <div class="card">
+    <div class="card-title">طريقة الدخول</div>
+    <div class="tabs">
+      <div class="tab active" onclick="setEntryMode('address')" id="tab-addr">عنوان عام</div>
+      <div class="tab" onclick="setEntryMode('key')" id="tab-key">مفتاح خاص</div>
+    </div>
+
+    <!-- Address mode -->
+    <div id="entry-address">
+      <div class="row">
+        <label>العنوان العام</label>
+        <div class="input-row">
+          <input type="text" id="inp-address" placeholder="0x... أو أدخل عنوان بتكوين / ليتكوين / سولانا / ترون" autocomplete="off">
+          <button class="qr-btn" onclick="openQR('inp-address')">📷</button>
+        </div>
+      </div>
+      <div class="row">
+        <label>نوع الشبكة (لعناوين بتكوين / ليتكوين / سولانا / ترون)</label>
+        <select id="sel-addr-network">
+          <option value="auto">تلقائي (EVM)</option>
+          <option value="btc">بتكوين BTC</option>
+          <option value="ltc">ليتكوين LTC</option>
+          <option value="sol">سولانا SOL</option>
+          <option value="trx">ترون TRX</option>
+        </select>
+      </div>
+      <button class="btn btn-yellow" onclick="openWalletFromAddress()">فتح المحفظة (قراءة فقط)</button>
+    </div>
+
+    <!-- Key mode -->
+    <div id="entry-key" style="display:none">
+      <div class="row">
+        <label>نوع الشبكة</label>
+        <div class="network-grid">
+          <div class="net-btn" onclick="selectKeyNet('evm')" id="keynet-evm">
+            <span class="net-icon">⬡</span>EVM
+          </div>
+          <div class="net-btn" onclick="selectKeyNet('sol')" id="keynet-sol">
+            <span class="net-icon">◎</span>سولانا
+          </div>
+          <div class="net-btn" onclick="selectKeyNet('trx')" id="keynet-trx">
+            <span class="net-icon">🔺</span>ترون
+          </div>
+          <div class="net-btn" onclick="selectKeyNet('btc')" id="keynet-btc">
+            <span class="net-icon">₿</span>بتكوين
+          </div>
+          <div class="net-btn" onclick="selectKeyNet('ltc')" id="keynet-ltc">
+            <span class="net-icon">Ł</span>ليتكوين
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <label>المفتاح الخاص</label>
+        <div class="input-row">
+          <input type="password" id="inp-privkey" placeholder="أدخل المفتاح الخاص..." autocomplete="off">
+          <button class="qr-btn" onclick="openQR('inp-privkey')">📷</button>
+        </div>
+      </div>
+      <button class="btn btn-yellow" onclick="openWalletFromKey()">فتح المحفظة</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCREEN 1: Wallet Dashboard ===== -->
+<div id="screen-wallet" class="screen">
+  <div class="header">
+    <button class="back-btn" onclick="goBack('screen-welcome')">← خروج</button>
+    <h1>المحفظة</h1>
+    <span id="wallet-type-badge" class="badge badge-green">EVM</span>
+  </div>
+
+  <div class="card">
+    <div class="card-title">العنوان</div>
+    <div class="addr-display" id="wallet-address-display">-</div>
+    <div class="mt-8">
+      <button class="btn btn-outline btn-sm" onclick="copyText(document.getElementById('wallet-address-display').textContent)">نسخ العنوان</button>
+    </div>
+  </div>
+
+  <!-- Network selection for balances -->
+  <div class="card">
+    <div class="card-title">اختر الشبكة لعرض الرصيد</div>
+    <div class="network-grid" id="balance-networks"></div>
+  </div>
+
+  <!-- Balances -->
+  <div class="card" id="balance-card" style="display:none">
+    <div class="flex-row">
+      <div class="card-title" id="balance-net-title">الرصيد</div>
+      <div class="spinner" id="balance-spinner"></div>
+    </div>
+    <div class="balances-list" id="balances-list"></div>
+  </div>
+
+  <!-- Actions -->
+  <div class="card">
+    <div class="card-title">الإجراءات</div>
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-yellow" style="flex:1" onclick="goToScreen('screen-send')">إرسال</button>
+      <button class="btn btn-blue" style="flex:1" onclick="goToScreen('screen-broadcast')">بث معاملة</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCREEN 2: Send Transaction ===== -->
+<div id="screen-send" class="screen">
+  <div class="header">
+    <button class="back-btn" onclick="goBack('screen-wallet')">← رجوع</button>
+    <h1>إرسال</h1>
+    <span class="badge badge-yellow" id="send-net-badge">-</span>
+  </div>
+
+  <div class="card">
+    <div class="card-title">الشبكة والرمز</div>
+    <div class="row">
+      <label>الشبكة</label>
+      <select id="send-network" onchange="updateSendTokens()"></select>
+    </div>
+    <div class="row">
+      <label>الرمز / العملة</label>
+      <div class="token-grid" id="send-tokens"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">عنوان المستقبل</div>
+    <div class="row">
+      <div class="input-row">
+        <input type="text" id="send-recipient" placeholder="عنوان المستقبل..." autocomplete="off">
+        <button class="qr-btn" onclick="openQR('send-recipient')">📷</button>
+      </div>
+    </div>
+    <div class="row text-center">
+      <button class="btn btn-outline btn-sm" onclick="showQRForInput('send-recipient', 'عنوان المستقبل')">عرض QR للمستقبل</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">المبلغ</div>
+    <div class="row">
+      <label>الكمية</label>
+      <input type="number" id="send-amount" placeholder="0.00" step="any" oninput="syncAmountFromInput()">
+    </div>
+    <div class="row">
+      <div class="flex-row">
+        <label>النسبة من الرصيد</label>
+        <span id="slider-pct-label" class="badge badge-yellow">0%</span>
+      </div>
+      <div class="slider-wrap">
+        <input type="range" id="amount-slider" min="0" max="100" value="0" oninput="syncAmountFromSlider(this.value)">
+        <div class="slider-labels"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div>
+      </div>
+    </div>
+    <div class="flex-row">
+      <span class="card-title">الرصيد المتاح:</span>
+      <span id="send-available" class="badge badge-yellow">0</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <button class="btn btn-yellow" onclick="buildTransaction()">تكوين المعاملة</button>
+  </div>
+
+  <!-- Unsigned TX display -->
+  <div class="card" id="unsigned-tx-card" style="display:none">
+    <div class="card-title">المعاملة غير الموقعة</div>
+    <div class="row">
+      <div class="copy-wrap">
+        <textarea id="unsigned-tx-display" readonly rows="5" style="font-size:11px;font-family:monospace;direction:ltr"></textarea>
+        <button class="copy-btn" onclick="copyText(document.getElementById('unsigned-tx-display').value)">نسخ</button>
+      </div>
+    </div>
+    <div class="row text-center">
+      <button class="btn btn-outline btn-sm" onclick="showQRForInput('unsigned-tx-display', 'معاملة غير موقعة')">عرض QR</button>
+    </div>
+    <hr class="sep">
+    <div class="card-title">لصق التوقيع</div>
+    <div class="row">
+      <div class="input-row">
+        <textarea id="sig-input" placeholder="الصق التوقيع هنا..." rows="3" style="font-size:12px;font-family:monospace;direction:ltr"></textarea>
+        <button class="qr-btn" onclick="openQR('sig-input')">📷</button>
+      </div>
+    </div>
+    <button class="btn btn-success mt-8" onclick="initiatebroadcast()">بث المعاملة الموقعة</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN 3: Broadcast with countdown ===== -->
+<div id="screen-broadcast" class="screen">
+  <div class="header">
+    <button class="back-btn" onclick="goBack('screen-send')">← رجوع</button>
+    <h1>بث المعاملة</h1>
+    <span class="badge badge-red">تنبيه</span>
+  </div>
+
+  <div class="card text-center">
+    <div class="card-title">سيتم بث المعاملة خلال</div>
+    <div class="countdown-num" id="countdown-num">30</div>
+    <div class="countdown-bar"><div class="countdown-fill" id="countdown-fill" style="width:100%"></div></div>
+    <div style="color:var(--text-muted);font-size:12px;margin-bottom:16px;">يمكنك إلغاء المعاملة الآن</div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-danger" style="flex:1" onclick="cancelBroadcast()">إلغاء</button>
+      <button class="btn btn-success" style="flex:1" onclick="broadcastNow()">بث الآن</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">تفاصيل المعاملة</div>
+    <div id="broadcast-details" style="font-size:12px;color:var(--text-muted);word-break:break-all"></div>
+  </div>
+</div>
+
+<!-- ===== SCREEN 4: TX Result ===== -->
+<div id="screen-result" class="screen">
+  <div class="header">
+    <button class="back-btn" onclick="goBack('screen-wallet')">← المحفظة</button>
+    <h1>نتيجة المعاملة</h1>
+  </div>
+  <div class="card text-center">
+    <div id="result-icon" style="font-size:64px;margin:16px 0">⌛</div>
+    <div id="result-title" style="font-size:18px;font-weight:700;margin-bottom:8px">جاري المعالجة...</div>
+    <div id="result-msg" style="color:var(--text-muted);font-size:13px;word-break:break-all;line-height:1.6"></div>
+  </div>
+  <div class="card" id="result-hash-card" style="display:none">
+    <div class="card-title">Hash المعاملة</div>
+    <div class="copy-wrap">
+      <input type="text" id="result-hash" readonly>
+      <button class="copy-btn" onclick="copyText(document.getElementById('result-hash').value)">نسخ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== QR Scanner Overlay ===== -->
+<div id="qr-overlay" class="qr-overlay" style="display:none">
+  <h3>📷 امسح رمز QR</h3>
+  <video id="qrVideo" autoplay playsinline muted></video>
+  <canvas id="qrCanvas" style="display:none"></canvas>
+  <button class="qr-close" onclick="closeQR()">إغلاق</button>
+</div>
+
+<!-- ===== QR Display Overlay ===== -->
+<div id="qr-display-overlay" class="qr-overlay" style="display:none">
+  <h3 id="qr-display-title">رمز QR</h3>
+  <canvas id="qr-display-canvas"></canvas>
+  <button class="qr-close" onclick="closeQRDisplay()">إغلاق</button>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast" style="display:none"></div>
+
+<script>
+// ================================================================
+// CONFIGURATION
+// ================================================================
+const NETWORKS = {
+  evm: [
+    { id:'eth',       name:'Ethereum',   symbol:'ETH',        chainId:1,        rpc:'https://rpc.ankr.com/eth',             explorer:'https://etherscan.io/tx/', icon:'⬡', iconClass:'eth-icon' },
+    { id:'polygon',   name:'Polygon',    symbol:'MATIC',      chainId:137,      rpc:'https://rpc.ankr.com/polygon',         explorer:'https://polygonscan.com/tx/', icon:'⬡', iconClass:'pol-icon' },
+    { id:'celo',      name:'Celo',       symbol:'CELO',       chainId:42220,    rpc:'https://forno.celo.org',               explorer:'https://celoscan.io/tx/', icon:'🟡', iconClass:'celo-icon' },
+    { id:'bep20',     name:'BNB Chain',  symbol:'BNB',        chainId:56,       rpc:'https://rpc.ankr.com/bsc',             explorer:'https://bscscan.com/tx/', icon:'🟡', iconClass:'bnb-icon' },
+    { id:'blast',     name:'Blast',      symbol:'ETH',        chainId:81457,    rpc:'https://rpc.ankr.com/blast',           explorer:'https://blastscan.io/tx/', icon:'💥', iconClass:'blast-icon' },
+    { id:'linea',     name:'Linea',      symbol:'ETH',        chainId:59144,    rpc:'https://rpc.linea.build',              explorer:'https://lineascan.build/tx/', icon:'▬', iconClass:'linea-icon' },
+    { id:'base',      name:'Base',       symbol:'ETH',        chainId:8453,     rpc:'https://mainnet.base.org',             explorer:'https://basescan.org/tx/', icon:'🔵', iconClass:'base-icon' },
+    { id:'optimism',  name:'Optimism',   symbol:'ETH',        chainId:10,       rpc:'https://mainnet.optimism.io',          explorer:'https://optimistic.etherscan.io/tx/', icon:'🔴', iconClass:'op-icon' },
+    { id:'arbitrum',  name:'Arbitrum',   symbol:'ETH',        chainId:42161,    rpc:'https://rpc.ankr.com/arbitrum',        explorer:'https://arbiscan.io/tx/', icon:'🔷', iconClass:'arb-icon' },
+    { id:'avalanche', name:'Avalanche',  symbol:'AVAX',       chainId:43114,    rpc:'https://rpc.ankr.com/avalanche',       explorer:'https://snowtrace.io/tx/', icon:'🔺', iconClass:'avax-icon' },
+    { id:'opbnb',     name:'opBNB',      symbol:'BNB',        chainId:204,      rpc:'https://opbnb-mainnet-rpc.bnbchain.org', explorer:'https://opbnbscan.com/tx/', icon:'🟡', iconClass:'opbnb-icon' },
+    { id:'scroll',    name:'Scroll',     symbol:'ETH',        chainId:534352,   rpc:'https://rpc.scroll.io',                explorer:'https://scrollscan.com/tx/', icon:'📜', iconClass:'scroll-icon' },
+  ],
+  sol: [{ id:'sol', name:'Solana', symbol:'SOL', rpc:'https://api.mainnet-beta.solana.com', explorer:'https://solscan.io/tx/', icon:'◎', iconClass:'sol-icon' }],
+  trx: [{ id:'trx', name:'Tron', symbol:'TRX', rpc:'https://api.trongrid.io', explorer:'https://tronscan.org/#/transaction/', icon:'🔺', iconClass:'trx-icon' }],
+  btc: [{ id:'btc', name:'Bitcoin', symbol:'BTC', rpc:'', explorer:'https://blockstream.info/tx/', icon:'₿', iconClass:'btc-icon' }],
+  ltc: [{ id:'ltc', name:'Litecoin', symbol:'LTC', rpc:'', explorer:'https://blockchair.com/litecoin/transaction/', icon:'Ł', iconClass:'ltc-icon' }],
+};
+
+const USDT_CONTRACTS = {
+  eth:       '0xdac17f958d2ee523a2206206994597c13d831ec7',
+  polygon:   '0xc2132d05d31c914a87c6611c10748aeb04b58e8f',
+  celo:      '0x617f3112bf5397D0467D315cC709EF968D9ba546',
+  bep20:     '0x55d398326f99059ff775485246999027b3197955',
+  blast:     '0x4300000000000000000000000000000000000003',
+  linea:     '0xA219439258ca9da29E9Cc4cE5596924745e12B93',
+  base:      '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2',
+  optimism:  '0x94b008aa00579c1307b0ef2c499ad98a8ce58e58',
+  arbitrum:  '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',
+  avalanche: '0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7',
+  opbnb:     '0x9e5aac1ba1a2e6aed6b32689dfcf62a509ca96f3',
+  scroll:    '0xf55BEC9cafDbE8730f096Aa55dad6D22d44099Df',
+};
+
+const ERC20_ABI = [
+  'function balanceOf(address owner) view returns (uint256)',
+  'function decimals() view returns (uint8)',
+  'function transfer(address to, uint256 amount) returns (bool)',
+];
+
+// State
+let state = {
+  walletType: null, // 'evm','sol','trx','btc','ltc'
+  address: null,
+  privateKey: null,
+  readOnly: false,
+  selectedSendNetwork: null,
+  selectedSendToken: null,
+  selectedSendBalance: 0,
+  unsignedTx: null,
+  pendingBroadcast: null,
+  countdownTimer: null,
+  prices: {},
+};
+
+// ================================================================
+// ENTRY
+// ================================================================
+function setEntryMode(mode) {
+  document.getElementById('entry-address').style.display = mode==='address' ? 'block' : 'none';
+  document.getElementById('entry-key').style.display = mode==='key' ? 'block' : 'none';
+  document.getElementById('tab-addr').classList.toggle('active', mode==='address');
+  document.getElementById('tab-key').classList.toggle('active', mode==='key');
+}
+
+function selectKeyNet(net) {
+  document.querySelectorAll('[id^=keynet-]').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('keynet-'+net).classList.add('selected');
+  state.selectedKeyNetwork = net;
+}
+
+function openWalletFromAddress() {
+  const addr = document.getElementById('inp-address').value.trim();
+  const net = document.getElementById('sel-addr-network').value;
+  if (!addr) { toast('أدخل العنوان أولاً'); return; }
+
+  let walletType = 'evm';
+  if (net === 'btc' || addr.match(/^[13bc1][a-zA-HJ-NP-Z0-9]{25,87}$/)) walletType = 'btc';
+  else if (net === 'ltc' || addr.match(/^[LMl3][a-zA-HJ-NP-Z0-9]{26,33}$/)) walletType = 'ltc';
+  else if (net === 'sol' || addr.match(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/)) walletType = net==='sol' ? 'sol' : (net==='auto' ? 'evm' : net);
+  else if (net === 'trx' || addr.startsWith('T')) walletType = 'trx';
+  if (net !== 'auto') walletType = net;
+
+  state.address = addr;
+  state.walletType = walletType;
+  state.privateKey = null;
+  state.readOnly = true;
+
+  openWallet();
+}
+
+function openWalletFromKey() {
+  const key = document.getElementById('inp-privkey').value.trim();
+  const net = state.selectedKeyNetwork;
+  if (!net) { toast('اختر نوع الشبكة'); return; }
+  if (!key) { toast('أدخل المفتاح الخاص'); return; }
+
+  try {
+    let address = '';
+    if (net === 'evm') {
+      const wallet = new ethers.Wallet(key.startsWith('0x') ? key : '0x'+key);
+      address = wallet.address;
+    } else if (net === 'sol') {
+      address = '[سولانا: عنوان مشتق من المفتاح]';
+      toast('ملاحظة: استخراج عنوان سولانا يتطلب مكتبة @solana/web3.js', 3000);
+    } else if (net === 'trx') {
+      address = '[ترون: يتطلب TronWeb]';
+      toast('ملاحظة: استخراج عنوان ترون يتطلب TronWeb', 3000);
+    } else if (net === 'btc') {
+      address = '[بتكوين: يتطلب مكتبة bitcoinjs-lib]';
+      toast('ملاحظة: استخراج عنوان بتكوين يتطلب مكتبة متخصصة', 3000);
+    } else if (net === 'ltc') {
+      address = '[ليتكوين: يتطلب مكتبة متخصصة]';
+    }
+
+    state.walletType = net;
+    state.address = address;
+    state.privateKey = key;
+    state.readOnly = false;
+    openWallet();
+  } catch(e) {
+    toast('خطأ في المفتاح: ' + e.message, 4000, 'error');
+  }
+}
+
+function openWallet() {
+  document.getElementById('wallet-address-display').textContent = state.address;
+  const badges = {evm:'EVM',sol:'سولانا',trx:'ترون',btc:'بتكوين',ltc:'ليتكوين'};
+  document.getElementById('wallet-type-badge').textContent = badges[state.walletType] || state.walletType;
+
+  buildBalanceNetworkButtons();
+  populateSendNetworkSelector();
+  goToScreen('screen-wallet');
+}
+
+// ================================================================
+// BALANCE NETWORKS
+// ================================================================
+function buildBalanceNetworkButtons() {
+  const container = document.getElementById('balance-networks');
+  container.innerHTML = '';
+
+  const nets = getAvailableNetworks();
+  nets.forEach(net => {
+    const btn = document.createElement('div');
+    btn.className = 'net-btn';
+    btn.innerHTML = `<span class="net-icon">${net.icon}</span><span>${net.name}</span>`;
+    btn.onclick = () => fetchBalances(net);
+    container.appendChild(btn);
+  });
+}
+
+function getAvailableNetworks() {
+  if (state.walletType === 'sol') return NETWORKS.sol;
+  if (state.walletType === 'trx') return NETWORKS.trx;
+  if (state.walletType === 'btc') return NETWORKS.btc;
+  if (state.walletType === 'ltc') return NETWORKS.ltc;
+  return NETWORKS.evm; // default EVM
+}
+
+async function fetchBalances(net) {
+  const card = document.getElementById('balance-card');
+  const spinner = document.getElementById('balance-spinner');
+  const list = document.getElementById('balances-list');
+  const title = document.getElementById('balance-net-title');
+
+  card.style.display = 'block';
+  spinner.style.display = 'inline-block';
+  title.textContent = `رصيد ${net.name}`;
+  list.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:16px">جاري التحميل...</div>';
+
+  try {
+    let items = [];
+    if (state.walletType === 'evm' || (state.walletType === null)) {
+      items = await fetchEVMBalances(net, state.address);
+    } else if (state.walletType === 'sol') {
+      items = await fetchSolanaBalances(state.address);
+    } else if (state.walletType === 'trx') {
+      items = await fetchTronBalances(state.address);
+    } else if (state.walletType === 'btc') {
+      items = await fetchBTCBalance(state.address);
+    } else if (state.walletType === 'ltc') {
+      items = await fetchLTCBalance(state.address);
+    }
+
+    renderBalances(list, items);
+  } catch(e) {
+    list.innerHTML = `<div style="color:var(--error);padding:12px">خطأ: ${e.message}</div>`;
+  }
+  spinner.style.display = 'none';
+}
+
+async function fetchEVMBalances(net, address) {
+  const provider = new ethers.providers.JsonRpcProvider(net.rpc);
+  const items = [];
+
+  // Native balance
+  const nativeBal = await provider.getBalance(address);
+  items.push({
+    symbol: net.symbol,
+    balance: ethers.utils.formatEther(nativeBal),
+    icon: net.icon,
+    iconClass: net.iconClass,
+    name: net.name,
+  });
+
+  // USDT if available
+  if (USDT_CONTRACTS[net.id]) {
+    try {
+      const contract = new ethers.Contract(USDT_CONTRACTS[net.id], ERC20_ABI, provider);
+      const [bal, decimals] = await Promise.all([contract.balanceOf(address), contract.decimals()]);
+      const formatted = ethers.utils.formatUnits(bal, decimals);
+      items.push({
+        symbol: 'USDT',
+        balance: formatted,
+        icon: '💵',
+        iconClass: 'usdt-icon',
+        name: `USDT (${net.name})`,
+      });
+    } catch(e) { /* skip */ }
+  }
+  return items;
+}
+
+async function fetchSolanaBalances(address) {
+  const resp = await fetch('https://api.mainnet-beta.solana.com', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({jsonrpc:'2.0',id:1,method:'getBalance',params:[address]})
+  });
+  const data = await resp.json();
+  const lamports = data.result?.value || 0;
+  const items = [{ symbol:'SOL', balance:(lamports/1e9).toFixed(6), icon:'◎', iconClass:'sol-icon', name:'Solana' }];
+
+  // USDT-SPL
+  try {
+    const r2 = await fetch('https://api.mainnet-beta.solana.com', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({jsonrpc:'2.0',id:2,method:'getTokenAccountsByOwner',params:[address,{mint:'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'},{encoding:'jsonParsed'}]})
+    });
+    const d2 = await r2.json();
+    const accounts = d2.result?.value || [];
+    if (accounts.length > 0) {
+      const amt = accounts[0].account?.data?.parsed?.info?.tokenAmount?.uiAmount || 0;
+      items.push({ symbol:'USDT', balance: amt.toFixed(6), icon:'💵', iconClass:'usdt-icon', name:'USDT (Solana)' });
+    }
+  } catch(e) {}
+  return items;
+}
+
+async function fetchTronBalances(address) {
+  const resp = await fetch(`https://apilist.tronscan.org/api/account?address=${address}`);
+  const data = await resp.json();
+  const trxBal = (data.balance || 0) / 1e6;
+  const items = [{ symbol:'TRX', balance: trxBal.toFixed(6), icon:'🔺', iconClass:'trx-icon', name:'Tron' }];
+
+  const tokens = data.trc20token_balances || [];
+  const usdt = tokens.find(t => t.tokenId === 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t');
+  if (usdt) {
+    items.push({ symbol:'USDT', balance: (parseFloat(usdt.balance)/1e6).toFixed(6), icon:'💵', iconClass:'usdt-icon', name:'USDT (TRC20)' });
+  }
+  return items;
+}
+
+async function fetchBTCBalance(address) {
+  const resp = await fetch(`https://blockstream.info/api/address/${address}`);
+  const data = await resp.json();
+  const sat = (data.chain_stats?.funded_txo_sum || 0) - (data.chain_stats?.spent_txo_sum || 0);
+  return [{ symbol:'BTC', balance:(sat/1e8).toFixed(8), icon:'₿', iconClass:'btc-icon', name:'Bitcoin' }];
+}
+
+async function fetchLTCBalance(address) {
+  const resp = await fetch(`https://blockchair.com/litecoin/dashboards/address/${address}?key=`);
+  const data = await resp.json();
+  const sat = data.data?.[address]?.address?.balance || 0;
+  return [{ symbol:'LTC', balance:(sat/1e8).toFixed(8), icon:'Ł', iconClass:'ltc-icon', name:'Litecoin' }];
+}
+
+function renderBalances(container, items) {
+  if (!items.length) { container.innerHTML='<div style="color:var(--text-muted);text-align:center;padding:16px">لا توجد أرصدة</div>'; return; }
+  container.innerHTML = items.map(item => `
+    <div class="balance-item">
+      <div class="balance-symbol">
+        <div class="coin-icon ${item.iconClass}">${item.icon}</div>
+        <div>
+          <div style="font-weight:700">${item.symbol}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${item.name}</div>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div class="balance-amount">${parseFloat(item.balance).toLocaleString('en', {maximumFractionDigits:6})}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ================================================================
+// SEND
+// ================================================================
+function populateSendNetworkSelector() {
+  const sel = document.getElementById('send-network');
+  sel.innerHTML = '';
+  const nets = getAvailableNetworks();
+  nets.forEach(net => {
+    const opt = document.createElement('option');
+    opt.value = net.id;
+    opt.textContent = `${net.icon} ${net.name}`;
+    sel.appendChild(opt);
+  });
+  updateSendTokens();
+}
+
+function updateSendTokens() {
+  const netId = document.getElementById('send-network').value;
+  const nets = getAvailableNetworks();
+  const net = nets.find(n => n.id === netId);
+  if (!net) return;
+
+  state.selectedSendNetwork = net;
+  document.getElementById('send-net-badge').textContent = net.name;
+
+  const container = document.getElementById('send-tokens');
+  container.innerHTML = '';
+
+  const tokens = [{ id:'native', symbol: net.symbol, name: net.name, iconClass: net.iconClass, icon: net.icon }];
+  if (USDT_CONTRACTS[netId]) tokens.push({ id:'usdt', symbol:'USDT', name:`USDT (${net.name})`, iconClass:'usdt-icon', icon:'💵' });
+
+  tokens.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'token-btn';
+    btn.innerHTML = `<span>${t.icon}</span>${t.symbol}`;
+    btn.onclick = () => {
+      document.querySelectorAll('.token-btn').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      state.selectedSendToken = t;
+      loadSendBalance(t, net);
+    };
+    container.appendChild(btn);
+  });
+
+  // Auto-select first
+  if (container.firstChild) container.firstChild.click();
+}
+
+async function loadSendBalance(token, net) {
+  if (state.walletType !== 'evm' && state.walletType !== null) {
+    document.getElementById('send-available').textContent = '---';
+    return;
+  }
+  try {
+    const provider = new ethers.providers.JsonRpcProvider(net.rpc);
+    let bal = '0';
+    if (token.id === 'native') {
+      const b = await provider.getBalance(state.address);
+      bal = parseFloat(ethers.utils.formatEther(b)).toFixed(6);
+    } else if (token.id === 'usdt' && USDT_CONTRACTS[net.id]) {
+      const c = new ethers.Contract(USDT_CONTRACTS[net.id], ERC20_ABI, provider);
+      const [b, d] = await Promise.all([c.balanceOf(state.address), c.decimals()]);
+      bal = parseFloat(ethers.utils.formatUnits(b, d)).toFixed(6);
+    }
+    state.selectedSendBalance = parseFloat(bal);
+    document.getElementById('send-available').textContent = `${bal} ${token.symbol}`;
+  } catch(e) {
+    document.getElementById('send-available').textContent = 'خطأ';
+  }
+}
+
+function syncAmountFromSlider(pct) {
+  document.getElementById('slider-pct-label').textContent = pct + '%';
+  const amt = (state.selectedSendBalance * pct / 100).toFixed(6);
+  document.getElementById('send-amount').value = parseFloat(amt) || '';
+}
+
+function syncAmountFromInput() {
+  const amt = parseFloat(document.getElementById('send-amount').value) || 0;
+  const pct = state.selectedSendBalance > 0 ? Math.min(100, (amt / state.selectedSendBalance * 100)).toFixed(0) : 0;
+  document.getElementById('amount-slider').value = pct;
+  document.getElementById('slider-pct-label').textContent = pct + '%';
+}
+
+async function buildTransaction() {
+  const recipient = document.getElementById('send-recipient').value.trim();
+  const amount = document.getElementById('send-amount').value.trim();
+  const net = state.selectedSendNetwork;
+  const token = state.selectedSendToken;
+
+  if (!recipient) { toast('أدخل عنوان المستقبل'); return; }
+  if (!amount || parseFloat(amount) <= 0) { toast('أدخل مبلغاً صحيحاً'); return; }
+  if (!net || !token) { toast('اختر الشبكة والرمز'); return; }
+
+  try {
+    let txData = {};
+
+    if (state.walletType === 'evm' || state.walletType === null) {
+      const provider = new ethers.providers.JsonRpcProvider(net.rpc);
+      const [nonce, gasPrice, feeData] = await Promise.all([
+        provider.getTransactionCount(state.address, 'pending'),
+        provider.getGasPrice(),
+        provider.getFeeData().catch(() => null),
+      ]);
+
+      if (token.id === 'native') {
+        txData = {
+          type: 'evm-native',
+          network: net.name,
+          chainId: net.chainId,
+          from: state.address,
+          to: recipient,
+          value: ethers.utils.parseEther(amount).toHexString(),
+          valueEth: amount,
+          nonce: nonce,
+          gasLimit: '0x5208',
+          gasPrice: gasPrice.toHexString(),
+          symbol: net.symbol,
+        };
+      } else {
+        const contract = new ethers.Contract(USDT_CONTRACTS[net.id], ERC20_ABI, provider);
+        const decimals = await contract.decimals();
+        const amountWei = ethers.utils.parseUnits(amount, decimals);
+        const iface = new ethers.utils.Interface(ERC20_ABI);
+        const data = iface.encodeFunctionData('transfer', [recipient, amountWei]);
+        const gas = await provider.estimateGas({ from: state.address, to: USDT_CONTRACTS[net.id], data });
+
+        txData = {
+          type: 'evm-erc20',
+          network: net.name,
+          chainId: net.chainId,
+          from: state.address,
+          to: USDT_CONTRACTS[net.id],
+          value: '0x0',
+          valueEth: '0',
+          data: data,
+          nonce: nonce,
+          gasLimit: gas.toHexString(),
+          gasPrice: gasPrice.toHexString(),
+          recipient: recipient,
+          amount: amount,
+          symbol: 'USDT',
+        };
+      }
+    } else if (state.walletType === 'btc') {
+      txData = { type:'btc', from: state.address, to: recipient, amount: amount, symbol:'BTC', network:'Bitcoin' };
+    } else if (state.walletType === 'ltc') {
+      txData = { type:'ltc', from: state.address, to: recipient, amount: amount, symbol:'LTC', network:'Litecoin' };
+    } else if (state.walletType === 'sol') {
+      txData = { type:'sol', from: state.address, to: recipient, amount: amount, symbol:'SOL', network:'Solana' };
+    } else if (state.walletType === 'trx') {
+      txData = { type:'trx', from: state.address, to: recipient, amount: amount, symbol:'TRX', network:'Tron' };
+    }
+
+    const txStr = JSON.stringify(txData, null, 2);
+    state.unsignedTx = txStr;
+    document.getElementById('unsigned-tx-display').value = txStr;
+    document.getElementById('unsigned-tx-card').style.display = 'block';
+    document.getElementById('unsigned-tx-card').scrollIntoView({behavior:'smooth'});
+    toast('تم تكوين المعاملة بنجاح', 2000, 'success');
+
+  } catch(e) {
+    toast('خطأ في تكوين المعاملة: ' + e.message, 5000, 'error');
+  }
+}
+
+function initiatebroadcast() {
+  const sig = document.getElementById('sig-input').value.trim();
+  if (!sig) { toast('الصق التوقيع أولاً'); return; }
+  state.pendingBroadcast = { tx: state.unsignedTx, signature: sig };
+
+  // Parse broadcast details
+  let details = '';
+  try {
+    const tx = JSON.parse(state.unsignedTx);
+    details = `الشبكة: ${tx.network || '-'}<br>من: ${tx.from || '-'}<br>إلى: ${tx.to || tx.recipient || '-'}<br>المبلغ: ${tx.valueEth || tx.amount || '-'} ${tx.symbol || ''}`;
+  } catch(e) {}
+  document.getElementById('broadcast-details').innerHTML = details;
+
+  goToScreen('screen-broadcast');
+  startCountdown();
+}
+
+// ================================================================
+// BROADCAST
+// ================================================================
+let countdownSec = 30;
+function startCountdown() {
+  countdownSec = 30;
+  document.getElementById('countdown-num').textContent = countdownSec;
+  document.getElementById('countdown-fill').style.width = '100%';
+  clearInterval(state.countdownTimer);
+  state.countdownTimer = setInterval(() => {
+    countdownSec--;
+    document.getElementById('countdown-num').textContent = countdownSec;
+    document.getElementById('countdown-fill').style.width = (countdownSec/30*100) + '%';
+    if (countdownSec <= 0) { clearInterval(state.countdownTimer); broadcastNow(); }
+  }, 1000);
+}
+
+function cancelBroadcast() {
+  clearInterval(state.countdownTimer);
+  state.pendingBroadcast = null;
+  goBack('screen-send');
+  toast('تم إلغاء المعاملة', 2000);
+}
+
+async function broadcastNow() {
+  clearInterval(state.countdownTimer);
+  if (!state.pendingBroadcast) return;
+
+  goToScreen('screen-result');
+  document.getElementById('result-icon').textContent = '⌛';
+  document.getElementById('result-title').textContent = 'جاري البث...';
+  document.getElementById('result-msg').textContent = 'يتم إرسال المعاملة إلى الشبكة...';
+  document.getElementById('result-hash-card').style.display = 'none';
+
+  try {
+    const { tx, signature } = state.pendingBroadcast;
+    const txObj = JSON.parse(tx);
+
+    if (txObj.type === 'evm-native' || txObj.type === 'evm-erc20') {
+      // Parse signature: expected format is the raw signed tx hex
+      const net = NETWORKS.evm.find(n => n.chainId === txObj.chainId);
+      if (!net) throw new Error('شبكة غير معروفة');
+
+      const provider = new ethers.providers.JsonRpcProvider(net.rpc);
+      let signedTx = signature.trim();
+      if (!signedTx.startsWith('0x')) signedTx = '0x' + signedTx;
+
+      const resp = await provider.sendTransaction(signedTx);
+      document.getElementById('result-icon').textContent = '✅';
+      document.getElementById('result-title').textContent = 'تم البث بنجاح!';
+      document.getElementById('result-msg').textContent = `تمت إضافة المعاملة إلى شبكة ${txObj.network}`;
+      document.getElementById('result-hash').value = resp.hash;
+      document.getElementById('result-hash-card').style.display = 'block';
+    } else {
+      // Non-EVM: show verification info
+      document.getElementById('result-icon').textContent = '📋';
+      document.getElementById('result-title').textContent = 'معاملة جاهزة للبث';
+      document.getElementById('result-msg').textContent = `هذه الشبكة تتطلب أدوات بث متخصصة.\n\nالتوقيع المُعطى:\n${signature}`;
+    }
+  } catch(e) {
+    document.getElementById('result-icon').textContent = '❌';
+    document.getElementById('result-title').textContent = 'فشل البث';
+    document.getElementById('result-msg').textContent = e.message;
+  }
+}
+
+// ================================================================
+// QR SCANNER
+// ================================================================
+let qrTargetId = null;
+let qrStream = null;
+let qrScanInterval = null;
+
+function openQR(targetInputId) {
+  qrTargetId = targetInputId;
+  document.getElementById('qr-overlay').style.display = 'flex';
+  startQRScan();
+}
+
+async function startQRScan() {
+  try {
+    qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    const video = document.getElementById('qrVideo');
+    video.srcObject = qrStream;
+    video.play();
+
+    const canvas = document.getElementById('qrCanvas');
+    const ctx = canvas.getContext('2d');
+
+    qrScanInterval = setInterval(() => {
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imgData.data, imgData.width, imgData.height);
+        if (code) {
+          const el = document.getElementById(qrTargetId);
+          if (el) el.value = code.data;
+          // Trigger input event
+          el?.dispatchEvent(new Event('input', {bubbles:true}));
+          closeQR();
+          toast('تم قراءة الرمز بنجاح', 2000, 'success');
+        }
+      }
+    }, 300);
+  } catch(e) {
+    toast('تعذر فتح الكاميرا: ' + e.message, 4000, 'error');
+    closeQR();
+  }
+}
+
+function closeQR() {
+  clearInterval(qrScanInterval);
+  if (qrStream) { qrStream.getTracks().forEach(t=>t.stop()); qrStream = null; }
+  document.getElementById('qr-overlay').style.display = 'none';
+}
+
+// ================================================================
+// QR DISPLAY
+// ================================================================
+function showQRForInput(inputId, title) {
+  const el = document.getElementById(inputId);
+  const val = el?.value?.trim() || el?.textContent?.trim();
+  if (!val) { toast('لا توجد بيانات لعرضها'); return; }
+  showQRCode(val, title);
+}
+
+function showQRCode(data, title) {
+  document.getElementById('qr-display-title').textContent = title || 'رمز QR';
+  const canvas = document.getElementById('qr-display-canvas');
+  QRCode.toCanvas(canvas, data, { width: 280, margin: 2, color:{dark:'#000',light:'#fff'} }, (err) => {
+    if (err) { toast('خطأ في إنشاء QR: ' + err.message, 3000, 'error'); return; }
+    document.getElementById('qr-display-overlay').style.display = 'flex';
+  });
+}
+
+function closeQRDisplay() {
+  document.getElementById('qr-display-overlay').style.display = 'none';
+}
+
+// ================================================================
+// UTILITIES
+// ================================================================
+function goToScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function goBack(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function copyText(text) {
+  if (!text || text === '-') { toast('لا يوجد نص للنسخ'); return; }
+  navigator.clipboard.writeText(text).then(() => toast('تم النسخ', 1500, 'success')).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    toast('تم النسخ', 1500, 'success');
+  });
+}
+
+function toast(msg, duration=3000, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast' + (type ? ' '+type : '');
+  el.style.display = 'block';
+  el.style.opacity = '1';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => {
+    el.style.opacity = '0';
+    setTimeout(() => el.style.display = 'none', 300);
+  }, duration);
+}
+</script>
+</body>
+</html>
