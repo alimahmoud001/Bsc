@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محفظة ETH & USDT الساخنة</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --primary-color: #ffcc00;
+            --secondary-bg: #111111;
+            --border-color: #333333;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background-color: var(--secondary-bg);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 0 20px rgba(255, 204, 0, 0.05);
+            box-sizing: border-box;
+        }
+        h1, h2 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #888;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid var(--border-color);
+            background-color: #000;
+            color: #fff;
+            border-radius: 12px;
+            box-sizing: border-box;
+            font-size: 15px;
+            outline: none;
+        }
+        input:focus {
+            border-color: var(--primary-color);
+        }
+        textarea {
+            resize: vertical;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        button {
+            width: 100%;
+            padding: 16px;
+            background-color: var(--primary-color);
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.2s;
+        }
+        button:active {
+            transform: scale(0.97);
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .button-group button {
+            flex: 1;
+            margin-top: 0;
+        }
+        .balance-card {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #222;
+        }
+        .balance-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 8px 0;
+        }
+        .balance-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        .range-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: #333;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 28px;
+            height: 28px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .percentage-badge {
+            display: inline-block;
+            background: var(--primary-color);
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .status-log {
+            font-size: 12px;
+            color: #666;
+            margin-top: 15px;
+            text-align: center;
+            line-height: 1.4;
+        }
+        .error { color: #ff4444; }
+        .success { color: #44ff44; }
+        .hidden { display: none; }
+        .qr-container {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border: 1px solid #222;
+            text-align: center;
+        }
+        #qrcode {
+            display: flex;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        #qrcode canvas {
+            background: white;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .address-display {
+            background: #000;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: var(--primary-color);
+            margin-top: 10px;
+        }
+        .copy-button {
+            background: #222;
+            color: var(--primary-color);
+            border: 1px solid #333;
+            padding: 8px;
+            font-size: 13px;
+            width: auto;
+            margin-top: 8px;
+        }
+        .warning-box {
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid #ff4444;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 12px;
+            color: #ff8888;
+        }
+        .info-box {
+            background: rgba(100, 150, 255, 0.1);
+            border: 1px solid #6496ff;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 12px;
+            color: #8ab4ff;
+        }
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab-buttons button {
+            flex: 1;
+            padding: 12px;
+            margin-top: 0;
+            background: #222;
+            color: #888;
+            border: 1px solid #333;
+        }
+        .tab-buttons button.active {
+            background: var(--primary-color);
+            color: #000;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<!-- شاشة تسجيل الدخول -->
+<div class="container" id="login-screen">
+    <h1>محفظة ساخنة</h1>
+    <div class="warning-box">
+        ⚠️ لا تشارك مفتاحك الخاص مع أحد. هذه محفظة ساخنة للاستخدام المحدود فقط.
+    </div>
+    <div class="input-group">
+        <label>أدخل المفتاح الخاص (Private Key)</label>
+        <textarea id="private-key-input" placeholder="0x..." rows="3" autocomplete="off"></textarea>
+    </div>
+    <button onclick="login()">فتح المحفظة</button>
+    <div class="status-log" id="login-status"></div>
+    <div style="font-size: 10px; color: #444; margin-top: 20px; text-align: center;">متصل عبر Infura API</div>
+</div>
+
+<!-- شاشة المحفظة -->
+<div class="container hidden" id="wallet-screen">
+    <h2>المحفظة الساخنة</h2>
+    
+    <div class="balance-card">
+        <div class="balance-item">
+            <span>رصيد ETH</span>
+            <span class="balance-value" id="eth-balance">0.0000</span>
+        </div>
+        <div class="balance-item">
+            <span>رصيد USDT</span>
+            <span class="balance-value" id="usdt-balance">0.00</span>
+        </div>
+    </div>
+
+    <!-- أزرار التبويبات -->
+    <div class="tab-buttons">
+        <button class="active" onclick="switchTab('send')">إرسال</button>
+        <button onclick="switchTab('receive')">استقبال</button>
+    </div>
+
+    <!-- تبويب الإرسال -->
+    <div id="send-tab" class="tab-content active">
+        <div class="input-group">
+            <label>اختر العملة</label>
+            <select id="asset-type" onchange="updateAmountByRange()">
+                <option value="ETH">Ethereum (ETH)</option>
+                <option value="USDT">Tether (USDT)</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label>إرسال إلى</label>
+            <input type="text" id="recipient-address" placeholder="0x..." autocomplete="off">
+        </div>
+
+        <div class="range-container">
+            <label>تحديد المبلغ بالنسبة المئوية</label>
+            <input type="range" id="amount-range" min="0" max="100" value="0" oninput="updateAmountByRange()">
+            <div class="percentage-badge"><span id="range-value">0</span>%</div>
+        </div>
+
+        <div class="input-group">
+            <label>المبلغ المطلوب إرساله</label>
+            <input type="number" id="send-amount" step="any" placeholder="0.00">
+        </div>
+
+        <button onclick="sendTransaction()">إرسال المعاملة</button>
+
+        <div id="tx-countdown" class="hidden" style="text-align:center; margin-top:15px; padding:15px; border:1px solid #ffcc00; border-radius:12px; background:rgba(255,204,0,0.1);">
+            <span id="timer" style="font-size:30px; font-weight:bold; color:var(--primary-color);">10</span>
+            <p style="font-size:12px; margin:5px 0;">ثوان قبل الإرسال النهائي...</p>
+            <button onclick="cancelTransaction()" style="background:#444; color:#fff; padding:8px; width:auto; font-size:12px;">إلغاء</button>
+        </div>
+
+        <div class="status-log" id="send-status"></div>
+    </div>
+
+    <!-- تبويب الاستقبال -->
+    <div id="receive-tab" class="tab-content">
+        <div class="qr-container">
+            <label style="color: var(--primary-color); font-weight: bold;">رمز QR للعنوان</label>
+            <div id="qrcode"></div>
+            <div class="address-display" id="address-display"></div>
+            <button class="copy-button" onclick="copyAddress()">نسخ العنوان</button>
+        </div>
+        <div class="info-box">
+            ℹ️ شارك هذا العنوان لاستقبال ETH و USDT
+        </div>
+        <div class="status-log" id="receive-status"></div>
+    </div>
+
+    <hr style="border: 0.5px solid #333; margin: 25px 0;">
+
+    <button onclick="logout()" style="background: #444; color: #fff; border: 1px solid #555;">تسجيل الخروج</button>
+</div>
+
+<script>
+    // استخدام مفتاح Infura
+    const INFURA_URL = "https://mainnet.infura.io/v3/d1d115fcad274d029259dba89bcd5eb4";
+    const provider = new ethers.providers.JsonRpcProvider(INFURA_URL);
+
+    let wallet = null;
+    let userAddress = "";
+    let balances = { ETH: "0", USDT: "0" };
+    let countdownTimer;
+    let pendingTx = null;
+
+    const USDT_ADDRESS = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
+    const USDT_ABI = [
+        "function balanceOf(address) view returns (uint256)",
+        "function transfer(address, uint256) returns (bool)"
+    ];
+
+    // تبديل التبويبات
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-buttons button').forEach(el => el.classList.remove('active'));
+        
+        document.getElementById(tab + '-tab').classList.add('active');
+        event.target.classList.add('active');
+
+        if (tab === 'receive') {
+            generateQRCode();
+        }
+    }
+
+    // تسجيل الدخول باستخدام المفتاح الخاص
+    async function login() {
+        const privateKey = document.getElementById('private-key-input').value.trim();
+        
+        if (!privateKey.startsWith('0x') || privateKey.length !== 66) {
+            showStatus('login-status', 'المفتاح الخاص غير صحيح (يجب أن يبدأ بـ 0x ويكون 66 حرف)', 'error');
+            return;
+        }
+
+        try {
+            showStatus('login-status', 'جاري التحقق من المفتاح...');
+            wallet = new ethers.Wallet(privateKey, provider);
+            userAddress = wallet.address;
+            
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('wallet-screen').classList.remove('hidden');
+            
+            showStatus('send-status', 'تم تسجيل الدخول بنجاح', 'success');
+            refreshBalances();
+        } catch (e) {
+            showStatus('login-status', 'خطأ: ' + e.message, 'error');
+        }
+    }
+
+    // تحديث الأرصدة
+    async function refreshBalances() {
+        try {
+            showStatus('send-status', 'جاري جلب الأرصدة...');
+            const ethVal = await provider.getBalance(userAddress);
+            balances.ETH = ethers.utils.formatEther(ethVal);
+            document.getElementById('eth-balance').innerText = parseFloat(balances.ETH).toFixed(6);
+
+            const usdtContract = new ethers.Contract(USDT_ADDRESS, USDT_ABI, provider);
+            const usdtVal = await usdtContract.balanceOf(userAddress);
+            balances.USDT = ethers.utils.formatUnits(usdtVal, 6);
+            document.getElementById('usdt-balance').innerText = parseFloat(balances.USDT).toFixed(2);
+            
+            showStatus('send-status', 'تم التحديث بنجاح', 'success');
+        } catch (e) {
+            showStatus('send-status', 'خطأ في جلب الرصيد: ' + e.message, 'error');
+        }
+    }
+
+    // تحديث المبلغ بناءً على النسبة المئوية
+    function updateAmountByRange() {
+        const percent = document.getElementById('amount-range').value;
+        document.getElementById('range-value').innerText = percent;
+        const asset = document.getElementById('asset-type').value;
+        const total = balances[asset];
+        const amount = (parseFloat(total) * (percent / 100)).toFixed(asset === "ETH" ? 6 : 2);
+        document.getElementById('send-amount').value = amount;
+    }
+
+    // إرسال المعاملة
+    async function sendTransaction() {
+        const asset = document.getElementById('asset-type').value;
+        const to = document.getElementById('recipient-address').value.trim();
+        const amount = document.getElementById('send-amount').value;
+
+        if (!ethers.utils.isAddress(to)) {
+            showStatus('send-status', 'عنوان المستلم غير صحيح', 'error');
+            return;
+        }
+        if (!amount || amount <= 0) {
+            showStatus('send-status', 'أدخل مبلغاً صحيحاً', 'error');
+            return;
+        }
+
+        try {
+            showStatus('send-status', 'جاري تجهيز المعاملة...');
+            
+            let tx;
+            if (asset === "ETH") {
+                tx = await wallet.sendTransaction({
+                    to: to,
+                    value: ethers.utils.parseEther(amount)
+                });
+            } else {
+                const usdtContract = new ethers.Contract(USDT_ADDRESS, USDT_ABI, wallet);
+                const tx_response = await usdtContract.transfer(to, ethers.utils.parseUnits(amount, 6));
+                tx = tx_response;
+            }
+
+            pendingTx = tx;
+            showStatus('send-status', 'تم إرسال المعاملة! جاري التأكيد...', 'success');
+            
+            // انتظر التأكيد
+            const receipt = await tx.wait();
+            showStatus('send-status', `✓ تم التأكيد! <br><a href="https://etherscan.io/tx/${receipt.transactionHash}" target="_blank" style="color:var(--primary-color)">${receipt.transactionHash}</a>`, 'success');
+            
+            // تحديث الأرصدة
+            setTimeout(refreshBalances, 2000);
+            
+            // إعادة تعيين النموذج
+            document.getElementById('recipient-address').value = '';
+            document.getElementById('send-amount').value = '';
+            document.getElementById('amount-range').value = 0;
+            document.getElementById('range-value').innerText = '0';
+        } catch (e) {
+            showStatus('send-status', 'خطأ: ' + e.message, 'error');
+        }
+    }
+
+    // إلغاء المعاملة
+    function cancelTransaction() {
+        clearInterval(countdownTimer);
+        document.getElementById('tx-countdown').classList.add('hidden');
+        showStatus('send-status', 'تم إلغاء المعاملة');
+    }
+
+    // إنشاء رمز QR
+    function generateQRCode() {
+        const qrContainer = document.getElementById('qrcode');
+        qrContainer.innerHTML = ''; // مسح QR السابق
+        
+        new QRCode(qrContainer, {
+            text: userAddress,
+            width: 200,
+            height: 200,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+
+        document.getElementById('address-display').innerText = userAddress;
+    }
+
+    // نسخ العنوان
+    function copyAddress() {
+        const address = userAddress;
+        navigator.clipboard.writeText(address).then(() => {
+            showStatus('receive-status', 'تم نسخ العنوان!', 'success');
+        }).catch(() => {
+            showStatus('receive-status', 'فشل النسخ', 'error');
+        });
+    }
+
+    // تسجيل الخروج
+    function logout() {
+        if (confirm('هل تريد تسجيل الخروج؟')) {
+            wallet = null;
+            userAddress = "";
+            balances = { ETH: "0", USDT: "0" };
+            
+            document.getElementById('wallet-screen').classList.add('hidden');
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('private-key-input').value = '';
+            
+            showStatus('login-status', 'تم تسجيل الخروج', 'success');
+        }
+    }
+
+    // عرض الحالة
+    function showStatus(id, msg, type = '') {
+        const el = document.getElementById(id);
+        el.innerHTML = msg;
+        el.className = 'status-log ' + type;
+    }
+
+    // تحديث الأرصدة كل 30 ثانية
+    setInterval(() => {
+        if (wallet && userAddress) {
+            refreshBalances();
+        }
+    }, 30000);
+</script>
+
+</body>
+</html>
