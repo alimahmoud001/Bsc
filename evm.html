@@ -2,6 +2,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محفظة ساخنة متعددة الشبكات</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
@@ -256,6 +257,9 @@
 
 <!-- شاشة تسجيل الدخول -->
 <div class="container" id="login-screen">
+    <h2>محفظة ساخنة متعددة الشبكات</h2>
+    <div class="warning-box">
+        ⚠️ لا تشارك مفتاحك الخاص مع أحد. هذه محفظة ساخنة للاستخدام المحدود فقط.
     </div>
     <div class="input-group">
         <label>أدخل المفتاح الخاص (Private Key)</label>
@@ -268,6 +272,7 @@
 <!-- شاشة المحفظة -->
 <div class="container hidden" id="wallet-screen">
     <div class="button-group">
+        <button class="main-btn secondary" onclick="logout()">تسجيل خروج</button>
     </div>
     
     <h2>الأرصدة</h2>
