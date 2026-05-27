@@ -441,7 +441,7 @@
             <label>عنوان المستقبل</label>
             <div class="address-input-wrapper">
                 <input type="text" id="to-address" placeholder="0x...">
-                <button class="camera-btn" onclick="openCameraModal()" title="ماسح العنوان">📱</button>
+                <button class="camera-btn" onclick="openCameraModal()" title="تصوير العنوان">📷</button>
             </div>
         </div>
 
@@ -460,40 +460,40 @@
         <button class="main-btn" onclick="sendTransaction()">إرسال المعاملة</button>
         <div id="send-status" class="status-message hidden"></div>
 
-        <div id="tx-countdown" class="hidden" style="text-align:center; margin-top:15px; padding:15px; border:1px solid var(--btn-color); border-radius:12px">
-            <div style="color: var(--btn-color); margin-bottom: 10px;">سيتم إرسال المعاملة في:</div>
-            <div class="countdown" id="timer">10</div>
-            <div class="button-group">
-                <button class="main-btn secondary" onclick="cancelTransaction()">إلغاء</button>
-                <button class="main-btn success" onclick="finalizeTransaction()">إرسال الآن</button>
-            </div>
+        <div id="tx-countdown" class="hidden" style="text-align:center; margin-top:15px; padding:15px; border:1px solid var(--btn-color); border-radius:12px; background:rgba(255,204,0,0.1);">
+            <span id="timer" style="font-size:30px; font-weight:bold; color:var(--btn-color);">10</span>
+            <p style="font-size:12px; margin:5px 0;">ثوان قبل الإرسال النهائي...</p>
+            <button class="main-btn danger" onclick="cancelTransaction()">إلغاء</button>
         </div>
     </div>
 
     <!-- تبويب الاستقبال -->
     <div id="receive-tab" class="tab-content">
-        <h2>استقبال عملات</h2>
+        <h2>استقبال العملات</h2>
         <div class="qr-container">
-            <div class="camera-modal-header">رمز QR الخاص بك</div>
+            <label style="color: var(--btn-color); font-weight: bold;">رمز QR للعنوان</label>
             <div id="qrcode"></div>
+            <div class="address-display" id="address-display"></div>
+            <button class="main-btn" onclick="copyAddress()" style="margin-top: 10px;">نسخ العنوان</button>
         </div>
-        <div class="address-display" id="address-display"></div>
-        <button class="main-btn" onclick="copyAddress()">نسخ العنوان</button>
+        <div class="info-box">
+            ℹ️ شارك هذا العنوان لاستقبال ETH و USDT وجميع العملات الأخرى
+        </div>
         <div id="receive-status" class="status-message hidden"></div>
     </div>
 </div>
 
-<!-- نافذة الكاميرا -->
-<div id="camera-modal" class="camera-modal">
+<!-- Camera Modal -->
+<div class="camera-modal" id="camera-modal">
     <div class="camera-modal-content">
-        <div class="camera-modal-header">ماسح العنوان</div>
+        <div class="camera-modal-header">📷 تصوير عنوان المستقبل</div>
+        <div class="camera-info">
+            وجه الكاميرا نحو رمز QR أو النص الذي يحتوي على العنوان
+        </div>
         <video id="video" class="camera-stream" autoplay playsinline></video>
         <canvas id="canvas"></canvas>
-        <div class="camera-info">
-            وجّه الكاميرا نحو عنوان Ethereum أو رمز QR
-        </div>
         <div class="camera-controls">
-            <button class="capture-btn" onclick="captureFrame()">التقاط يدوي</button>
+            <button class="capture-btn" onclick="captureFrame()">التقط صورة</button>
             <button class="close-btn" onclick="closeCameraModal()">إغلاق</button>
         </div>
     </div>
@@ -688,9 +688,9 @@
         }
     }
 
-    // ============ وظائف الماسح الضوئي ============
+    // ============ وظائف الكاميرا ============
     
-    // فتح نافذة الماسح الضوئي
+    // فتح نافذة الكاميرا
     async function openCameraModal() {
         const modal = document.getElementById('camera-modal');
         const video = document.getElementById('video');
@@ -712,7 +712,7 @@
         }
     }
 
-    // إغلاق نافذة الماسح الضوئي
+    // إغلاق نافذة الكاميرا
     function closeCameraModal() {
         const modal = document.getElementById('camera-modal');
         modal.classList.remove('active');
@@ -793,10 +793,10 @@
                 showStatus('send-status', 'تم قراءة العنوان بنجاح', 'success');
                 closeCameraModal();
             } else {
-                showStatus('send-status', 'فشل الإرسال', 'error');
+                showStatus('send-status', 'لم يتم العثور على عنوان صحيح في الصورة', 'error');
             }
         } else {
-            showStatus('send-status', 'فشل الإرسال', 'error');
+            showStatus('send-status', 'لم يتم العثور على QR Code في الصورة', 'error');
         }
     }
 
@@ -843,7 +843,7 @@
             pendingTx = tx;
             startCountdown();
         } catch (e) {
-            showStatus('send-status', 'فشل الإرسال', 'error');
+            showStatus('send-status', 'خطأ: ' + e.message, 'error');
         }
     }
 
@@ -884,12 +884,12 @@
             const signer = wallet.connect(provider);
             
             const txResponse = await signer.sendTransaction(pendingTx);
-            showStatus('send-status', txResponse.hash, 'success');
+            showStatus('send-status', `تم إرسال المعاملة: ${txResponse.hash}`, 'success');
             
             document.getElementById('tx-countdown').classList.add('hidden');
             pendingTx = null;
         } catch (e) {
-            showStatus('send-status', 'فشل الإرسال', 'error');
+            showStatus('send-status', 'خطأ في الإرسال: ' + e.message, 'error');
         }
     }
 </script>
