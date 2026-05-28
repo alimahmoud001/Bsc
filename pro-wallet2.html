@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>محفظة متعددة العملات</title>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bs58@5.0.0/dist/bs58.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0a;--surface:#111;--surface2:#1a1a1a;--surface3:#222;
+  --yellow:#f5c518;--yellow2:#e0b010;--blue:#1e90ff;--blue2:#1470cc;
+  --text:#f0f0f0;--text2:#aaa;--text3:#666;
+  --border:#2a2a2a;--danger:#e53935;--success:#43a047;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;font-size:15px}
+body{display:flex;flex-direction:column;min-height:100vh}
+.screen{display:none;flex-direction:column;min-height:100vh}
+.screen.active{display:flex}
+/* ===== HEADER ===== */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
+.header-logo{width:32px;height:32px;border-radius:50%;background:var(--yellow);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#000}
+.header-title{font-size:16px;font-weight:700;color:var(--yellow)}
+.header-back{margin-right:auto;background:none;border:none;color:var(--text2);cursor:pointer;font-size:22px;padding:4px}
+/* ===== CONTAINERS ===== */
+.content{flex:1;padding:16px;overflow-y:auto}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
+.card-title{font-size:13px;color:var(--text2);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+/* ===== BUTTONS ===== */
+.btn{width:100%;padding:13px;border-radius:10px;border:none;cursor:pointer;font-size:15px;font-weight:700;transition:all .18s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-yellow{background:var(--yellow);color:#000}
+.btn-yellow:hover{background:var(--yellow2)}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-blue:hover{background:var(--blue2)}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--yellow);color:var(--yellow)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-sm{padding:8px 14px;font-size:13px;width:auto;border-radius:8px}
+.btn-icon{width:40px;height:40px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--text2);transition:all .18s}
+.btn-icon:hover{border-color:var(--yellow);color:var(--yellow)}
+/* ===== INPUTS ===== */
+.input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:15px;outline:none;transition:border .18s;font-family:monospace}
+.input:focus{border-color:var(--yellow)}
+.input-wrap{position:relative;display:flex;gap:8px;align-items:center}
+.input-wrap .input{flex:1}
+label{display:block;margin-bottom:6px;font-size:13px;color:var(--text2);font-weight:600}
+/* ===== NETWORK PILLS ===== */
+.net-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.net-pill{background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:8px}
+.net-pill:hover,.net-pill.selected{border-color:var(--yellow);background:rgba(245,197,24,.08)}
+.net-pill.selected .net-name{color:var(--yellow)}
+.net-icon{font-size:20px;width:28px;text-align:center}
+.net-name{font-size:13px;font-weight:600}
+.net-desc{font-size:11px;color:var(--text3);margin-top:1px}
+/* ===== BALANCE ITEMS ===== */
+.token-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}
+.token-row:last-child{border-bottom:none}
+.token-icon{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;flex-shrink:0}
+.token-info{flex:1}
+.token-name{font-size:14px;font-weight:700}
+.token-net{font-size:11px;color:var(--text3)}
+.token-bal{text-align:left;direction:ltr}
+.token-amount{font-size:14px;font-weight:700;text-align:right}
+.token-usd{font-size:11px;color:var(--text3);text-align:right}
+/* ===== QR ===== */
+.qr-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px}
+.qr-wrap canvas{border-radius:12px;border:4px solid #fff}
+.addr-box{background:var(--surface2);border-radius:10px;padding:10px 14px;word-break:break-all;font-family:monospace;font-size:12px;color:var(--text2);text-align:center;direction:ltr}
+/* ===== SLIDER ===== */
+.slider-wrap{display:flex;align-items:center;gap:10px;margin-top:8px}
+input[type=range]{flex:1;-webkit-appearance:none;height:4px;border-radius:2px;background:var(--border);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--yellow);cursor:pointer}
+.pct-badge{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:12px;font-weight:700;color:var(--yellow);min-width:44px;text-align:center}
+/* ===== SELECT ===== */
+select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:15px;outline:none;-webkit-appearance:none;appearance:none}
+select:focus{border-color:var(--yellow)}
+/* ===== TABS ===== */
+.tabs{display:flex;background:var(--surface2);border-radius:10px;padding:3px;margin-bottom:16px}
+.tab{flex:1;padding:9px;text-align:center;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text2);transition:all .18s}
+.tab.active{background:var(--yellow);color:#000}
+/* ===== MODAL ===== */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:flex-end;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:20px 20px 0 0;padding:20px 16px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+.modal-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:14px;text-align:center}
+/* ===== CAMERA ===== */
+.cam-overlay{display:none;position:fixed;inset:0;background:#000;z-index:300;flex-direction:column}
+.cam-overlay.open{display:flex}
+.cam-video{flex:1;object-fit:cover;width:100%}
+.cam-frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid var(--yellow);border-radius:12px;pointer-events:none}
+.cam-close{position:absolute;top:16px;right:16px;background:rgba(0,0,0,.6);border:none;color:#fff;font-size:24px;cursor:pointer;border-radius:50%;width:40px;height:40px}
+/* ===== COUNTDOWN ===== */
+.countdown-wrap{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;margin-bottom:14px}
+.countdown-num{font-size:42px;font-weight:900;color:var(--yellow)}
+.countdown-label{font-size:13px;color:var(--text2);margin-top:4px}
+/* ===== ALERTS ===== */
+.alert{padding:12px 14px;border-radius:10px;font-size:13px;margin-bottom:12px}
+.alert-success{background:rgba(67,160,71,.12);border:1px solid rgba(67,160,71,.3);color:#81c784}
+.alert-danger{background:rgba(229,57,53,.12);border:1px solid rgba(229,57,53,.3);color:#e57373}
+.alert-info{background:rgba(30,144,255,.1);border:1px solid rgba(30,144,255,.25);color:#64b5f6}
+/* ===== MISC ===== */
+.divider{border:none;border-top:1px solid var(--border);margin:14px 0}
+.text-yellow{color:var(--yellow)}
+.text-muted{color:var(--text2)}
+.text-sm{font-size:13px}
+.text-xs{font-size:11px}
+.flex{display:flex}
+.flex-center{display:flex;align-items:center;justify-content:center}
+.gap-8{gap:8px}
+.mt-8{margin-top:8px}
+.mt-12{margin-top:12px}
+.bold{font-weight:700}
+.monospace{font-family:monospace;direction:ltr}
+.hidden{display:none!important}
+.spinner{width:20px;height:20px;border:2px solid rgba(0,0,0,.2);border-top-color:#000;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.bal-total{font-size:28px;font-weight:900;color:var(--yellow);text-align:center;margin:6px 0}
+.address-short{font-family:monospace;font-size:12px;color:var(--text3);direction:ltr}
+.coin-badge{display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border-radius:20px;padding:4px 10px;font-size:12px;font-weight:600;border:1px solid var(--border)}
+.step-indicator{display:flex;align-items:center;gap:6px;margin-bottom:16px}
+.step-dot{width:8px;height:8px;border-radius:50%;background:var(--border)}
+.step-dot.active{background:var(--yellow);width:20px;border-radius:4px}
+.step-dot.done{background:var(--success)}
+.raw-tx{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;font-family:monospace;font-size:10px;word-break:break-all;direction:ltr;max-height:100px;overflow-y:auto;color:var(--text2)}
+</style>
+</head>
+<body>
+
+<!-- ========== SCREEN 1: MAIN MENU ========== -->
+<div id="screen-home" class="screen active">
+  <div class="header">
+    <div class="header-logo">W</div>
+    <span class="header-title">محفظة متعددة العملات</span>
+  </div>
+  <div class="content">
+    <div style="text-align:center;padding:24px 0 16px">
+      <div style="font-size:48px;margin-bottom:8px">🔐</div>
+      <div style="font-size:20px;font-weight:700;margin-bottom:4px">أدخل مفتاحك</div>
+      <div style="font-size:13px;color:var(--text2)">اختر نوع الدخول لفتح المحفظة</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">نوع الدخول</div>
+      <div class="tabs" id="key-type-tabs">
+        <div class="tab active" onclick="setKeyType('private')">مفتاح خاص</div>
+        <div class="tab" onclick="setKeyType('public')">مفتاح عام</div>
+      </div>
+
+      <div id="private-section">
+        <label>اختر الشبكة أولاً</label>
+        <select id="net-select-home" onchange="updateKeyPlaceholder()">
+          <option value="evm">EVM (إيثيريوم، BNB، Polygon...)</option>
+          <option value="solana">Solana</option>
+          <option value="tron">Tron (TRC20)</option>
+          <option value="bitcoin">Bitcoin (BTC)</option>
+          <option value="litecoin">Litecoin (LTC)</option>
+          <option value="polkadot">Polkadot (DOT)</option>
+        </select>
+        <div style="height:12px"></div>
+        <label>المفتاح الخاص</label>
+        <div class="input-wrap">
+          <input id="key-input" class="input" type="password" placeholder="أدخل أو الصق المفتاح الخاص..."/>
+          <button class="btn-icon" onclick="openCamera('key-input')" title="تصوير QR">📷</button>
+          <button class="btn-icon" onclick="toggleKeyVis()" title="إظهار/إخفاء" id="key-vis-btn">👁</button>
+        </div>
+      </div>
+
+      <div id="public-section" class="hidden">
+        <label>اختر الشبكة أولاً</label>
+        <select id="net-select-pub" onchange="updateKeyPlaceholder()">
+          <option value="evm">EVM (إيثيريوم، BNB، Polygon...)</option>
+          <option value="solana">Solana</option>
+          <option value="tron">Tron (TRC20)</option>
+        </select>
+        <div style="height:12px"></div>
+        <label>المفتاح العام / العنوان</label>
+        <div class="input-wrap">
+          <input id="pub-key-input" class="input" type="text" placeholder="أدخل المفتاح العام أو العنوان..."/>
+          <button class="btn-icon" onclick="openCamera('pub-key-input')" title="تصوير QR">📷</button>
+        </div>
+      </div>
+
+      <div style="height:14px"></div>
+      <button class="btn btn-yellow" onclick="openWallet()">
+        <span>فتح المحفظة</span>
+        <span>→</span>
+      </button>
+      <div id="home-error" class="alert alert-danger mt-12 hidden"></div>
+    </div>
+
+    <div class="card" style="text-align:center">
+      <div class="text-sm text-muted">العملات المدعومة</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;justify-content:center">
+        <span class="coin-badge">Ξ ETH</span>
+        <span class="coin-badge">◎ SOL</span>
+        <span class="coin-badge">₮ TRX</span>
+        <span class="coin-badge">₿ BTC</span>
+        <span class="coin-badge">Ł LTC</span>
+        <span class="coin-badge">● DOT</span>
+        <span class="coin-badge">BNB</span>
+        <span class="coin-badge">MATIC</span>
+        <span class="coin-badge">USDT</span>
+        <span class="coin-badge">AVAX</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SCREEN 2: WALLET DASHBOARD ========== -->
+<div id="screen-wallet" class="screen">
+  <div class="header">
+    <button class="btn-icon header-back" onclick="goHome()">←</button>
+    <div id="wallet-icon" style="font-size:26px;margin-left:6px">Ξ</div>
+    <div>
+      <div class="header-title" id="wallet-title">المحفظة</div>
+      <div class="address-short" id="wallet-addr-short"></div>
+    </div>
+    <div style="margin-right:auto;display:flex;gap:8px">
+      <button class="btn-icon btn-sm" onclick="refreshBalances()" title="تحديث">⟳</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="card" style="text-align:center">
+      <div class="text-muted text-sm">إجمالي الرصيد (تقديري بـ USD)</div>
+      <div class="bal-total" id="total-usd">---</div>
+      <div class="address-short monospace" id="wallet-full-addr" style="font-size:11px;margin-top:4px"></div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" id="tab-assets" onclick="switchTab('assets')">الأصول</div>
+      <div class="tab" id="tab-receive" onclick="switchTab('receive')">استقبال</div>
+      <div class="tab" id="tab-send" onclick="switchTab('send')">إرسال</div>
+    </div>
+
+    <!-- ASSETS TAB -->
+    <div id="panel-assets">
+      <div class="card" id="token-list">
+        <div style="text-align:center;padding:20px;color:var(--text2)">
+          <div class="spinner" style="border-top-color:var(--yellow);border-color:rgba(245,197,24,.2);margin:0 auto 10px"></div>
+          <div>جاري تحميل الأرصدة...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RECEIVE TAB -->
+    <div id="panel-receive" class="hidden">
+      <div class="card">
+        <div class="card-title">عنوان الاستقبال</div>
+        <div class="qr-wrap">
+          <canvas id="receive-qr"></canvas>
+          <div class="addr-box" id="receive-addr"></div>
+          <button class="btn btn-yellow btn-sm" onclick="copyAddr()">نسخ العنوان</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEND TAB -->
+    <div id="panel-send" class="hidden">
+      <!-- READ-ONLY MODE: show unsigned tx -->
+      <div id="send-readonly" class="hidden">
+        <div class="alert alert-info">الدخول بمفتاح عام — الإرسال يتطلب توقيعاً خارجياً عبر <strong>signer.html</strong></div>
+        <div id="send-ro-form">
+          <div class="card">
+            <label>الشبكة</label>
+            <select id="ro-network" onchange="updateRoTokens()">
+            </select>
+            <div style="height:10px"></div>
+            <label>الرمز / العملة</label>
+            <select id="ro-token"></select>
+            <div style="height:10px"></div>
+            <label>عنوان المستقبل</label>
+            <div class="input-wrap">
+              <input id="ro-to" class="input" type="text" placeholder="العنوان..." dir="ltr"/>
+              <button class="btn-icon" onclick="openCamera('ro-to')" title="تصوير QR">📷</button>
+            </div>
+            <div style="height:10px"></div>
+            <label>الكمية</label>
+            <input id="ro-amount" class="input" type="number" step="any" placeholder="0.0" oninput="updateRoSlider()"/>
+            <div class="slider-wrap mt-8">
+              <input type="range" id="ro-slider" min="0" max="100" value="0" oninput="sliderToRoAmount()"/>
+              <span class="pct-badge" id="ro-pct">0%</span>
+            </div>
+            <div style="height:12px"></div>
+            <button class="btn btn-yellow" onclick="buildUnsignedTx()">بناء معاملة غير موقعة</button>
+          </div>
+          <div id="unsigned-result" class="hidden">
+            <div class="card">
+              <div class="card-title">المعاملة غير الموقعة</div>
+              <div class="raw-tx" id="unsigned-hex"></div>
+              <div style="display:flex;gap:8px;margin-top:10px">
+                <button class="btn btn-yellow btn-sm flex-1" onclick="copyUnsigned()">نسخ</button>
+                <button class="btn btn-outline btn-sm flex-1" onclick="showQR('unsigned-hex-val','unsigned-tx-qr-canvas')">QR</button>
+              </div>
+              <canvas id="unsigned-tx-qr-canvas" class="hidden" style="margin-top:10px;border-radius:8px;max-width:100%"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRIVATE KEY MODE: direct send -->
+      <div id="send-direct" class="hidden">
+        <div class="card">
+          <label>الشبكة</label>
+          <select id="dir-network" onchange="updateDirTokens()"></select>
+          <div style="height:10px"></div>
+          <label>الرمز / العملة</label>
+          <select id="dir-token"></select>
+          <div style="height:10px"></div>
+          <label>عنوان المستقبل</label>
+          <div class="input-wrap">
+            <input id="dir-to" class="input" type="text" placeholder="العنوان..." dir="ltr"/>
+            <button class="btn-icon" onclick="openCamera('dir-to')" title="تصوير QR">📷</button>
+          </div>
+          <div style="height:10px"></div>
+          <label>الكمية</label>
+          <input id="dir-amount" class="input" type="number" step="any" placeholder="0.0" oninput="updateDirSlider()"/>
+          <div class="slider-wrap mt-8">
+            <input type="range" id="dir-slider" min="0" max="100" value="0" oninput="sliderToDirAmount()"/>
+            <span class="pct-badge" id="dir-pct">0%</span>
+          </div>
+          <div style="height:12px"></div>
+          <div id="sig-paste-wrap" class="hidden">
+            <label>لصق التوقيع (من signer.html)</label>
+            <div class="input-wrap">
+              <input id="sig-input" class="input" type="text" placeholder="الصق التوقيع هنا..." dir="ltr"/>
+              <button class="btn-icon" onclick="openCamera('sig-input')" title="تصوير QR">📷</button>
+            </div>
+            <div style="height:10px"></div>
+          </div>
+          <button class="btn btn-yellow" onclick="initiateSend()">إرسال المعاملة</button>
+        </div>
+
+        <!-- countdown -->
+        <div id="countdown-wrap" class="countdown-wrap hidden">
+          <div class="countdown-num" id="countdown-num">30</div>
+          <div class="countdown-label">ثانية قبل البث — يمكنك الإلغاء</div>
+          <div style="height:10px"></div>
+          <button class="btn btn-danger" onclick="cancelSend()">إلغاء المعاملة</button>
+        </div>
+
+        <div id="send-result" class="hidden">
+          <div class="card">
+            <div class="card-title">نتيجة المعاملة</div>
+            <div id="send-result-msg"></div>
+            <div class="raw-tx" id="send-tx-hash" style="margin-top:8px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PASTE SIGNATURE + BROADCAST (for read-only wallet, paste signature from signer) -->
+      <div id="send-broadcast" class="hidden">
+        <div class="card">
+          <div class="card-title">بث المعاملة الموقعة</div>
+          <label>الصق التوقيع / المعاملة الموقعة</label>
+          <div class="input-wrap">
+            <textarea id="signed-tx-input" class="input" rows="4" placeholder="الصق المعاملة الموقعة هنا..." dir="ltr" style="resize:vertical"></textarea>
+            <button class="btn-icon" onclick="openCamera('signed-tx-input')" title="تصوير QR" style="align-self:flex-start">📷</button>
+          </div>
+          <div style="height:10px"></div>
+          <button class="btn btn-blue" onclick="broadcastSigned()">بث المعاملة</button>
+        </div>
+        <div id="broadcast-countdown-wrap" class="countdown-wrap hidden">
+          <div class="countdown-num" id="bc-countdown-num">30</div>
+          <div class="countdown-label">ثانية قبل البث</div>
+          <button class="btn btn-danger mt-8" onclick="cancelBroadcast()">إلغاء</button>
+        </div>
+        <div id="broadcast-result" class="hidden">
+          <div class="card">
+            <div id="broadcast-result-msg"></div>
+            <div class="raw-tx" id="broadcast-tx-hash" style="margin-top:8px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== CAMERA OVERLAY ========== -->
+<div id="cam-overlay" class="cam-overlay">
+  <video id="cam-video" class="cam-video" playsinline autoplay muted></video>
+  <div class="cam-frame"></div>
+  <canvas id="cam-canvas" class="hidden"></canvas>
+  <button class="cam-close" onclick="closeCamera()">✕</button>
+</div>
+
+<!-- ========== QR MODAL ========== -->
+<div class="modal-overlay" id="qr-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">رمز QR</div>
+    <div style="display:flex;justify-content:center">
+      <canvas id="modal-qr-canvas"></canvas>
+    </div>
+    <div style="height:12px"></div>
+    <button class="btn btn-outline" onclick="closeQrModal()">إغلاق</button>
+  </div>
+</div>
+
+<!-- ========== TOAST ========== -->
+<div id="toast" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--yellow);border-radius:10px;padding:10px 20px;font-size:13px;z-index:500;display:none;white-space:nowrap"></div>
+
+<script>
+// =============== CONFIG ===============
+const NETWORKS = {
+  evm: {
+    label:'EVM',icon:'Ξ',
+    chains:[
+      {id:'eth',     name:'Ethereum',    rpc:'https://eth.llamarpc.com',                    chainId:1,    explorer:'https://etherscan.io/tx/'},
+      {id:'polygon', name:'Polygon',     rpc:'https://polygon-rpc.com',                     chainId:137,  explorer:'https://polygonscan.com/tx/'},
+      {id:'bsc',     name:'BSC (BEP20)', rpc:'https://bsc-dataseed1.binance.org',            chainId:56,   explorer:'https://bscscan.com/tx/'},
+      {id:'celo',    name:'Celo',        rpc:'https://forno.celo.org',                      chainId:42220,explorer:'https://celoscan.io/tx/'},
+      {id:'blast',   name:'Blast',       rpc:'https://rpc.blast.io',                        chainId:81457,explorer:'https://blastscan.io/tx/'},
+      {id:'linea',   name:'Linea',       rpc:'https://rpc.linea.build',                     chainId:59144,explorer:'https://lineascan.build/tx/'},
+      {id:'base',    name:'Base',        rpc:'https://mainnet.base.org',                    chainId:8453, explorer:'https://basescan.org/tx/'},
+      {id:'optimism',name:'Optimism',    rpc:'https://mainnet.optimism.io',                 chainId:10,   explorer:'https://optimistic.etherscan.io/tx/'},
+      {id:'arbitrum',name:'Arbitrum',    rpc:'https://arb1.arbitrum.io/rpc',                chainId:42161,explorer:'https://arbiscan.io/tx/'},
+      {id:'avalanche',name:'Avalanche',  rpc:'https://api.avax.network/ext/bc/C/rpc',       chainId:43114,explorer:'https://snowtrace.io/tx/'},
+      {id:'opbnb',   name:'opBNB',       rpc:'https://opbnb-mainnet-rpc.bnbchain.org',      chainId:204,  explorer:'https://mainnet.opbnbscan.com/tx/'},
+      {id:'scroll',  name:'Scroll',      rpc:'https://rpc.scroll.io',                       chainId:534352,explorer:'https://scrollscan.com/tx/'},
+    ]
+  },
+  solana:{label:'Solana',icon:'◎'},
+  tron:  {label:'Tron',  icon:'₮'},
+  bitcoin:{label:'Bitcoin',icon:'₿'},
+  litecoin:{label:'Litecoin',icon:'Ł'},
+  polkadot:{label:'Polkadot',icon:'●'},
+};
+
+const EVM_TOKENS = {
+  eth:     [{sym:'ETH',  name:'Ether',          decimals:18,native:true}, {sym:'USDT',name:'Tether (ERC20)',decimals:6,  addr:'0xdAC17F958D2ee523a2206206994597C13D831ec7'}],
+  polygon: [{sym:'MATIC',name:'Polygon',         decimals:18,native:true}, {sym:'USDT',name:'Tether (Polygon)',decimals:6, addr:'0xc2132D05D31c914a87C6611C10748AEb04B58e8F'}],
+  bsc:     [{sym:'BNB',  name:'BNB',             decimals:18,native:true}, {sym:'USDT',name:'Tether (BEP20)', decimals:18,addr:'0x55d398326f99059fF775485246999027B3197955'}],
+  celo:    [{sym:'CELO', name:'Celo',            decimals:18,native:true}, {sym:'USDT',name:'Tether (Celo)',  decimals:6, addr:'0x617f3112bf5397D0467D315cC709EF968D9ba546'}],
+  blast:   [{sym:'ETH',  name:'ETH (Blast)',     decimals:18,native:true}, {sym:'USDT',name:'Tether (Blast)', decimals:6, addr:'0x4300000000000000000000000000000000000003'}],
+  linea:   [{sym:'ETH',  name:'ETH (Linea)',     decimals:18,native:true}, {sym:'USDT',name:'Tether (Linea)', decimals:6, addr:'0xA219439258ca9da29E9Cc4cE5596924745e12B93'}],
+  base:    [{sym:'ETH',  name:'ETH (Base)',      decimals:18,native:true}, {sym:'USDT',name:'Tether (Base)',  decimals:6, addr:'0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2'}],
+  optimism:[{sym:'ETH',  name:'ETH (Optimism)',  decimals:18,native:true}, {sym:'USDT',name:'Tether (OP)',    decimals:6, addr:'0x94b008aA00579c1307B0EF2c499aD98a8ce58e58'}],
+  arbitrum:[{sym:'ETH',  name:'ETH (Arbitrum)',  decimals:18,native:true}, {sym:'USDT',name:'Tether (ARB)',   decimals:6, addr:'0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9'}],
+  avalanche:[{sym:'AVAX',name:'Avalanche',       decimals:18,native:true}, {sym:'USDT',name:'Tether (AVAX)', decimals:6, addr:'0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7'}],
+  opbnb:   [{sym:'BNB',  name:'BNB (opBNB)',     decimals:18,native:true}, {sym:'USDT',name:'Tether (opBNB)',decimals:18,addr:'0x9e5AAC1Ba1a2e6aEd6b32689DFcF62A509Ca96f3'}],
+  scroll:  [{sym:'ETH',  name:'ETH (Scroll)',    decimals:18,native:true}, {sym:'USDT',name:'Tether (Scroll)',decimals:6,addr:'0xf55BEC9cafDbE8730f096Aa55dad6D22d44099Df'}],
+};
+
+const ERC20_ABI=['function balanceOf(address) view returns(uint256)','function decimals() view returns(uint8)','function transfer(address,uint256) returns(bool)'];
+
+// =============== STATE ===============
+let walletState={
+  type:null,// 'private' or 'public'
+  network:null,// 'evm','solana','tron','bitcoin','litecoin','polkadot'
+  address:null,
+  privateKey:null,
+  evmChain:null,
+  balances:{},
+  prices:{ETH:3200,BNB:600,MATIC:0.8,AVAX:38,SOL:180,TRX:0.12,BTC:95000,LTC:110,CELO:0.8,USDT:1,USDC:1},
+};
+
+let camStream=null, camTarget=null, camScanInterval=null;
+let sendTimer=null, broadcastTimer=null;
+let pendingTxData=null;
+let unsignedHexVal='';
+
+// =============== INIT ===============
+function setKeyType(t){
+  document.querySelectorAll('#key-type-tabs .tab').forEach((el,i)=>{
+    el.classList.toggle('active', (t==='private'&&i===0)||(t==='public'&&i===1));
+  });
+  document.getElementById('private-section').classList.toggle('hidden', t!=='private');
+  document.getElementById('public-section').classList.toggle('hidden', t!=='public');
+}
+
+function updateKeyPlaceholder(){}
+
+function toggleKeyVis(){
+  const inp=document.getElementById('key-input');
+  inp.type=inp.type==='password'?'text':'password';
+}
+
+async function openWallet(){
+  const isPrivate=document.querySelector('#key-type-tabs .tab.active').textContent.trim()==='مفتاح خاص';
+  const errEl=document.getElementById('home-error');
+  errEl.classList.add('hidden');
+
+  if(isPrivate){
+    const net=document.getElementById('net-select-home').value;
+    const key=document.getElementById('key-input').value.trim();
+    if(!key){showErr(errEl,'أدخل المفتاح الخاص');return;}
+    try{await initPrivateWallet(net,key);}
+    catch(e){showErr(errEl,'مفتاح خاص غير صالح: '+e.message);return;}
+  } else {
+    const net=document.getElementById('net-select-pub').value;
+    const key=document.getElementById('pub-key-input').value.trim();
+    if(!key){showErr(errEl,'أدخل المفتاح العام أو العنوان');return;}
+    try{await initPublicWallet(net,key);}
+    catch(e){showErr(errEl,'مفتاح عام غير صالح: '+e.message);return;}
+  }
+}
+
+async function initPrivateWallet(net,key){
+  walletState.type='private';
+  walletState.network=net;
+  walletState.privateKey=key;
+  if(net==='evm'){
+    let k=key.startsWith('0x')?key:'0x'+key;
+    const w=new ethers.Wallet(k);
+    walletState.address=w.address;
+    walletState.evmChain='eth';
+  } else if(net==='solana'){
+    let decoded;
+    try{decoded=bs58.decode(key);}catch{throw new Error('تنسيق Base58 غير صالح');}
+    if(decoded.length!==64&&decoded.length!==32)throw new Error('طول المفتاح غير صالح');
+    const kp=decoded.length===64?solanaWeb3.Keypair.fromSecretKey(decoded):solanaWeb3.Keypair.fromSeed(decoded);
+    walletState.address=kp.publicKey.toString();
+    walletState._solanaKeypair=kp;
+  } else if(net==='tron'){
+    walletState.address=deriveTronAddress(key);
+  } else if(net==='bitcoin'){
+    walletState.address='BTC: مفتاح محمّل (للعرض فقط)';
+    walletState.address=deriveSimpleAddress('BTC',key);
+  } else if(net==='litecoin'){
+    walletState.address=deriveSimpleAddress('LTC',key);
+  } else if(net==='polkadot'){
+    walletState.address=deriveSimpleAddress('DOT',key);
+  }
+  showWalletScreen();
+}
+
+async function initPublicWallet(net,key){
+  walletState.type='public';
+  walletState.network=net;
+  walletState.privateKey=null;
+  if(net==='evm'){
+    if(!ethers.isAddress(key))throw new Error('عنوان EVM غير صالح');
+    walletState.address=key;
+    walletState.evmChain='eth';
+  } else if(net==='solana'){
+    walletState.address=key;
+  } else if(net==='tron'){
+    walletState.address=key;
+  } else throw new Error('لا يدعم المفتاح العام لهذه الشبكة');
+  showWalletScreen();
+}
+
+function deriveSimpleAddress(prefix,key){
+  return prefix+':'+key.substring(0,8)+'...'+key.substring(key.length-4);
+}
+
+function deriveTronAddress(privKey){
+  try{
+    let k=privKey.startsWith('0x')?privKey:'0x'+privKey;
+    const w=new ethers.Wallet(k);
+    const ethAddr=w.address.toLowerCase().replace('0x','');
+    return 'T'+ethAddr.substring(0,33);
+  }catch{return 'TRX:'+privKey.substring(0,8)+'...';}
+}
+
+function showWalletScreen(){
+  document.getElementById('screen-home').classList.remove('active');
+  document.getElementById('screen-wallet').classList.add('active');
+  const icons={evm:'Ξ',solana:'◎',tron:'₮',bitcoin:'₿',litecoin:'Ł',polkadot:'●'};
+  document.getElementById('wallet-icon').textContent=icons[walletState.network]||'W';
+  const labels={evm:'محفظة EVM',solana:'محفظة Solana',tron:'محفظة Tron',bitcoin:'محفظة Bitcoin',litecoin:'محفظة Litecoin',polkadot:'محفظة Polkadot'};
+  document.getElementById('wallet-title').textContent=labels[walletState.network]||'المحفظة';
+  const addr=walletState.address||'';
+  document.getElementById('wallet-addr-short').textContent=addr.length>16?addr.substring(0,8)+'...'+addr.substring(addr.length-6):addr;
+  document.getElementById('wallet-full-addr').textContent=addr;
+  switchTab('assets');
+  setupReceive();
+  setupSendPanel();
+  refreshBalances();
+}
+
+function goHome(){
+  document.getElementById('screen-wallet').classList.remove('active');
+  document.getElementById('screen-home').classList.add('active');
+  walletState={type:null,network:null,address:null,privateKey:null,evmChain:null,balances:{},prices:walletState.prices};
+}
+
+// =============== TABS ===============
+function switchTab(t){
+  ['assets','receive','send'].forEach(n=>{
+    document.getElementById('tab-'+n).classList.toggle('active',n===t);
+    document.getElementById('panel-'+n).classList.toggle('hidden',n!==t);
+  });
+}
+
+// =============== RECEIVE ===============
+function setupReceive(){
+  const addr=walletState.address||'';
+  document.getElementById('receive-addr').textContent=addr;
+  QRCode.toCanvas(document.getElementById('receive-qr'),addr||' ',{width:200,margin:1,color:{dark:'#000',light:'#fff'}});
+}
+
+function copyAddr(){
+  navigator.clipboard.writeText(walletState.address||'').then(()=>toast('تم نسخ العنوان ✓'));
+}
+
+// =============== BALANCES ===============
+async function refreshBalances(){
+  const list=document.getElementById('token-list');
+  list.innerHTML='<div style="text-align:center;padding:20px;color:var(--text2)"><div class="spinner" style="border-top-color:var(--yellow);border-color:rgba(245,197,24,.2);margin:0 auto 10px"></div><div>جاري تحميل الأرصدة...</div></div>';
+  walletState.balances={};
+  try{
+    if(walletState.network==='evm') await loadEVMBalances();
+    else if(walletState.network==='solana') await loadSolanaBalances();
+    else if(walletState.network==='tron') await loadTronBalances();
+    else loadPlaceholderBalances();
+  }catch(e){
+    list.innerHTML='<div class="alert alert-danger">خطأ في تحميل الأرصدة: '+e.message+'</div>';
+  }
+  renderBalances();
+}
+
+async function loadEVMBalances(){
+  const chain=NETWORKS.evm.chains.find(c=>c.id===walletState.evmChain)||NETWORKS.evm.chains[0];
+  const provider=new ethers.JsonRpcProvider(chain.rpc);
+  const addr=walletState.address;
+  const tokens=EVM_TOKENS[chain.id]||EVM_TOKENS.eth;
+  for(const t of tokens){
+    try{
+      if(t.native){
+        const bal=await provider.getBalance(addr);
+        walletState.balances[t.sym+'_'+chain.id]=formatBal(bal,t.decimals);
+      } else {
+        const contract=new ethers.Contract(t.addr,ERC20_ABI,provider);
+        const bal=await contract.balanceOf(addr);
+        walletState.balances[t.sym+'_'+chain.id]=formatBal(bal,t.decimals);
+      }
+    }catch{walletState.balances[t.sym+'_'+chain.id]='0';}
+  }
+}
+
+async function loadSolanaBalances(){
+  try{
+    const conn=new solanaWeb3.Connection('https://api.mainnet-beta.solana.com','confirmed');
+    const pk=new solanaWeb3.PublicKey(walletState.address);
+    const bal=await conn.getBalance(pk);
+    walletState.balances['SOL']=formatBal(BigInt(bal),9);
+    // USDT SPL token
+    const USDT_MINT='Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB';
+    try{
+      const ta=await conn.getParsedTokenAccountsByOwner(pk,{mint:new solanaWeb3.PublicKey(USDT_MINT)});
+      if(ta.value.length>0){
+        const amt=ta.value[0].account.data.parsed.info.tokenAmount.uiAmountString;
+        walletState.balances['USDT_SOL']=amt;
+      } else walletState.balances['USDT_SOL']='0';
+    }catch{walletState.balances['USDT_SOL']='0';}
+  }catch{walletState.balances['SOL']='0';walletState.balances['USDT_SOL']='0';}
+}
+
+async function loadTronBalances(){
+  try{
+    const res=await fetch('https://api.trongrid.io/v1/accounts/'+walletState.address,{headers:{'TRON-PRO-API-KEY':''}});
+    const data=await res.json();
+    if(data.data&&data.data[0]){
+      const acc=data.data[0];
+      walletState.balances['TRX']=((acc.balance||0)/1e6).toFixed(4);
+      const usdt=acc.trc20&&acc.trc20.find(t=>t['TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t']);
+      walletState.balances['USDT_TRX']=usdt?(parseFloat(usdt['TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'])/1e6).toFixed(4):'0';
+    }
+  }catch{walletState.balances['TRX']='0';walletState.balances['USDT_TRX']='0';}
+}
+
+function loadPlaceholderBalances(){
+  if(walletState.network==='bitcoin') walletState.balances['BTC']='0';
+  if(walletState.network==='litecoin') walletState.balances['LTC']='0';
+  if(walletState.network==='polkadot') walletState.balances['DOT']='0';
+}
+
+function formatBal(bigVal,dec){
+  const s=bigVal.toString();
+  if(dec===0)return s;
+  while(s.length<=dec)s='0'+s;
+  const int=s.slice(0,s.length-dec)||'0';
+  const frac=s.slice(s.length-dec).replace(/0+$/,'');
+  return frac?int+'.'+frac:int;
+}
+
+function renderBalances(){
+  const list=document.getElementById('token-list');
+  const rows=getTokenRows();
+  if(!rows.length){list.innerHTML='<div class="text-muted text-sm" style="text-align:center;padding:16px">لا توجد بيانات</div>';return;}
+  let totalUsd=0;
+  let html='';
+  rows.forEach(r=>{
+    const bal=parseFloat(walletState.balances[r.key]||'0');
+    const price=walletState.prices[r.sym]||0;
+    const usd=(bal*price).toFixed(2);
+    totalUsd+=bal*price;
+    html+=`<div class="token-row">
+      <div class="token-icon" style="background:${r.bg};color:${r.fg}">${r.icon}</div>
+      <div class="token-info"><div class="token-name">${r.sym}</div><div class="token-net">${r.net}</div></div>
+      <div class="token-bal"><div class="token-amount">${parseFloat(walletState.balances[r.key]||'0').toFixed(6)}</div><div class="token-usd">≈ $${usd}</div></div>
+    </div>`;
+  });
+  list.innerHTML=html;
+  document.getElementById('total-usd').textContent='$'+totalUsd.toFixed(2);
+}
+
+function getTokenRows(){
+  const net=walletState.network;
+  if(net==='evm'){
+    const cid=walletState.evmChain||'eth';
+    const chain=NETWORKS.evm.chains.find(c=>c.id===cid);
+    const tokens=EVM_TOKENS[cid]||EVM_TOKENS.eth;
+    return tokens.map(t=>({
+      key:t.sym+'_'+cid, sym:t.sym, net:chain.name,
+      icon:t.sym==='USDT'?'₮':t.sym==='ETH'?'Ξ':t.sym==='BNB'?'🟡':t.sym==='MATIC'?'●':t.sym==='AVAX'?'▲':t.sym.charAt(0),
+      bg:t.sym==='USDT'?'#1a6b44':t.sym==='ETH'?'#1a2a6b':t.sym==='BNB'?'#6b5e00':'#2a1a6b',
+      fg:'#fff'
+    }));
+  }
+  if(net==='solana') return[
+    {key:'SOL',sym:'SOL',net:'Solana',icon:'◎',bg:'#1a3a6b',fg:'#fff'},
+    {key:'USDT_SOL',sym:'USDT',net:'Solana',icon:'₮',bg:'#1a6b44',fg:'#fff'},
+  ];
+  if(net==='tron') return[
+    {key:'TRX',sym:'TRX',net:'Tron',icon:'₮',bg:'#6b1a1a',fg:'#fff'},
+    {key:'USDT_TRX',sym:'USDT',net:'Tron TRC20',icon:'₮',bg:'#1a6b44',fg:'#fff'},
+  ];
+  if(net==='bitcoin') return[{key:'BTC',sym:'BTC',net:'Bitcoin',icon:'₿',bg:'#6b3a00',fg:'#fff'}];
+  if(net==='litecoin') return[{key:'LTC',sym:'LTC',net:'Litecoin',icon:'Ł',bg:'#3a3a6b',fg:'#fff'}];
+  if(net==='polkadot') return[{key:'DOT',sym:'DOT',net:'Polkadot',icon:'●',bg:'#6b001a',fg:'#fff'}];
+  return[];
+}
+
+// =============== SEND PANEL ===============
+function setupSendPanel(){
+  const isPrivate=walletState.type==='private';
+  document.getElementById('send-readonly').classList.toggle('hidden',isPrivate);
+  document.getElementById('send-direct').classList.toggle('hidden',!isPrivate);
+  document.getElementById('send-broadcast').classList.add('hidden');
+
+  if(!isPrivate){
+    buildNetworkOptions('ro-network');
+    updateRoTokens();
+    // show broadcast section for signed tx
+    document.getElementById('send-broadcast').classList.remove('hidden');
+  } else {
+    buildNetworkOptions('dir-network');
+    updateDirTokens();
+  }
+}
+
+function buildNetworkOptions(selId){
+  const sel=document.getElementById(selId);
+  sel.innerHTML='';
+  if(walletState.network==='evm'){
+    NETWORKS.evm.chains.forEach(c=>{
+      sel.innerHTML+=`<option value="${c.id}">${c.name}</option>`;
+    });
+    sel.value=walletState.evmChain||'eth';
+  } else {
+    const labels={solana:'Solana',tron:'Tron (TRC20)',bitcoin:'Bitcoin',litecoin:'Litecoin',polkadot:'Polkadot'};
+    sel.innerHTML=`<option value="${walletState.network}">${labels[walletState.network]||walletState.network}</option>`;
+  }
+}
+
+function getTokensForChain(chainId){
+  if(walletState.network==='evm') return EVM_TOKENS[chainId]||EVM_TOKENS.eth;
+  if(walletState.network==='solana') return [{sym:'SOL',native:true},{sym:'USDT',native:false}];
+  if(walletState.network==='tron') return [{sym:'TRX',native:true},{sym:'USDT',native:false}];
+  if(walletState.network==='bitcoin') return [{sym:'BTC',native:true}];
+  if(walletState.network==='litecoin') return [{sym:'LTC',native:true}];
+  if(walletState.network==='polkadot') return [{sym:'DOT',native:true}];
+  return [];
+}
+
+function updateRoTokens(){
+  const cid=document.getElementById('ro-network').value;
+  const sel=document.getElementById('ro-token');
+  sel.innerHTML='';
+  getTokensForChain(cid).forEach(t=>{sel.innerHTML+=`<option value="${t.sym}">${t.sym}</option>`;});
+}
+
+function updateDirTokens(){
+  const cid=document.getElementById('dir-network').value;
+  const sel=document.getElementById('dir-token');
+  sel.innerHTML='';
+  getTokensForChain(cid).forEach(t=>{sel.innerHTML+=`<option value="${t.sym}">${t.sym}</option>`;});
+}
+
+function getBalForToken(sym,chainId){
+  if(walletState.network==='evm') return parseFloat(walletState.balances[sym+'_'+chainId]||'0');
+  if(sym==='SOL') return parseFloat(walletState.balances['SOL']||'0');
+  if(sym==='USDT'&&walletState.network==='solana') return parseFloat(walletState.balances['USDT_SOL']||'0');
+  if(sym==='TRX') return parseFloat(walletState.balances['TRX']||'0');
+  if(sym==='USDT'&&walletState.network==='tron') return parseFloat(walletState.balances['USDT_TRX']||'0');
+  return parseFloat(walletState.balances[sym]||'0');
+}
+
+function updateRoSlider(){
+  const cid=document.getElementById('ro-network').value;
+  const sym=document.getElementById('ro-token').value;
+  const bal=getBalForToken(sym,cid);
+  const amt=parseFloat(document.getElementById('ro-amount').value)||0;
+  const pct=bal>0?Math.min(100,Math.round(amt/bal*100)):0;
+  document.getElementById('ro-slider').value=pct;
+  document.getElementById('ro-pct').textContent=pct+'%';
+}
+
+function sliderToRoAmount(){
+  const cid=document.getElementById('ro-network').value;
+  const sym=document.getElementById('ro-token').value;
+  const bal=getBalForToken(sym,cid);
+  const pct=parseInt(document.getElementById('ro-slider').value);
+  document.getElementById('ro-amount').value=(bal*pct/100).toFixed(6);
+  document.getElementById('ro-pct').textContent=pct+'%';
+}
+
+function updateDirSlider(){
+  const cid=document.getElementById('dir-network').value;
+  const sym=document.getElementById('dir-token').value;
+  const bal=getBalForToken(sym,cid);
+  const amt=parseFloat(document.getElementById('dir-amount').value)||0;
+  const pct=bal>0?Math.min(100,Math.round(amt/bal*100)):0;
+  document.getElementById('dir-slider').value=pct;
+  document.getElementById('dir-pct').textContent=pct+'%';
+}
+
+function sliderToDirAmount(){
+  const cid=document.getElementById('dir-network').value;
+  const sym=document.getElementById('dir-token').value;
+  const bal=getBalForToken(sym,cid);
+  const pct=parseInt(document.getElementById('dir-slider').value);
+  document.getElementById('dir-amount').value=(bal*pct/100).toFixed(6);
+  document.getElementById('dir-pct').textContent=pct+'%';
+}
+
+// =============== BUILD UNSIGNED TX ===============
+async function buildUnsignedTx(){
+  const cid=document.getElementById('ro-network').value;
+  const sym=document.getElementById('ro-token').value;
+  const to=document.getElementById('ro-to').value.trim();
+  const amtStr=document.getElementById('ro-amount').value.trim();
+  if(!to||!amtStr){toast('أدخل العنوان والكمية');return;}
+  const chain=NETWORKS.evm.chains.find(c=>c.id===cid);
+  if(!chain){toast('شبكة غير مدعومة لبناء معاملة');return;}
+  try{
+    const provider=new ethers.JsonRpcProvider(chain.rpc);
+    const nonce=await provider.getTransactionCount(walletState.address,'latest');
+    const feeData=await provider.getFeeData();
+    const tokens=EVM_TOKENS[cid]||[];
+    const tokenCfg=tokens.find(t=>t.sym===sym);
+    let txObj;
+    if(!tokenCfg||tokenCfg.native){
+      txObj={to,value:ethers.parseEther(amtStr).toString(),nonce,gasLimit:'21000',
+        maxFeePerGas:feeData.maxFeePerGas?.toString()||feeData.gasPrice?.toString()||'0',
+        maxPriorityFeePerGas:feeData.maxPriorityFeePerGas?.toString()||'0',
+        chainId:chain.chainId,type:2};
+    } else {
+      const iface=new ethers.Interface(ERC20_ABI);
+      const data=iface.encodeFunctionData('transfer',[to,ethers.parseUnits(amtStr,tokenCfg.decimals)]);
+      txObj={to:tokenCfg.addr,value:'0',data,nonce,gasLimit:'65000',
+        maxFeePerGas:feeData.maxFeePerGas?.toString()||feeData.gasPrice?.toString()||'0',
+        maxPriorityFeePerGas:feeData.maxPriorityFeePerGas?.toString()||'0',
+        chainId:chain.chainId,type:2};
+    }
+    const unsigned=JSON.stringify(txObj);
+    unsignedHexVal=unsigned;
+    document.getElementById('unsigned-hex').textContent=unsigned;
+    document.getElementById('unsigned-result').classList.remove('hidden');
+    toast('تم بناء المعاملة غير الموقعة');
+  }catch(e){toast('خطأ: '+e.message);}
+}
+
+function copyUnsigned(){
+  navigator.clipboard.writeText(unsignedHexVal).then(()=>toast('تم النسخ ✓'));
+}
+
+function showQR(valId,canvasId){
+  const val=valId==='unsigned-hex-val'?unsignedHexVal:document.getElementById(valId)?.value||'';
+  const canvas=document.getElementById(canvasId);
+  canvas.classList.remove('hidden');
+  QRCode.toCanvas(canvas,val||' ',{width:220,margin:1,color:{dark:'#000',light:'#fff'}});
+}
+
+// =============== DIRECT SEND ===============
+async function initiateSend(){
+  const to=document.getElementById('dir-to').value.trim();
+  const amtStr=document.getElementById('dir-amount').value.trim();
+  const cid=document.getElementById('dir-network').value;
+  const sym=document.getElementById('dir-token').value;
+  if(!to||!amtStr){toast('أدخل العنوان والكمية');return;}
+  pendingTxData={to,amtStr,cid,sym};
+  startCountdown('countdown-wrap','countdown-num',30,executeSend);
+}
+
+async function executeSend(){
+  if(!pendingTxData)return;
+  const{to,amtStr,cid,sym}=pendingTxData;
+  pendingTxData=null;
+  document.getElementById('send-result').classList.remove('hidden');
+  document.getElementById('send-result-msg').className='alert alert-info';
+  document.getElementById('send-result-msg').textContent='جاري إرسال المعاملة...';
+  try{
+    if(walletState.network==='evm'){
+      const chain=NETWORKS.evm.chains.find(c=>c.id===cid);
+      const provider=new ethers.JsonRpcProvider(chain.rpc);
+      let k=walletState.privateKey.startsWith('0x')?walletState.privateKey:'0x'+walletState.privateKey;
+      const signer=new ethers.Wallet(k,provider);
+      const tokens=EVM_TOKENS[cid]||[];
+      const tokenCfg=tokens.find(t=>t.sym===sym);
+      let tx;
+      if(!tokenCfg||tokenCfg.native){
+        tx=await signer.sendTransaction({to,value:ethers.parseEther(amtStr)});
+      } else {
+        const contract=new ethers.Contract(tokenCfg.addr,ERC20_ABI,signer);
+        tx=await contract.transfer(to,ethers.parseUnits(amtStr,tokenCfg.decimals));
+      }
+      document.getElementById('send-result-msg').className='alert alert-success';
+      document.getElementById('send-result-msg').textContent='تم الإرسال بنجاح!';
+      document.getElementById('send-tx-hash').textContent=chain.explorer+tx.hash;
+      toast('تم الإرسال ✓');
+    } else {
+      document.getElementById('send-result-msg').className='alert alert-info';
+      document.getElementById('send-result-msg').textContent='هذه الشبكة تحتاج إلى تكامل إضافي. المعاملة محاكاة.';
+    }
+  }catch(e){
+    document.getElementById('send-result-msg').className='alert alert-danger';
+    document.getElementById('send-result-msg').textContent='خطأ: '+e.message;
+  }
+}
+
+function cancelSend(){
+  if(sendTimer)clearInterval(sendTimer);
+  document.getElementById('countdown-wrap').classList.add('hidden');
+  pendingTxData=null;
+  toast('تم إلغاء المعاملة');
+}
+
+// =============== BROADCAST SIGNED ===============
+async function broadcastSigned(){
+  const signed=document.getElementById('signed-tx-input').value.trim();
+  if(!signed){toast('أدخل المعاملة الموقعة');return;}
+  pendingTxData={signed};
+  startCountdown('broadcast-countdown-wrap','bc-countdown-num',30,executeBroadcast);
+}
+
+async function executeBroadcast(){
+  if(!pendingTxData)return;
+  const{signed}=pendingTxData;
+  pendingTxData=null;
+  document.getElementById('broadcast-result').classList.remove('hidden');
+  document.getElementById('broadcast-result-msg').className='alert alert-info';
+  document.getElementById('broadcast-result-msg').textContent='جاري البث...';
+  try{
+    let txData;
+    try{txData=JSON.parse(signed);}catch{txData=null;}
+    if(walletState.network==='evm'&&txData&&txData.signedTx){
+      const chain=NETWORKS.evm.chains.find(c=>c.id===walletState.evmChain)||NETWORKS.evm.chains[0];
+      const provider=new ethers.JsonRpcProvider(chain.rpc);
+      const tx=await provider.broadcastTransaction(txData.signedTx);
+      document.getElementById('broadcast-result-msg').className='alert alert-success';
+      document.getElementById('broadcast-result-msg').textContent='تم البث بنجاح!';
+      document.getElementById('broadcast-tx-hash').textContent=chain.explorer+tx.hash;
+    } else {
+      document.getElementById('broadcast-result-msg').className='alert alert-info';
+      document.getElementById('broadcast-result-msg').textContent='تم قراءة التوقيع. تأكد من أن البيانات صحيحة قبل البث الفعلي.';
+      document.getElementById('broadcast-tx-hash').textContent=signed.substring(0,100)+'...';
+    }
+  }catch(e){
+    document.getElementById('broadcast-result-msg').className='alert alert-danger';
+    document.getElementById('broadcast-result-msg').textContent='خطأ: '+e.message;
+  }
+}
+
+function cancelBroadcast(){
+  if(broadcastTimer)clearInterval(broadcastTimer);
+  document.getElementById('broadcast-countdown-wrap').classList.add('hidden');
+  pendingTxData=null;
+  toast('تم إلغاء البث');
+}
+
+// =============== COUNTDOWN ===============
+function startCountdown(wrapId,numId,secs,callback){
+  document.getElementById(wrapId).classList.remove('hidden');
+  let remaining=secs;
+  document.getElementById(numId).textContent=remaining;
+  const timer=setInterval(()=>{
+    remaining--;
+    document.getElementById(numId).textContent=remaining;
+    if(remaining<=0){
+      clearInterval(timer);
+      document.getElementById(wrapId).classList.add('hidden');
+      callback();
+    }
+  },1000);
+  if(wrapId==='countdown-wrap') sendTimer=timer;
+  else broadcastTimer=timer;
+}
+
+// =============== CAMERA ===============
+function openCamera(targetId){
+  camTarget=targetId;
+  const overlay=document.getElementById('cam-overlay');
+  overlay.classList.add('open');
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
+    .then(stream=>{
+      camStream=stream;
+      const video=document.getElementById('cam-video');
+      video.srcObject=stream;
+      video.play();
+      camScanInterval=setInterval(scanQR,300);
+    })
+    .catch(e=>{toast('لا يمكن الوصول للكاميرا: '+e.message);closeCamera();});
+}
+
+function scanQR(){
+  const video=document.getElementById('cam-video');
+  if(video.readyState!==video.HAVE_ENOUGH_DATA)return;
+  const canvas=document.getElementById('cam-canvas');
+  canvas.width=video.videoWidth;
+  canvas.height=video.videoHeight;
+  const ctx=canvas.getContext('2d');
+  ctx.drawImage(video,0,0);
+  const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+  const code=jsQR(imageData.data,imageData.width,imageData.height);
+  if(code){
+    const el=document.getElementById(camTarget);
+    if(el)el.value=code.data;
+    closeCamera();
+    toast('تم قراءة رمز QR ✓');
+  }
+}
+
+function closeCamera(){
+  if(camScanInterval){clearInterval(camScanInterval);camScanInterval=null;}
+  if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;}
+  document.getElementById('cam-overlay').classList.remove('open');
+}
+
+// =============== QR MODAL ===============
+function closeQrModal(){document.getElementById('qr-modal').classList.remove('open');}
+
+// =============== UTILS ===============
+function showErr(el,msg){el.textContent=msg;el.classList.remove('hidden');}
+
+let toastTimeout;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.style.display='block';
+  if(toastTimeout)clearTimeout(toastTimeout);
+  toastTimeout=setTimeout(()=>{el.style.display='none';},2500);
+}
+</script>
+</body>
+</html>
