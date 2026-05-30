@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محفظة BSC - Web Wallet</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.4/esm/html5-qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+        }
+
+        /* Header */
+        .header {
+            background-color: #000000;
+            border-bottom: 3px solid #ffd700;
+            padding: 15px 10px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(255, 215, 0, 0.2);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #ffd700;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        /* Tabs Navigation */
+        .tabs-nav {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+            background-color: #000000;
+            padding: 10px;
+            border-radius: 8px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .tab-btn {
+            flex: 1;
+            min-width: 100px;
+            padding: 12px 15px;
+            background-color: #2a2a2a;
+            color: #ffffff;
+            border: 2px solid #444444;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            background-color: #333333;
+            border-color: #ffd700;
+        }
+
+        .tab-btn.active {
+            background-color: #ffd700;
+            color: #000000;
+            border-color: #ffd700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Form Sections */
+        .form-section {
+            background-color: #1a1a1a;
+            border: 2px solid #333333;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .form-section h2 {
+            color: #ffd700;
+            margin-bottom: 12px;
+            font-size: 18px;
+            border-bottom: 2px solid #ffd700;
+            padding-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="password"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px;
+            background-color: #2a2a2a;
+            color: #ffffff;
+            border: 2px solid #444444;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s ease;
+            margin-bottom: 8px;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="password"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #ffd700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+            background-color: #333333;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+            font-size: 12px;
+        }
+
+        /* Buttons */
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            min-width: 100px;
+            padding: 12px 20px;
+            background-color: #ffd700;
+            color: #000000;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(255, 215, 0, 0.3);
+        }
+
+        button:hover {
+            background-color: #ffed4e;
+            box-shadow: 0 6px 12px rgba(255, 215, 0, 0.5);
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background-color: #444444;
+            color: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background-color: #555555;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .btn-danger {
+            background-color: #ff4444;
+            color: #ffffff;
+        }
+
+        .btn-danger:hover {
+            background-color: #ff6666;
+        }
+
+        .btn-small {
+            padding: 8px 12px;
+            font-size: 12px;
+            min-width: 50px;
+        }
+
+        /* Balance Display */
+        .balance-display {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            color: #000000;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+        }
+
+        .balance-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-weight: bold;
+            font-size: 15px;
+        }
+
+        .balance-item:last-child {
+            margin-bottom: 0;
+        }
+
+        /* QR Code Display */
+        .qr-container {
+            background-color: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 15px;
+            border: 2px solid #444444;
+        }
+
+        #qrcode {
+            display: inline-block;
+            background-color: #ffffff;
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .address-display {
+            background-color: #1a1a1a;
+            padding: 12px;
+            border: 2px solid #ffd700;
+            border-radius: 6px;
+            margin-top: 12px;
+            word-break: break-all;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            color: #ffd700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .copy-btn {
+            padding: 8px 12px;
+            font-size: 12px;
+            min-width: 60px;
+        }
+
+        /* QR Scanner */
+        .qr-scanner-container {
+            background-color: #2a2a2a;
+            border: 2px solid #444444;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .qr-scanner-container.active {
+            display: block;
+        }
+
+        #qr-reader {
+            width: 100%;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .scan-button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        /* Status Messages */
+        .status-message {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        .status-message.show {
+            display: block;
+        }
+
+        .status-success {
+            background-color: #2a5a2a;
+            color: #90ee90;
+            border: 2px solid #90ee90;
+        }
+
+        .status-error {
+            background-color: #5a2a2a;
+            color: #ff6b6b;
+            border: 2px solid #ff6b6b;
+        }
+
+        .status-info {
+            background-color: #2a3a5a;
+            color: #87ceeb;
+            border: 2px solid #87ceeb;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Countdown Timer */
+        .countdown-container {
+            background-color: #2a2a2a;
+            border: 3px solid #ffd700;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .countdown-container.active {
+            display: block;
+        }
+
+        .countdown-timer {
+            font-size: 48px;
+            color: #ffd700;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Input Helper */
+        .input-helper {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .input-helper input {
+            flex: 1;
+        }
+
+        .input-helper button {
+            flex: 0 0 auto;
+            padding: 10px 12px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 20px;
+            }
+
+            .tabs-nav {
+                padding: 8px;
+                gap: 3px;
+            }
+
+            .tab-btn {
+                min-width: 80px;
+                padding: 10px 12px;
+                font-size: 12px;
+            }
+
+            .form-section {
+                padding: 12px;
+                margin-bottom: 12px;
+            }
+
+            .form-section h2 {
+                font-size: 16px;
+                margin-bottom: 10px;
+            }
+
+            input[type="text"],
+            input[type="number"],
+            input[type="password"],
+            textarea,
+            select {
+                padding: 10px;
+                font-size: 13px;
+            }
+
+            button {
+                padding: 10px 15px;
+                font-size: 13px;
+            }
+
+            .balance-display {
+                padding: 12px;
+            }
+
+            .balance-item {
+                font-size: 14px;
+            }
+
+            .countdown-timer {
+                font-size: 36px;
+            }
+
+            .main-content {
+                padding: 8px;
+            }
+        }
+
+        /* Utility Classes */
+        .hidden {
+            display: none !important;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-10 {
+            margin-top: 10px;
+        }
+
+        .mb-10 {
+            margin-bottom: 10px;
+        }
+
+        .code-display {
+            background-color: #1a1a1a;
+            padding: 12px;
+            border: 2px solid #ffd700;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            word-break: break-all;
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+            color: #ffd700;
+            max-height: 200px;
+            overflow-y: auto;
+            line-height: 1.4;
+        }
+
+        .copy-code-btn {
+            width: 100%;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🔐 محفظة BSC</h1>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Tabs Navigation -->
+            <div class="tabs-nav">
+                <button class="tab-btn active" onclick="switchTab('tab1')">المشاهدة فقط</button>
+                <button class="tab-btn" onclick="switchTab('tab2')">التوقيع غير المتصل</button>
+                <button class="tab-btn" onclick="switchTab('tab3')">التحكم الكامل</button>
+            </div>
+
+            <!-- Tab 1: View Only -->
+            <div id="tab1" class="tab-content active">
+                <div class="form-section">
+                    <h2>إدخال العنوان العام</h2>
+                    <div class="form-group">
+                        <label for="viewAddress">العنوان العام (Address):</label>
+                        <div class="input-helper">
+                            <input type="text" id="viewAddress" placeholder="0x..." maxlength="42">
+                            <button class="btn-small" onclick="loadViewOnlyBalance()">تحميل</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="viewOnlyBalance" class="balance-display hidden">
+                    <div class="balance-item">
+                        <span>رصيد BNB:</span>
+                        <span id="viewBNBBalance">0 BNB</span>
+                    </div>
+                    <div class="balance-item">
+                        <span>رصيد USDT-BEP20:</span>
+                        <span id="viewUSDTBalance">0 USDT</span>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button onclick="showViewReceive()">استقبال</button>
+                    <button onclick="showViewSend()" class="btn-secondary">إرسال</button>
+                </div>
+
+                <!-- View Receive Section -->
+                <div id="viewReceiveSection" class="form-section hidden">
+                    <h2>استقبال العملات</h2>
+                    <div class="qr-container">
+                        <div id="viewQRCode"></div>
+                    </div>
+                    <div class="address-display">
+                        <span id="viewQRAddress">لم يتم تحميل العنوان</span>
+                        <button class="copy-btn" onclick="copyToClipboard('viewQRAddress')">نسخ</button>
+                    </div>
+                </div>
+
+                <!-- View Send Section -->
+                <div id="viewSendSection" class="form-section hidden">
+                    <h2>إرسال العملات - إنشاء معاملة غير موقعة</h2>
+                    
+                    <div class="form-group">
+                        <label for="viewSendCurrency">نوع العملة:</label>
+                        <select id="viewSendCurrency">
+                            <option value="BNB">BNB</option>
+                            <option value="USDT">USDT-BEP20</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="viewSendAmount">المبلغ:</label>
+                        <input type="number" id="viewSendAmount" placeholder="0.0" step="0.0001">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="viewRecipient">عنوان المستقبل:</label>
+                        <div class="input-helper">
+                            <input type="text" id="viewRecipient" placeholder="0x..." maxlength="42">
+                            <button class="btn-small" onclick="openViewQRScanner()">QR</button>
+                        </div>
+                    </div>
+
+                    <!-- QR Scanner for View -->
+                    <div id="viewQRScanner" class="qr-scanner-container">
+                        <div id="qr-reader-view"></div>
+                        <div class="scan-button-group">
+                            <button onclick="closeViewQRScanner()" class="btn-secondary">إغلاق</button>
+                        </div>
+                    </div>
+
+                    <button onclick="createUnsignedTransaction()">بناء معاملة غير موقعة</button>
+
+                    <!-- Unsigned Transaction Display -->
+                    <div id="unsignedTxDisplay" class="form-section hidden">
+                        <h2>المعاملة غير الموقعة</h2>
+                        <div class="code-display" id="unsignedTxCode"></div>
+                        <button class="copy-code-btn" onclick="copyToClipboard('unsignedTxCode')">نسخ المعاملة</button>
+
+                        <div class="form-group mt-10">
+                            <label for="signedTx">المعاملة الموقعة:</label>
+                            <textarea id="signedTx" placeholder="الصق المعاملة الموقعة من الخيار الثاني هنا"></textarea>
+                        </div>
+
+                        <div class="button-group">
+                            <button onclick="submitSignedTransaction()">إرسال المعاملة</button>
+                            <button onclick="cancelTransaction()" class="btn-secondary">إلغاء</button>
+                        </div>
+                    </div>
+
+                    <!-- Countdown Timer -->
+                    <div id="countdownContainer" class="countdown-container">
+                        <div class="countdown-timer" id="countdownTimer">15</div>
+                        <div class="button-group">
+                            <button onclick="confirmSendNow()">إرسال الآن</button>
+                            <button onclick="cancelCountdown()" class="btn-danger">إلغاء الإرسال</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status Messages -->
+                <div id="viewStatus" class="status-message"></div>
+            </div>
+
+            <!-- Tab 2: Offline Signing -->
+            <div id="tab2" class="tab-content">
+                <div class="form-section">
+                    <h2>التوقيع غير المتصل</h2>
+                    
+                    <div class="form-group">
+                        <label for="privateKeySign">المفتاح الخاص:</label>
+                        <input type="password" id="privateKeySign" placeholder="0x..." maxlength="66">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="unsignedTxInput">بيانات المعاملة غير الموقعة:</label>
+                        <textarea id="unsignedTxInput" placeholder="الصق بيانات المعاملة غير الموقعة هنا (JSON)"></textarea>
+                    </div>
+
+                    <button onclick="signTransaction()">توقيع المعاملة</button>
+
+                    <!-- Signed Transaction Display -->
+                    <div id="signedTxDisplay" class="form-section hidden">
+                        <h2>المعاملة الموقعة</h2>
+                        <div class="code-display" id="signedTxCode"></div>
+                        <button class="copy-code-btn" onclick="copyToClipboard('signedTxCode')">نسخ التوقيع</button>
+                    </div>
+
+                    <!-- Status Messages -->
+                    <div id="signStatus" class="status-message"></div>
+                </div>
+            </div>
+
+            <!-- Tab 3: Full Control -->
+            <div id="tab3" class="tab-content">
+                <div class="form-section">
+                    <h2>إدخال المفتاح الخاص</h2>
+                    <div class="form-group">
+                        <label for="privateKeyControl">المفتاح الخاص:</label>
+                        <input type="password" id="privateKeyControl" placeholder="0x..." maxlength="66">
+                    </div>
+                    <button onclick="loadFullControlBalance()">تحميل المحفظة</button>
+                </div>
+
+                <div id="fullControlBalance" class="balance-display hidden">
+                    <div class="balance-item">
+                        <span>رصيد BNB:</span>
+                        <span id="controlBNBBalance">0 BNB</span>
+                    </div>
+                    <div class="balance-item">
+                        <span>رصيد USDT-BEP20:</span>
+                        <span id="controlUSDTBalance">0 USDT</span>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button onclick="showControlReceive()">استقبال</button>
+                    <button onclick="showControlSend()" class="btn-secondary">إرسال</button>
+                </div>
+
+                <!-- Control Receive Section -->
+                <div id="controlReceiveSection" class="form-section hidden">
+                    <h2>استقبال العملات</h2>
+                    <div class="qr-container">
+                        <div id="controlQRCode"></div>
+                    </div>
+                    <div class="address-display">
+                        <span id="controlQRAddress">لم يتم تحميل العنوان</span>
+                        <button class="copy-btn" onclick="copyToClipboard('controlQRAddress')">نسخ</button>
+                    </div>
+                </div>
+
+                <!-- Control Send Section -->
+                <div id="controlSendSection" class="form-section hidden">
+                    <h2>إرسال العملات مباشرة</h2>
+                    
+                    <div class="form-group">
+                        <label for="controlSendCurrency">نوع العملة:</label>
+                        <select id="controlSendCurrency">
+                            <option value="BNB">BNB</option>
+                            <option value="USDT">USDT-BEP20</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="controlSendAmount">المبلغ:</label>
+                        <input type="number" id="controlSendAmount" placeholder="0.0" step="0.0001">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="controlRecipient">عنوان المستقبل:</label>
+                        <div class="input-helper">
+                            <input type="text" id="controlRecipient" placeholder="0x..." maxlength="42">
+                            <button class="btn-small" onclick="openControlQRScanner()">QR</button>
+                        </div>
+                    </div>
+
+                    <!-- QR Scanner for Control -->
+                    <div id="controlQRScanner" class="qr-scanner-container">
+                        <div id="qr-reader-control"></div>
+                        <div class="scan-button-group">
+                            <button onclick="closeControlQRScanner()" class="btn-secondary">إغلاق</button>
+                        </div>
+                    </div>
+
+                    <button onclick="sendDirectTransaction()">إرسال المعاملة</button>
+
+                    <!-- Countdown Timer -->
+                    <div id="countdownContainerControl" class="countdown-container">
+                        <div class="countdown-timer" id="countdownTimerControl">15</div>
+                        <div class="button-group">
+                            <button onclick="confirmSendNowControl()">إرسال الآن</button>
+                            <button onclick="cancelCountdownControl()" class="btn-danger">إلغاء الإرسال</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status Messages -->
+                <div id="controlStatus" class="status-message"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Constants
+        const BSC_RPC = 'https://bsc-dataseed.binance.org';
+        const USDT_ADDRESS = '0x55d398326f99059fF775485246999027B3197955';
+        const USDT_ABI = [
+            'function balanceOf(address owner) view returns (uint256)',
+            'function decimals() view returns (uint8)',
+            'function transfer(address to, uint256 amount) returns (bool)'
+        ];
+
+        // Global Variables
+        let currentProvider;
+        let currentSigner;
+        let currentAddress;
+        let viewOnlyAddress;
+        let qrScannerView;
+        let qrScannerControl;
+        let countdownInterval;
+        let countdownIntervalControl;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('محفظة BSC جاهزة');
+        });
+
+        // Tab Switching
+        function switchTab(tabId) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Copy to Clipboard
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            let text = element.textContent || element.value;
+
+            navigator.clipboard.writeText(text).then(() => {
+                showStatus('viewStatus', 'تم النسخ بنجاح!', 'success');
+            }).catch(err => {
+                showStatus('viewStatus', 'فشل النسخ', 'error');
+            });
+        }
+
+        // Show Status Message
+        function showStatus(elementId, message, type) {
+            const statusEl = document.getElementById(elementId);
+            statusEl.textContent = message;
+            statusEl.className = `status-message show status-${type}`;
+            
+            setTimeout(() => {
+                statusEl.classList.remove('show');
+            }, 3000);
+        }
+
+        // ==================== TAB 1: VIEW ONLY ====================
+
+        // Load View Only Balance
+        async function loadViewOnlyBalance() {
+            const address = document.getElementById('viewAddress').value.trim();
+            
+            if (!address || !address.startsWith('0x') || address.length !== 42) {
+                showStatus('viewStatus', 'الرجاء إدخال عنوان صحيح', 'error');
+                return;
+            }
+
+            try {
+                viewOnlyAddress = address;
+                currentProvider = new ethers.JsonRpcProvider(BSC_RPC);
+
+                // Get BNB Balance
+                const bnbBalance = await currentProvider.getBalance(address);
+                const bnbFormatted = ethers.formatEther(bnbBalance);
+                document.getElementById('viewBNBBalance').textContent = `${parseFloat(bnbFormatted).toFixed(6)} BNB`;
+
+                // Get USDT Balance
+                const usdtContract = new ethers.Contract(USDT_ADDRESS, USDT_ABI, currentProvider);
+                const usdtBalance = await usdtContract.balanceOf(address);
+                const usdtFormatted = ethers.formatUnits(usdtBalance, 18);
+                document.getElementById('viewUSDTBalance').textContent = `${parseFloat(usdtFormatted).toFixed(6)} USDT`;
+
+                document.getElementById('viewOnlyBalance').classList.remove('hidden');
+                showStatus('viewStatus', 'تم تحميل الرصيد بنجاح', 'success');
+            } catch (error) {
+                showStatus('viewStatus', 'خطأ: ' + error.message, 'error');
+            }
+        }
+
+        // Show View Receive
+        function showViewReceive() {
+            if (!viewOnlyAddress) {
+                showStatus('viewStatus', 'الرجاء تحميل عنوان أولاً', 'error');
+                return;
+            }
+
+            document.getElementById('viewReceiveSection').classList.remove('hidden');
+            document.getElementById('viewSendSection').classList.add('hidden');
+            document.getElementById('unsignedTxDisplay').classList.add('hidden');
+
+            // Generate QR Code
+            document.getElementById('viewQRCode').innerHTML = '';
+            new QRCode(document.getElementById('viewQRCode'), {
+                text: viewOnlyAddress,
+                width: 200,
+                height: 200,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            document.getElementById('viewQRAddress').textContent = viewOnlyAddress;
+        }
+
+        // Show View Send
+        function showViewSend() {
+            if (!viewOnlyAddress) {
+                showStatus('viewStatus', 'الرجاء تحميل عنوان أولاً', 'error');
+                return;
+            }
+
+            document.getElementById('viewSendSection').classList.remove('hidden');
+            document.getElementById('viewReceiveSection').classList.add('hidden');
+            document.getElementById('unsignedTxDisplay').classList.add('hidden');
+        }
+
+        // Open View QR Scanner
+        function openViewQRScanner() {
+            document.getElementById('viewQRScanner').classList.add('active');
+            
+            if (!qrScannerView) {
+                qrScannerView = new Html5Qrcode('qr-reader-view');
+            }
+
+            qrScannerView.start(
+                { facingMode: 'environment' },
+                { fps: 10, qrbox: 250 },
+                (decodedText) => {
+                    document.getElementById('viewRecipient').value = decodedText;
+                    closeViewQRScanner();
+                },
+                (errorMessage) => {
+                    // Ignore errors
+                }
+            ).catch(err => {
+                showStatus('viewStatus', 'خطأ في الكاميرا: ' + err, 'error');
+            });
+        }
+
+        // Close View QR Scanner
+        function closeViewQRScanner() {
+            if (qrScannerView) {
+                qrScannerView.stop().catch(err => {
+                    console.log('خطأ في إغلاق الكاميرا:', err);
+                });
+            }
+            document.getElementById('viewQRScanner').classList.remove('active');
+        }
+
+        // Create Unsigned Transaction
+        async function createUnsignedTransaction() {
+            const recipient = document.getElementById('viewRecipient').value.trim();
+            const amount = document.getElementById('viewSendAmount').value;
+            const currency = document.getElementById('viewSendCurrency').value;
+
+            if (!recipient || !recipient.startsWith('0x') || recipient.length !== 42) {
+                showStatus('viewStatus', 'الرجاء إدخال عنوان صحيح', 'error');
+                return;
+            }
+
+            if (!amount || parseFloat(amount) <= 0) {
+                showStatus('viewStatus', 'الرجاء إدخال مبلغ صحيح', 'error');
+                return;
+            }
+
+            try {
+                currentProvider = new ethers.JsonRpcProvider(BSC_RPC);
+                const nonce = await currentProvider.getTransactionCount(viewOnlyAddress);
+                const gasPrice = await currentProvider.getGasPrice();
+
+                let unsignedTx;
+
+                if (currency === 'BNB') {
+                    unsignedTx = {
+                        to: recipient,
+                        from: viewOnlyAddress,
+                        value: ethers.parseEther(amount),
+                        gasLimit: 21000,
+                        gasPrice: gasPrice,
+                        nonce: nonce,
+                        chainId: 56,
+                        data: '0x'
+                    };
+                } else {
+                    // USDT Transfer
+                    const usdtContract = new ethers.Contract(USDT_ADDRESS, USDT_ABI, currentProvider);
+                    const iface = new ethers.Interface(USDT_ABI);
+                    const data = iface.encodeFunctionData('transfer', [recipient, ethers.parseUnits(amount, 18)]);
+
+                    unsignedTx = {
+                        to: USDT_ADDRESS,
+                        from: viewOnlyAddress,
+                        value: 0,
+                        gasLimit: 100000,
+                        gasPrice: gasPrice,
+                        nonce: nonce,
+                        chainId: 56,
+                        data: data
+                    };
+                }
+
+                const txJSON = JSON.stringify(unsignedTx, null, 2);
+                document.getElementById('unsignedTxCode').textContent = txJSON;
+                document.getElementById('unsignedTxDisplay').classList.remove('hidden');
+
+                showStatus('viewStatus', 'تم إنشاء المعاملة غير الموقعة', 'success');
+            } catch (error) {
+                showStatus('viewStatus', 'خطأ: ' + error.message, 'error');
+            }
+        }
+
+        // Submit Signed Transaction
+        async function submitSignedTransaction() {
+            const signedTx = document.getElementById('signedTx').value.trim();
+
+            if (!signedTx) {
+                showStatus('viewStatus', 'الرجاء إدخال المعاملة الموقعة', 'error');
+                return;
+            }
+
+            try {
+                currentProvider = new ethers.JsonRpcProvider(BSC_RPC);
+                
+                // Start countdown
+                startCountdown();
+            } catch (error) {
+                showStatus('viewStatus', 'خطأ: ' + error.message, 'error');
+            }
+        }
+
+        // Cancel Transaction
+        function cancelTransaction() {
+            document.getElementById('signedTx').value = '';
+            document.getElementById('unsignedTxDisplay').classList.add('hidden');
+        }
+
+        // Start Countdown
+        function startCountdown() {
+            let timeLeft = 15;
+            document.getElementById('countdownContainer').classList.add('active');
+            document.getElementById('countdownTimer').textContent = timeLeft;
+
+            countdownInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('countdownTimer').textContent = timeLeft;
+
+                if (timeLeft <= 0) {
+                    cancelCountdown();
+                }
+            }, 1000);
+        }
+
+        // Confirm Send Now
+        async function confirmSendNow() {
+            const signedTx = document.getElementById('signedTx').value.trim();
+
+            try {
+                currentProvider = new ethers.JsonRpcProvider(BSC_RPC);
+                const txResponse = await currentProvider.broadcastTransaction(signedTx);
+                
+                showStatus('viewStatus', 'تم إرسال المعاملة: ' + txResponse.hash, 'success');
+                cancelCountdown();
+                document.getElementById('signedTx').value = '';
+                document.getElementById('unsignedTxDisplay').classList.add('hidden');
+            } catch (error) {
+                showStatus('viewStatus', 'خطأ في الإرسال: ' + error.message, 'error');
+            }
+        }
+
+        // Cancel Countdown
+        function cancelCountdown() {
+            clearInterval(countdownInterval);
+            document.getElementById('countdownContainer').classList.remove('active');
+        }
+
+        // ==================== TAB 2: OFFLINE SIGNING ====================
+
+        // Sign Transaction
+        async function signTransaction() {
+            const privateKey = document.getElementById('privateKeySign').value.trim();
+            const unsignedTxInput = document.getElementById('unsignedTxInput').value.trim();
+
+            if (!privateKey || !privateKey.startsWith('0x') || privateKey.length !== 66) {
+                showStatus('signStatus', 'الرجاء إدخال مفتاح خاص صحيح', 'error');
+                return;
+            }
+
+            if (!unsignedTxInput) {
+                showStatus('signStatus', 'الرجاء إدخال بيانات المعاملة غير الموقعة', 'error');
+                return;
+            }
+
+            try {
+                const unsignedTx = JSON.parse(unsignedTxInput);
+                const wallet = new ethers.Wallet(privateKey);
+                const signedTx = await wallet.signTransaction(unsignedTx);
+
+                document.getElementById('signedTxCode').textContent = signedTx;
+                document.getElementById('signedTxDisplay').classList.remove('hidden');
+
+                showStatus('signStatus', 'تم التوقيع بنجاح', 'success');
+            } catch (error) {
+                showStatus('signStatus', 'خطأ: ' + error.message, 'error');
+            }
+        }
+
+        // ==================== TAB 3: FULL CONTROL ====================
+
+        // Load Full Control Balance
+        async function loadFullControlBalance() {
+            const privateKey = document.getElementById('privateKeyControl').value.trim();
+
+            if (!privateKey || !privateKey.startsWith('0x') || privateKey.length !== 66) {
+                showStatus('controlStatus', 'الرجاء إدخال مفتاح خاص صحيح', 'error');
+                return;
+            }
+
+            try {
+                currentProvider = new ethers.JsonRpcProvider(BSC_RPC);
+                currentSigner = new ethers.Wallet(privateKey, currentProvider);
+                currentAddress = currentSigner.address;
+
+                // Get BNB Balance
+                const bnbBalance = await currentProvider.getBalance(currentAddress);
+                const bnbFormatted = ethers.formatEther(bnbBalance);
+                document.getElementById('controlBNBBalance').textContent = `${parseFloat(bnbFormatted).toFixed(6)} BNB`;
+
+                // Get USDT Balance
+                const usdtContract = new ethers.Contract(USDT_ADDRESS, USDT_ABI, currentProvider);
+                const usdtBalance = await usdtContract.balanceOf(currentAddress);
+                const usdtFormatted = ethers.formatUnits(usdtBalance, 18);
+                document.getElementById('controlUSDTBalance').textContent = `${parseFloat(usdtFormatted).toFixed(6)} USDT`;
+
+                document.getElementById('fullControlBalance').classList.remove('hidden');
+                showStatus('controlStatus', 'تم تحميل المحفظة بنجاح', 'success');
+            } catch (error) {
+                showStatus('controlStatus', 'خطأ: ' + error.message, 'error');
+            }
+        }
+
+        // Show Control Receive
+        function showControlReceive() {
+            if (!currentAddress) {
+                showStatus('controlStatus', 'الرجاء تحميل المحفظة أولاً', 'error');
+                return;
+            }
+
+            document.getElementById('controlReceiveSection').classList.remove('hidden');
+            document.getElementById('controlSendSection').classList.add('hidden');
+
+            // Generate QR Code
+            document.getElementById('controlQRCode').innerHTML = '';
+            new QRCode(document.getElementById('controlQRCode'), {
+                text: currentAddress,
+                width: 200,
+                height: 200,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            document.getElementById('controlQRAddress').textContent = currentAddress;
+        }
+
+        // Show Control Send
+        function showControlSend() {
+            if (!currentAddress) {
+                showStatus('controlStatus', 'الرجاء تحميل المحفظة أولاً', 'error');
+                return;
+            }
+
+            document.getElementById('controlSendSection').classList.remove('hidden');
+            document.getElementById('controlReceiveSection').classList.add('hidden');
+        }
+
+        // Open Control QR Scanner
+        function openControlQRScanner() {
+            document.getElementById('controlQRScanner').classList.add('active');
+            
+            if (!qrScannerControl) {
+                qrScannerControl = new Html5Qrcode('qr-reader-control');
+            }
+
+            qrScannerControl.start(
+                { facingMode: 'environment' },
+                { fps: 10, qrbox: 250 },
+                (decodedText) => {
+                    document.getElementById('controlRecipient').value = decodedText;
+                    closeControlQRScanner();
+                },
+                (errorMessage) => {
+                    // Ignore errors
+                }
+            ).catch(err => {
+                showStatus('controlStatus', 'خطأ في الكاميرا: ' + err, 'error');
+            });
+        }
+
+        // Close Control QR Scanner
+        function closeControlQRScanner() {
+            if (qrScannerControl) {
+                qrScannerControl.stop().catch(err => {
+                    console.log('خطأ في إغلاق الكاميرا:', err);
+                });
+            }
+            document.getElementById('controlQRScanner').classList.remove('active');
+        }
+
+        // Send Direct Transaction
+        async function sendDirectTransaction() {
+            const recipient = document.getElementById('controlRecipient').value.trim();
+            const amount = document.getElementById('controlSendAmount').value;
+            const currency = document.getElementById('controlSendCurrency').value;
+
+            if (!recipient || !recipient.startsWith('0x') || recipient.length !== 42) {
+                showStatus('controlStatus', 'الرجاء إدخال عنوان صحيح', 'error');
+                return;
+            }
+
+            if (!amount || parseFloat(amount) <= 0) {
+                showStatus('controlStatus', 'الرجاء إدخال مبلغ صحيح', 'error');
+                return;
+            }
+
+            try {
+                startCountdownControl();
+            } catch (error) {
+                showStatus('controlStatus', 'خطأ: ' + error.message, 'error');
+            }
+        }
+
+        // Start Countdown Control
+        function startCountdownControl() {
+            let timeLeft = 15;
+            document.getElementById('countdownContainerControl').classList.add('active');
+            document.getElementById('countdownTimerControl').textContent = timeLeft;
+
+            countdownIntervalControl = setInterval(() => {
+                timeLeft--;
+                document.getElementById('countdownTimerControl').textContent = timeLeft;
+
+                if (timeLeft <= 0) {
+                    cancelCountdownControl();
+                }
+            }, 1000);
+        }
+
+        // Confirm Send Now Control
+        async function confirmSendNowControl() {
+            const recipient = document.getElementById('controlRecipient').value.trim();
+            const amount = document.getElementById('controlSendAmount').value;
+            const currency = document.getElementById('controlSendCurrency').value;
+
+            try {
+                let txResponse;
+
+                if (currency === 'BNB') {
+                    txResponse = await currentSigner.sendTransaction({
+                        to: recipient,
+                        value: ethers.parseEther(amount)
+                    });
+                } else {
+                    const usdtContract = new ethers.Contract(USDT_ADDRESS, USDT_ABI, currentSigner);
+                    txResponse = await usdtContract.transfer(recipient, ethers.parseUnits(amount, 18));
+                }
+
+                showStatus('controlStatus', 'تم إرسال المعاملة: ' + txResponse.hash, 'success');
+                cancelCountdownControl();
+                document.getElementById('controlRecipient').value = '';
+                document.getElementById('controlSendAmount').value = '';
+            } catch (error) {
+                showStatus('controlStatus', 'خطأ في الإرسال: ' + error.message, 'error');
+            }
+        }
+
+        // Cancel Countdown Control
+        function cancelCountdownControl() {
+            clearInterval(countdownIntervalControl);
+            document.getElementById('countdownContainerControl').classList.remove('active');
+        }
+    </script>
+</body>
+</html>
