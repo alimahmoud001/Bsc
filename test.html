@@ -5,7 +5,6 @@
     <title>محفظة BSC - Web Wallet</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- استخدام نسخة مستقرة وغير تجريبية من المكتبة -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         * {
@@ -361,6 +360,12 @@
             border: 2px solid #87ceeb;
         }
 
+        .status-warning {
+            background-color: #5a4a2a;
+            color: #ffa500;
+            border: 2px solid #ffa500;
+        }
+
         @keyframes slideIn {
             from {
                 opacity: 0;
@@ -409,6 +414,50 @@
         .input-helper button {
             flex: 0 0 auto;
             padding: 10px 12px;
+        }
+
+        /* Transaction Hash Link */
+        .tx-hash-display {
+            background-color: #1a1a1a;
+            padding: 12px;
+            border: 2px solid #90ee90;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            word-break: break-all;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            color: #90ee90;
+        }
+
+        .tx-hash-display a {
+            color: #90ee90;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .tx-hash-display a:hover {
+            color: #ffed4e;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 15px;
+            background-color: #000000;
+            border-top: 2px solid #ffd700;
+            margin-top: auto;
+        }
+
+        footer a {
+            color: #ffd700;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        footer a:hover {
+            color: #ffed4e;
+            text-decoration: underline;
         }
 
         /* Responsive Design */
@@ -746,11 +795,17 @@
                 <div id="controlStatus" class="status-message"></div>
             </div>
         </div>
+
+        <!-- Footer -->
+        <footer>
+            <a href="https://iancoleman.io/bip39/" target="_blank">🔗 إنشاء محفظة جديدة</a>
+        </footer>
     </div>
 
     <script>
         // Constants
         const BSC_RPC = 'https://bsc-dataseed.binance.org';
+        const BSC_EXPLORER = 'https://bscscan.com/tx/';
         const USDT_ADDRESS = '0x55d398326f99059fF775485246999027B3197955';
         const USDT_ABI = [
             'function balanceOf(address owner) view returns (uint256)',
@@ -768,14 +823,41 @@
         let countdownInterval;
         let countdownIntervalControl;
 
+        // دالة تحليل الأخطاء وتحويلها إلى رسائل بسيطة
+        function parseErrorMessage(error) {
+            const errorStr = error.toString().toLowerCase();
+            
+            if (errorStr.includes('insufficient funds') || errorStr.includes('insufficient balance')) {
+                return 'لا يوجد رصيد كافي للقيام بهذه المعاملة';
+            }
+            if (errorStr.includes('gas') || errorStr.includes('out of gas')) {
+                return 'لا يوجد رصيد BNB كافي لدفع رسوم الشبكة';
+            }
+            if (errorStr.includes('nonce too low')) {
+                return 'حاول مرة أخرى - هناك مشكلة في ترتيب المعاملات';
+            }
+            if (errorStr.includes('invalid address')) {
+                return 'عنوان المحفظة غير صحيح';
+            }
+            if (errorStr.includes('invalid private key')) {
+                return 'المفتاح الخاص غير صحيح';
+            }
+            if (errorStr.includes('network')) {
+                return 'خطأ في الاتصال بالشبكة - تحقق من الإنترنت';
+            }
+            if (errorStr.includes('timeout')) {
+                return 'انتهت مهلة الاتصال - حاول مرة أخرى';
+            }
+            
+            return 'حدث خطأ: ' + error.message;
+        }
+
         // Tab Switching
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             event.target.classList.add('active');
-            
-            // إغلاق الكاميرا عند تبديل التبويبات لضمان عدم بقائها تعمل في الخلفية
             closeViewQRScanner();
             closeControlQRScanner();
         }
@@ -819,9 +901,9 @@
 
         function showStatus(elementId, message, type) {
             const statusEl = document.getElementById(elementId);
-            statusEl.textContent = message;
+            statusEl.innerHTML = message;
             statusEl.className = `status-message show status-${type}`;
-            setTimeout(() => statusEl.classList.remove('show'), 3000);
+            setTimeout(() => statusEl.classList.remove('show'), 5000);
         }
 
         // ==================== TAB 1: VIEW ONLY ====================
@@ -840,9 +922,9 @@
                 const usdtBalance = await usdtContract.balanceOf(address);
                 document.getElementById('viewUSDTBalance').textContent = `${parseFloat(ethers.formatUnits(usdtBalance, 18)).toFixed(6)} USDT`;
                 document.getElementById('viewOnlyBalance').classList.remove('hidden');
-                showStatus('viewStatus', 'تم تحميل الرصيد بنجاح', 'success');
+                showStatus('viewStatus', 'تم تحميل الرصيد بنجاح ✅', 'success');
             } catch (error) {
-                showStatus('viewStatus', 'خطأ: ' + error.message, 'error');
+                showStatus('viewStatus', parseErrorMessage(error), 'error');
             }
         }
 
@@ -861,12 +943,10 @@
             document.getElementById('viewReceiveSection').classList.add('hidden');
         }
 
-        // --- إصلاح الكاميرا في قسم المشاهدة ---
         async function openViewQRScanner() {
             const container = document.getElementById('viewQRScanner');
             container.classList.add('active');
             
-            // التأكد من أن الصفحة تعمل عبر HTTPS لأن الكاميرا تتطلب ذلك
             if (!window.isSecureContext && location.protocol !== 'file:') {
                 showStatus('viewStatus', 'الكاميرا تتطلب اتصالاً آمناً (HTTPS)', 'error');
                 return;
@@ -885,7 +965,6 @@
                     aspectRatio: 1.0
                 };
 
-                // محاولة البدء بالكاميرا الخلفية مباشرة
                 await qrScannerView.start(
                     { facingMode: "environment" }, 
                     config,
@@ -894,10 +973,9 @@
                         showStatus('viewStatus', 'تم المسح بنجاح ✅', 'success');
                         closeViewQRScanner();
                     },
-                    (errorMessage) => { /* تجاهل أخطاء البحث عن الكود */ }
+                    (errorMessage) => {}
                 );
             } catch (err) {
-                console.error(err);
                 showStatus('viewStatus', 'فشل فتح الكاميرا: ' + err, 'error');
                 container.classList.remove('active');
             }
@@ -934,8 +1012,8 @@
                 }
                 document.getElementById('unsignedTxCode').textContent = JSON.stringify(unsignedTx, null, 2);
                 document.getElementById('unsignedTxDisplay').classList.remove('hidden');
-                showStatus('viewStatus', 'تم إنشاء المعاملة', 'success');
-            } catch (error) { showStatus('viewStatus', 'خطأ: ' + error.message, 'error'); }
+                showStatus('viewStatus', 'تم إنشاء المعاملة بنجاح ✅', 'success');
+            } catch (error) { showStatus('viewStatus', parseErrorMessage(error), 'error'); }
         }
 
         async function submitSignedTransaction() {
@@ -960,11 +1038,13 @@
             try {
                 currentProvider = new ethers.JsonRpcProvider(BSC_RPC);
                 const txResponse = await currentProvider.broadcastTransaction(signedTx);
-                showStatus('viewStatus', 'تم الإرسال بنجاح!', 'success');
+                const txHash = txResponse.hash;
+                const explorerLink = `<a href="${BSC_EXPLORER}${txHash}" target="_blank">🔗 عرض المعاملة على BscScan</a>`;
+                showStatus('viewStatus', `تم الإرسال بنجاح! ✅<br>${explorerLink}`, 'success');
                 cancelCountdown();
                 document.getElementById('signedTx').value = '';
                 document.getElementById('unsignedTxDisplay').classList.add('hidden');
-            } catch (error) { showStatus('viewStatus', 'خطأ: ' + error.message, 'error'); }
+            } catch (error) { showStatus('viewStatus', parseErrorMessage(error), 'error'); }
         }
 
         function cancelCountdown() { clearInterval(countdownInterval); document.getElementById('countdownContainer').classList.remove('active'); }
@@ -982,8 +1062,8 @@
                 const signed = await wallet.signTransaction(tx);
                 document.getElementById('signedTxCode').textContent = signed;
                 document.getElementById('signedTxDisplay').classList.remove('hidden');
-                showStatus('signStatus', 'تم التوقيع بنجاح', 'success');
-            } catch (error) { showStatus('signStatus', 'خطأ: ' + error.message, 'error'); }
+                showStatus('signStatus', 'تم التوقيع بنجاح ✅', 'success');
+            } catch (error) { showStatus('signStatus', parseErrorMessage(error), 'error'); }
         }
 
         // ==================== TAB 3: FULL CONTROL ====================
@@ -1000,8 +1080,8 @@
                 const bal = await usdt.balanceOf(currentAddress);
                 document.getElementById('controlUSDTBalance').textContent = `${parseFloat(ethers.formatUnits(bal, 18)).toFixed(6)} USDT`;
                 document.getElementById('fullControlBalance').classList.remove('hidden');
-                showStatus('controlStatus', 'تم التحميل بنجاح', 'success');
-            } catch (error) { showStatus('controlStatus', 'خطأ: ' + error.message, 'error'); }
+                showStatus('controlStatus', 'تم التحميل بنجاح ✅', 'success');
+            } catch (error) { showStatus('controlStatus', parseErrorMessage(error), 'error'); }
         }
 
         function showControlReceive() {
@@ -1019,7 +1099,6 @@
             document.getElementById('controlReceiveSection').classList.add('hidden');
         }
 
-        // --- إصلاح الكاميرا في قسم التحكم الكامل ---
         async function openControlQRScanner() {
             const container = document.getElementById('controlQRScanner');
             container.classList.add('active');
@@ -1096,9 +1175,13 @@
                     const usdt = new ethers.Contract(USDT_ADDRESS, USDT_ABI, currentSigner);
                     tx = await usdt.transfer(recipient, ethers.parseUnits(amount, 18), { gasPrice: feeData.gasPrice, type: 0 });
                 }
-                showStatus('controlStatus', 'تم الإرسال: ' + tx.hash, 'success');
+                const txHash = tx.hash;
+                const explorerLink = `<a href="${BSC_EXPLORER}${txHash}" target="_blank">🔗 عرض المعاملة على BscScan</a>`;
+                showStatus('controlStatus', `تم الإرسال بنجاح! ✅<br>${explorerLink}`, 'success');
                 cancelCountdownControl();
-            } catch (error) { showStatus('controlStatus', 'خطأ: ' + error.message, 'error'); }
+                document.getElementById('controlRecipient').value = '';
+                document.getElementById('controlSendAmount').value = '';
+            } catch (error) { showStatus('controlStatus', parseErrorMessage(error), 'error'); }
         }
 
         function cancelCountdownControl() { clearInterval(countdownIntervalControl); document.getElementById('countdownContainerControl').classList.remove('active'); }
