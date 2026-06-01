@@ -5,7 +5,8 @@
     <title>محفظة BSC - Web Wallet</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.4/esm/html5-qrcode.min.js"></script>
+    <!-- استخدام نسخة مستقرة وغير تجريبية من المكتبة -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -313,10 +314,13 @@
             display: block;
         }
 
-        #qr-reader {
+        #qr-reader-view,
+        #qr-reader-control {
             width: 100%;
+            min-height: 250px;
             border-radius: 6px;
             overflow: hidden;
+            background-color: #000;
         }
 
         .scan-button-group {
@@ -498,7 +502,6 @@
         }
 
         .copy-code-btn {
-            width: 100%;
             margin-top: 8px;
         }
     </style>
@@ -614,7 +617,7 @@
 
                     <!-- Countdown Timer -->
                     <div id="countdownContainer" class="countdown-container">
-                        <div class="countdown-timer" id="countdownTimer">15</div>
+                        <div class="countdown-timer" id="countdownTimer">30</div>
                         <div class="button-group">
                             <button onclick="confirmSendNow()">إرسال الآن</button>
                             <button onclick="cancelCountdown()" class="btn-danger">إلغاء الإرسال</button>
@@ -731,7 +734,7 @@
 
                     <!-- Countdown Timer -->
                     <div id="countdownContainerControl" class="countdown-container">
-                        <div class="countdown-timer" id="countdownTimerControl">15</div>
+                        <div class="countdown-timer" id="countdownTimerControl">30</div>
                         <div class="button-group">
                             <button onclick="confirmSendNowControl()">إرسال الآن</button>
                             <button onclick="cancelCountdownControl()" class="btn-danger">إلغاء الإرسال</button>
@@ -760,50 +763,36 @@
         let currentSigner;
         let currentAddress;
         let viewOnlyAddress;
-        let qrScannerView;
-        let qrScannerControl;
+        let qrScannerView = null;
+        let qrScannerControl = null;
         let countdownInterval;
         let countdownIntervalControl;
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('محفظة BSC جاهزة');
-        });
-
         // Tab Switching
         function switchTab(tabId) {
-            // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-
-            // Show selected tab
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             event.target.classList.add('active');
+            
+            // إغلاق الكاميرا عند تبديل التبويبات لضمان عدم بقائها تعمل في الخلفية
+            closeViewQRScanner();
+            closeControlQRScanner();
         }
 
-        // Copy to Clipboard with Fallback for all environments
+        // Copy to Clipboard
         function copyToClipboard(elementId) {
             const element = document.getElementById(elementId);
             let text = element.textContent || element.value;
-            
-            // Determine which status element to show based on the active tab
             let statusId = 'viewStatus';
             if (document.getElementById('tab2').classList.contains('active')) statusId = 'signStatus';
             if (document.getElementById('tab3').classList.contains('active')) statusId = 'controlStatus';
 
             if (navigator.clipboard && window.isSecureContext) {
-                // Modern approach
                 navigator.clipboard.writeText(text).then(() => {
                     showStatus(statusId, 'تم النسخ بنجاح! ✅', 'success');
-                }).catch(err => {
-                    fallbackCopyTextToClipboard(text, statusId);
-                });
+                }).catch(() => fallbackCopyTextToClipboard(text, statusId));
             } else {
-                // Fallback approach
                 fallbackCopyTextToClipboard(text, statusId);
             }
         }
@@ -811,19 +800,13 @@
         function fallbackCopyTextToClipboard(text, statusId) {
             const textArea = document.createElement("textarea");
             textArea.value = text;
-            
-            // Ensure the textarea is not visible but part of the DOM
             textArea.style.position = "fixed";
-            textArea.style.left = "-999999px";
             textArea.style.top = "-999999px";
             document.body.appendChild(textArea);
-            
             textArea.focus();
             textArea.select();
-
             try {
-                const successful = document.execCommand('copy');
-                if (successful) {
+                if (document.execCommand('copy')) {
                     showStatus(statusId, 'تم النسخ بنجاح! ✅', 'success');
                 } else {
                     showStatus(statusId, 'فشل النسخ، يرجى النسخ يدوياً', 'error');
@@ -831,47 +814,31 @@
             } catch (err) {
                 showStatus(statusId, 'خطأ في النسخ', 'error');
             }
-
             document.body.removeChild(textArea);
         }
 
-        // Show Status Message
         function showStatus(elementId, message, type) {
             const statusEl = document.getElementById(elementId);
             statusEl.textContent = message;
             statusEl.className = `status-message show status-${type}`;
-            
-            setTimeout(() => {
-                statusEl.classList.remove('show');
-            }, 3000);
+            setTimeout(() => statusEl.classList.remove('show'), 3000);
         }
 
         // ==================== TAB 1: VIEW ONLY ====================
-
-        // Load View Only Balance
         async function loadViewOnlyBalance() {
             const address = document.getElementById('viewAddress').value.trim();
-            
             if (!address || !address.startsWith('0x') || address.length !== 42) {
                 showStatus('viewStatus', 'الرجاء إدخال عنوان صحيح', 'error');
                 return;
             }
-
             try {
                 viewOnlyAddress = address;
                 currentProvider = new ethers.JsonRpcProvider(BSC_RPC);
-
-                // Get BNB Balance
                 const bnbBalance = await currentProvider.getBalance(address);
-                const bnbFormatted = ethers.formatEther(bnbBalance);
-                document.getElementById('viewBNBBalance').textContent = `${parseFloat(bnbFormatted).toFixed(6)} BNB`;
-
-                // Get USDT Balance
+                document.getElementById('viewBNBBalance').textContent = `${parseFloat(ethers.formatEther(bnbBalance)).toFixed(6)} BNB`;
                 const usdtContract = new ethers.Contract(USDT_ADDRESS, USDT_ABI, currentProvider);
                 const usdtBalance = await usdtContract.balanceOf(address);
-                const usdtFormatted = ethers.formatUnits(usdtBalance, 18);
-                document.getElementById('viewUSDTBalance').textContent = `${parseFloat(usdtFormatted).toFixed(6)} USDT`;
-
+                document.getElementById('viewUSDTBalance').textContent = `${parseFloat(ethers.formatUnits(usdtBalance, 18)).toFixed(6)} USDT`;
                 document.getElementById('viewOnlyBalance').classList.remove('hidden');
                 showStatus('viewStatus', 'تم تحميل الرصيد بنجاح', 'success');
             } catch (error) {
@@ -879,432 +846,262 @@
             }
         }
 
-        // Show View Receive
         function showViewReceive() {
-            if (!viewOnlyAddress) {
-                showStatus('viewStatus', 'الرجاء تحميل عنوان أولاً', 'error');
-                return;
-            }
-
+            if (!viewOnlyAddress) { showStatus('viewStatus', 'الرجاء تحميل عنوان أولاً', 'error'); return; }
             document.getElementById('viewReceiveSection').classList.remove('hidden');
             document.getElementById('viewSendSection').classList.add('hidden');
-            document.getElementById('unsignedTxDisplay').classList.add('hidden');
-
-            // Generate QR Code
             document.getElementById('viewQRCode').innerHTML = '';
-            new QRCode(document.getElementById('viewQRCode'), {
-                text: viewOnlyAddress,
-                width: 200,
-                height: 200,
-                colorDark: '#000000',
-                colorLight: '#ffffff',
-                correctLevel: QRCode.CorrectLevel.H
-            });
-
+            new QRCode(document.getElementById('viewQRCode'), { text: viewOnlyAddress, width: 200, height: 200 });
             document.getElementById('viewQRAddress').textContent = viewOnlyAddress;
         }
 
-        // Show View Send
         function showViewSend() {
-            if (!viewOnlyAddress) {
-                showStatus('viewStatus', 'الرجاء تحميل عنوان أولاً', 'error');
+            if (!viewOnlyAddress) { showStatus('viewStatus', 'الرجاء تحميل عنوان أولاً', 'error'); return; }
+            document.getElementById('viewSendSection').classList.remove('hidden');
+            document.getElementById('viewReceiveSection').classList.add('hidden');
+        }
+
+        // --- إصلاح الكاميرا في قسم المشاهدة ---
+        async function openViewQRScanner() {
+            const container = document.getElementById('viewQRScanner');
+            container.classList.add('active');
+            
+            // التأكد من أن الصفحة تعمل عبر HTTPS لأن الكاميرا تتطلب ذلك
+            if (!window.isSecureContext && location.protocol !== 'file:') {
+                showStatus('viewStatus', 'الكاميرا تتطلب اتصالاً آمناً (HTTPS)', 'error');
                 return;
             }
 
-            document.getElementById('viewSendSection').classList.remove('hidden');
-            document.getElementById('viewReceiveSection').classList.add('hidden');
-            document.getElementById('unsignedTxDisplay').classList.add('hidden');
-        }
-
-        // Open View QR Scanner
-        function openViewQRScanner() {
-            document.getElementById('viewQRScanner').classList.add('active');
-            
-            if (!qrScannerView) {
-                qrScannerView = new Html5Qrcode('qr-reader-view');
-            }
-
-            qrScannerView.start(
-                { facingMode: 'environment' },
-                { fps: 10, qrbox: 250 },
-                (decodedText) => {
-                    document.getElementById('viewRecipient').value = decodedText;
-                    closeViewQRScanner();
-                },
-                (errorMessage) => {
-                    // Ignore errors
+            try {
+                if (qrScannerView) {
+                    await qrScannerView.stop().catch(() => {});
                 }
-            ).catch(err => {
-                showStatus('viewStatus', 'خطأ في الكاميرا: ' + err, 'error');
-            });
+                
+                qrScannerView = new Html5Qrcode("qr-reader-view");
+                
+                const config = { 
+                    fps: 20, 
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0
+                };
+
+                // محاولة البدء بالكاميرا الخلفية مباشرة
+                await qrScannerView.start(
+                    { facingMode: "environment" }, 
+                    config,
+                    (decodedText) => {
+                        document.getElementById('viewRecipient').value = decodedText;
+                        showStatus('viewStatus', 'تم المسح بنجاح ✅', 'success');
+                        closeViewQRScanner();
+                    },
+                    (errorMessage) => { /* تجاهل أخطاء البحث عن الكود */ }
+                );
+            } catch (err) {
+                console.error(err);
+                showStatus('viewStatus', 'فشل فتح الكاميرا: ' + err, 'error');
+                container.classList.remove('active');
+            }
         }
 
-        // Close View QR Scanner
         function closeViewQRScanner() {
             if (qrScannerView) {
-                qrScannerView.stop().catch(err => {
-                    console.log('خطأ في إغلاق الكاميرا:', err);
-                });
+                qrScannerView.stop().then(() => {
+                    qrScannerView = null;
+                    document.getElementById('viewQRScanner').classList.remove('active');
+                }).catch(err => console.error(err));
+            } else {
+                document.getElementById('viewQRScanner').classList.remove('active');
             }
-            document.getElementById('viewQRScanner').classList.remove('active');
         }
 
-        // Create Unsigned Transaction
         async function createUnsignedTransaction() {
             const recipient = document.getElementById('viewRecipient').value.trim();
             const amount = document.getElementById('viewSendAmount').value;
             const currency = document.getElementById('viewSendCurrency').value;
-
-            if (!recipient || !recipient.startsWith('0x') || recipient.length !== 42) {
-                showStatus('viewStatus', 'الرجاء إدخال عنوان صحيح', 'error');
-                return;
-            }
-
-            if (!amount || parseFloat(amount) <= 0) {
-                showStatus('viewStatus', 'الرجاء إدخال مبلغ صحيح', 'error');
-                return;
-            }
-
+            if (!recipient || recipient.length !== 42) { showStatus('viewStatus', 'عنوان غير صحيح', 'error'); return; }
+            if (!amount || amount <= 0) { showStatus('viewStatus', 'مبلغ غير صحيح', 'error'); return; }
             try {
                 currentProvider = new ethers.JsonRpcProvider(BSC_RPC);
                 const nonce = await currentProvider.getTransactionCount(viewOnlyAddress);
                 const feeData = await currentProvider.getFeeData();
-                const gasPrice = feeData.gasPrice;
-
                 let unsignedTx;
-
                 if (currency === 'BNB') {
-                    unsignedTx = {
-                        to: recipient,
-                        value: ethers.parseEther(amount).toString(),
-                        gasLimit: "21000",
-                        gasPrice: gasPrice.toString(),
-                        nonce: nonce,
-                        chainId: 56,
-                        type: 0 // Legacy transaction for better compatibility
-                    };
+                    unsignedTx = { to: recipient, value: ethers.parseEther(amount).toString(), gasLimit: "21000", gasPrice: feeData.gasPrice.toString(), nonce, chainId: 56, type: 0 };
                 } else {
-                    // USDT Transfer
                     const iface = new ethers.Interface(USDT_ABI);
                     const data = iface.encodeFunctionData('transfer', [recipient, ethers.parseUnits(amount, 18)]);
-
-                    unsignedTx = {
-                        to: USDT_ADDRESS,
-                        value: "0",
-                        gasLimit: "100000",
-                        gasPrice: gasPrice.toString(),
-                        nonce: nonce,
-                        chainId: 56,
-                        data: data,
-                        type: 0
-                    };
+                    unsignedTx = { to: USDT_ADDRESS, value: "0", gasLimit: "100000", gasPrice: feeData.gasPrice.toString(), nonce, chainId: 56, data, type: 0 };
                 }
-
-                // Fix for BigInt serialization in JSON
-                const txJSON = JSON.stringify(unsignedTx, (key, value) =>
-                    typeof value === 'bigint' ? value.toString() : value, 2
-                );
-                document.getElementById('unsignedTxCode').textContent = txJSON;
+                document.getElementById('unsignedTxCode').textContent = JSON.stringify(unsignedTx, null, 2);
                 document.getElementById('unsignedTxDisplay').classList.remove('hidden');
-
-                showStatus('viewStatus', 'تم إنشاء المعاملة غير الموقعة', 'success');
-            } catch (error) {
-                showStatus('viewStatus', 'خطأ: ' + error.message, 'error');
-            }
+                showStatus('viewStatus', 'تم إنشاء المعاملة', 'success');
+            } catch (error) { showStatus('viewStatus', 'خطأ: ' + error.message, 'error'); }
         }
 
-        // Submit Signed Transaction
         async function submitSignedTransaction() {
-            const signedTx = document.getElementById('signedTx').value.trim();
-
-            if (!signedTx) {
-                showStatus('viewStatus', 'الرجاء إدخال المعاملة الموقعة', 'error');
-                return;
-            }
-
-            try {
-                currentProvider = new ethers.JsonRpcProvider(BSC_RPC);
-                
-                // Start countdown
-                startCountdown();
-            } catch (error) {
-                showStatus('viewStatus', 'خطأ: ' + error.message, 'error');
-            }
+            if (!document.getElementById('signedTx').value.trim()) { showStatus('viewStatus', 'أدخل المعاملة الموقعة', 'error'); return; }
+            startCountdown();
         }
 
-        // Cancel Transaction
-        function cancelTransaction() {
-            document.getElementById('signedTx').value = '';
-            document.getElementById('unsignedTxDisplay').classList.add('hidden');
-        }
-
-        // Start Countdown
         function startCountdown() {
-            let timeLeft = 15;
+            let timeLeft = 30;
             document.getElementById('countdownContainer').classList.add('active');
             document.getElementById('countdownTimer').textContent = timeLeft;
-
+            clearInterval(countdownInterval);
             countdownInterval = setInterval(() => {
                 timeLeft--;
                 document.getElementById('countdownTimer').textContent = timeLeft;
-
-                if (timeLeft <= 0) {
-                    cancelCountdown();
-                }
+                if (timeLeft <= 0) { confirmSendNow(); }
             }, 1000);
         }
 
-        // Confirm Send Now
         async function confirmSendNow() {
             const signedTx = document.getElementById('signedTx').value.trim();
-
             try {
                 currentProvider = new ethers.JsonRpcProvider(BSC_RPC);
                 const txResponse = await currentProvider.broadcastTransaction(signedTx);
-                
-                showStatus('viewStatus', 'تم إرسال المعاملة بنجاح!', 'success');
-                console.log('TX Hash:', txResponse.hash);
+                showStatus('viewStatus', 'تم الإرسال بنجاح!', 'success');
                 cancelCountdown();
                 document.getElementById('signedTx').value = '';
                 document.getElementById('unsignedTxDisplay').classList.add('hidden');
-            } catch (error) {
-                showStatus('viewStatus', 'خطأ في الإرسال: ' + error.message, 'error');
-            }
+            } catch (error) { showStatus('viewStatus', 'خطأ: ' + error.message, 'error'); }
         }
 
-        // Cancel Countdown
-        function cancelCountdown() {
-            clearInterval(countdownInterval);
-            document.getElementById('countdownContainer').classList.remove('active');
-        }
+        function cancelCountdown() { clearInterval(countdownInterval); document.getElementById('countdownContainer').classList.remove('active'); }
 
         // ==================== TAB 2: OFFLINE SIGNING ====================
-
-        // Sign Transaction
         async function signTransaction() {
             const privateKey = document.getElementById('privateKeySign').value.trim();
-            const unsignedTxInput = document.getElementById('unsignedTxInput').value.trim();
-
-            if (!privateKey || !privateKey.startsWith('0x') || privateKey.length !== 66) {
-                showStatus('signStatus', 'الرجاء إدخال مفتاح خاص صحيح', 'error');
-                return;
-            }
-
-            if (!unsignedTxInput) {
-                showStatus('signStatus', 'الرجاء إدخال بيانات المعاملة غير الموقعة', 'error');
-                return;
-            }
-
+            const input = document.getElementById('unsignedTxInput').value.trim();
+            if (!privateKey || privateKey.length !== 66) { showStatus('signStatus', 'مفتاح خاص غير صحيح', 'error'); return; }
             try {
-                let unsignedTx = JSON.parse(unsignedTxInput);
-                
-                // Convert string numbers back to BigInt where needed for ethers v6
-                // Comprehensive BigInt conversion for all possible numeric fields in a transaction
-                const fieldsToConvert = ['value', 'gasLimit', 'gasPrice', 'maxFeePerGas', 'maxPriorityFeePerGas', 'nonce'];
-                fieldsToConvert.forEach(field => {
-                    if (unsignedTx[field] !== undefined && unsignedTx[field] !== null) {
-                        unsignedTx[field] = BigInt(unsignedTx[field]);
-                    }
-                });
-                
-                // ChainId must be a number or bigint, but ethers usually expects it as a number in some contexts
-                if (unsignedTx.chainId) unsignedTx.chainId = Number(unsignedTx.chainId);
-                
+                let tx = JSON.parse(input);
+                ['value', 'gasLimit', 'gasPrice', 'nonce'].forEach(f => { if(tx[f]) tx[f] = BigInt(tx[f]); });
+                if(tx.chainId) tx.chainId = Number(tx.chainId);
                 const wallet = new ethers.Wallet(privateKey);
-                const signedTx = await wallet.signTransaction(unsignedTx);
-
-                document.getElementById('signedTxCode').textContent = signedTx;
+                const signed = await wallet.signTransaction(tx);
+                document.getElementById('signedTxCode').textContent = signed;
                 document.getElementById('signedTxDisplay').classList.remove('hidden');
-
                 showStatus('signStatus', 'تم التوقيع بنجاح', 'success');
-            } catch (error) {
-                showStatus('signStatus', 'خطأ: ' + error.message, 'error');
-            }
+            } catch (error) { showStatus('signStatus', 'خطأ: ' + error.message, 'error'); }
         }
 
         // ==================== TAB 3: FULL CONTROL ====================
-
-        // Load Full Control Balance
         async function loadFullControlBalance() {
-            const privateKey = document.getElementById('privateKeyControl').value.trim();
-
-            if (!privateKey || !privateKey.startsWith('0x') || privateKey.length !== 66) {
-                showStatus('controlStatus', 'الرجاء إدخال مفتاح خاص صحيح', 'error');
-                return;
-            }
-
+            const pk = document.getElementById('privateKeyControl').value.trim();
+            if (!pk || pk.length !== 66) { showStatus('controlStatus', 'مفتاح غير صحيح', 'error'); return; }
             try {
                 currentProvider = new ethers.JsonRpcProvider(BSC_RPC);
-                currentSigner = new ethers.Wallet(privateKey, currentProvider);
+                currentSigner = new ethers.Wallet(pk, currentProvider);
                 currentAddress = currentSigner.address;
-
-                // Get BNB Balance
-                const bnbBalance = await currentProvider.getBalance(currentAddress);
-                const bnbFormatted = ethers.formatEther(bnbBalance);
-                document.getElementById('controlBNBBalance').textContent = `${parseFloat(bnbFormatted).toFixed(6)} BNB`;
-
-                // Get USDT Balance
-                const usdtContract = new ethers.Contract(USDT_ADDRESS, USDT_ABI, currentProvider);
-                const usdtBalance = await usdtContract.balanceOf(currentAddress);
-                const usdtFormatted = ethers.formatUnits(usdtBalance, 18);
-                document.getElementById('controlUSDTBalance').textContent = `${parseFloat(usdtFormatted).toFixed(6)} USDT`;
-
+                const bnb = await currentProvider.getBalance(currentAddress);
+                document.getElementById('controlBNBBalance').textContent = `${parseFloat(ethers.formatEther(bnb)).toFixed(6)} BNB`;
+                const usdt = new ethers.Contract(USDT_ADDRESS, USDT_ABI, currentProvider);
+                const bal = await usdt.balanceOf(currentAddress);
+                document.getElementById('controlUSDTBalance').textContent = `${parseFloat(ethers.formatUnits(bal, 18)).toFixed(6)} USDT`;
                 document.getElementById('fullControlBalance').classList.remove('hidden');
-                showStatus('controlStatus', 'تم تحميل المحفظة بنجاح', 'success');
-            } catch (error) {
-                showStatus('controlStatus', 'خطأ: ' + error.message, 'error');
-            }
+                showStatus('controlStatus', 'تم التحميل بنجاح', 'success');
+            } catch (error) { showStatus('controlStatus', 'خطأ: ' + error.message, 'error'); }
         }
 
-        // Show Control Receive
         function showControlReceive() {
-            if (!currentAddress) {
-                showStatus('controlStatus', 'الرجاء تحميل المحفظة أولاً', 'error');
-                return;
-            }
-
+            if (!currentAddress) { showStatus('controlStatus', 'حمل المحفظة أولاً', 'error'); return; }
             document.getElementById('controlReceiveSection').classList.remove('hidden');
             document.getElementById('controlSendSection').classList.add('hidden');
-
-            // Generate QR Code
             document.getElementById('controlQRCode').innerHTML = '';
-            new QRCode(document.getElementById('controlQRCode'), {
-                text: currentAddress,
-                width: 200,
-                height: 200,
-                colorDark: '#000000',
-                colorLight: '#ffffff',
-                correctLevel: QRCode.CorrectLevel.H
-            });
-
+            new QRCode(document.getElementById('controlQRCode'), { text: currentAddress, width: 200, height: 200 });
             document.getElementById('controlQRAddress').textContent = currentAddress;
         }
 
-        // Show Control Send
         function showControlSend() {
-            if (!currentAddress) {
-                showStatus('controlStatus', 'الرجاء تحميل المحفظة أولاً', 'error');
-                return;
-            }
-
+            if (!currentAddress) { showStatus('controlStatus', 'حمل المحفظة أولاً', 'error'); return; }
             document.getElementById('controlSendSection').classList.remove('hidden');
             document.getElementById('controlReceiveSection').classList.add('hidden');
         }
 
-        // Open Control QR Scanner
-        function openControlQRScanner() {
-            document.getElementById('controlQRScanner').classList.add('active');
+        // --- إصلاح الكاميرا في قسم التحكم الكامل ---
+        async function openControlQRScanner() {
+            const container = document.getElementById('controlQRScanner');
+            container.classList.add('active');
             
-            if (!qrScannerControl) {
-                qrScannerControl = new Html5Qrcode('qr-reader-control');
-            }
-
-            qrScannerControl.start(
-                { facingMode: 'environment' },
-                { fps: 10, qrbox: 250 },
-                (decodedText) => {
-                    document.getElementById('controlRecipient').value = decodedText;
-                    closeControlQRScanner();
-                },
-                (errorMessage) => {
-                    // Ignore errors
-                }
-            ).catch(err => {
-                showStatus('controlStatus', 'خطأ في الكاميرا: ' + err, 'error');
-            });
-        }
-
-        // Close Control QR Scanner
-        function closeControlQRScanner() {
-            if (qrScannerControl) {
-                qrScannerControl.stop().catch(err => {
-                    console.log('خطأ في إغلاق الكاميرا:', err);
-                });
-            }
-            document.getElementById('controlQRScanner').classList.remove('active');
-        }
-
-        // Send Direct Transaction
-        async function sendDirectTransaction() {
-            const recipient = document.getElementById('controlRecipient').value.trim();
-            const amount = document.getElementById('controlSendAmount').value;
-            const currency = document.getElementById('controlSendCurrency').value;
-
-            if (!recipient || !recipient.startsWith('0x') || recipient.length !== 42) {
-                showStatus('controlStatus', 'الرجاء إدخال عنوان صحيح', 'error');
-                return;
-            }
-
-            if (!amount || parseFloat(amount) <= 0) {
-                showStatus('controlStatus', 'الرجاء إدخال مبلغ صحيح', 'error');
+            if (!window.isSecureContext && location.protocol !== 'file:') {
+                showStatus('controlStatus', 'الكاميرا تتطلب اتصالاً آمناً (HTTPS)', 'error');
                 return;
             }
 
             try {
-                startCountdownControl();
-            } catch (error) {
-                showStatus('controlStatus', 'خطأ: ' + error.message, 'error');
+                if (qrScannerControl) {
+                    await qrScannerControl.stop().catch(() => {});
+                }
+                
+                qrScannerControl = new Html5Qrcode("qr-reader-control");
+                
+                await qrScannerControl.start(
+                    { facingMode: "environment" }, 
+                    { fps: 20, qrbox: { width: 250, height: 250 } },
+                    (decodedText) => {
+                        document.getElementById('controlRecipient').value = decodedText;
+                        showStatus('controlStatus', 'تم المسح بنجاح ✅', 'success');
+                        closeControlQRScanner();
+                    },
+                    (errorMessage) => {}
+                );
+            } catch (err) {
+                showStatus('controlStatus', 'فشل فتح الكاميرا: ' + err, 'error');
+                container.classList.remove('active');
             }
         }
 
-        // Start Countdown Control
+        function closeControlQRScanner() {
+            if (qrScannerControl) {
+                qrScannerControl.stop().then(() => {
+                    qrScannerControl = null;
+                    document.getElementById('controlQRScanner').classList.remove('active');
+                }).catch(err => console.error(err));
+            } else {
+                document.getElementById('controlQRScanner').classList.remove('active');
+            }
+        }
+
+        async function sendDirectTransaction() {
+            const recipient = document.getElementById('controlRecipient').value.trim();
+            const amount = document.getElementById('controlSendAmount').value;
+            if (!recipient || recipient.length !== 42) { showStatus('controlStatus', 'عنوان غير صحيح', 'error'); return; }
+            if (!amount || amount <= 0) { showStatus('controlStatus', 'مبلغ غير صحيح', 'error'); return; }
+            startCountdownControl();
+        }
+
         function startCountdownControl() {
-            let timeLeft = 15;
+            let timeLeft = 30;
             document.getElementById('countdownContainerControl').classList.add('active');
             document.getElementById('countdownTimerControl').textContent = timeLeft;
-
+            clearInterval(countdownIntervalControl);
             countdownIntervalControl = setInterval(() => {
                 timeLeft--;
                 document.getElementById('countdownTimerControl').textContent = timeLeft;
-
-                if (timeLeft <= 0) {
-                    cancelCountdownControl();
-                }
+                if (timeLeft <= 0) { confirmSendNowControl(); }
             }, 1000);
         }
 
-        // Confirm Send Now Control
         async function confirmSendNowControl() {
             const recipient = document.getElementById('controlRecipient').value.trim();
             const amount = document.getElementById('controlSendAmount').value;
             const currency = document.getElementById('controlSendCurrency').value;
-
             try {
-                let txResponse;
                 const feeData = await currentProvider.getFeeData();
-
+                let tx;
                 if (currency === 'BNB') {
-                    txResponse = await currentSigner.sendTransaction({
-                        to: recipient,
-                        value: ethers.parseEther(amount),
-                        gasPrice: feeData.gasPrice,
-                        type: 0
-                    });
+                    tx = await currentSigner.sendTransaction({ to: recipient, value: ethers.parseEther(amount), gasPrice: feeData.gasPrice, type: 0 });
                 } else {
-                    const usdtContract = new ethers.Contract(USDT_ADDRESS, USDT_ABI, currentSigner);
-                    txResponse = await usdtContract.transfer(recipient, ethers.parseUnits(amount, 18), {
-                        gasPrice: feeData.gasPrice,
-                        type: 0
-                    });
+                    const usdt = new ethers.Contract(USDT_ADDRESS, USDT_ABI, currentSigner);
+                    tx = await usdt.transfer(recipient, ethers.parseUnits(amount, 18), { gasPrice: feeData.gasPrice, type: 0 });
                 }
-
-                showStatus('controlStatus', 'تم إرسال المعاملة: ' + txResponse.hash, 'success');
+                showStatus('controlStatus', 'تم الإرسال: ' + tx.hash, 'success');
                 cancelCountdownControl();
-                document.getElementById('controlRecipient').value = '';
-                document.getElementById('controlSendAmount').value = '';
-            } catch (error) {
-                showStatus('controlStatus', 'خطأ في الإرسال: ' + error.message, 'error');
-            }
+            } catch (error) { showStatus('controlStatus', 'خطأ: ' + error.message, 'error'); }
         }
 
-        // Cancel Countdown Control
-        function cancelCountdownControl() {
-            clearInterval(countdownIntervalControl);
-            document.getElementById('countdownContainerControl').classList.remove('active');
-        }
+        function cancelCountdownControl() { clearInterval(countdownIntervalControl); document.getElementById('countdownContainerControl').classList.remove('active'); }
     </script>
-<footer style="text-align: center; padding: 20px; margin-top: 40px; color: yellow;">
-    <a href="https://iancoleman.io/bip39/" style="color: yellow;">إنشاء محفظة جديدة</a>
-</footer>
 </body>
 </html>
