@@ -1028,20 +1028,27 @@
             clearInterval(countdownInterval);
             countdownInterval = setInterval(() => {
                 timeLeft--;
+                if (timeLeft < 0) {
+                    clearInterval(countdownInterval);
+                    return;
+                }
                 document.getElementById('countdownTimer').textContent = timeLeft;
-                if (timeLeft <= 0) { confirmSendNow(); }
+                if (timeLeft === 0) {
+                    clearInterval(countdownInterval);
+                    confirmSendNow();
+                }
             }, 1000);
         }
 
         async function confirmSendNow() {
             const signedTx = document.getElementById('signedTx').value.trim();
+            cancelCountdown(); // إخفاء المؤقت فوراً عند البدء بالإرسال
             try {
                 currentProvider = new ethers.JsonRpcProvider(BSC_RPC);
                 const txResponse = await currentProvider.broadcastTransaction(signedTx);
                 const txHash = txResponse.hash;
                 const explorerLink = `<a href="${BSC_EXPLORER}${txHash}" target="_blank">🔗 عرض المعاملة على BscScan</a>`;
                 showStatus('viewStatus', `تم الإرسال بنجاح! ✅<br>${explorerLink}`, 'success');
-                cancelCountdown();
                 document.getElementById('signedTx').value = '';
                 document.getElementById('unsignedTxDisplay').classList.add('hidden');
             } catch (error) { showStatus('viewStatus', parseErrorMessage(error), 'error'); }
@@ -1157,8 +1164,15 @@
             clearInterval(countdownIntervalControl);
             countdownIntervalControl = setInterval(() => {
                 timeLeft--;
+                if (timeLeft < 0) {
+                    clearInterval(countdownIntervalControl);
+                    return;
+                }
                 document.getElementById('countdownTimerControl').textContent = timeLeft;
-                if (timeLeft <= 0) { confirmSendNowControl(); }
+                if (timeLeft === 0) {
+                    clearInterval(countdownIntervalControl);
+                    confirmSendNowControl();
+                }
             }, 1000);
         }
 
@@ -1166,6 +1180,7 @@
             const recipient = document.getElementById('controlRecipient').value.trim();
             const amount = document.getElementById('controlSendAmount').value;
             const currency = document.getElementById('controlSendCurrency').value;
+            cancelCountdownControl(); // إخفاء المؤقت فوراً عند البدء بالإرسال
             try {
                 const feeData = await currentProvider.getFeeData();
                 let tx;
@@ -1178,7 +1193,6 @@
                 const txHash = tx.hash;
                 const explorerLink = `<a href="${BSC_EXPLORER}${txHash}" target="_blank">🔗 عرض المعاملة على BscScan</a>`;
                 showStatus('controlStatus', `تم الإرسال بنجاح! ✅<br>${explorerLink}`, 'success');
-                cancelCountdownControl();
                 document.getElementById('controlRecipient').value = '';
                 document.getElementById('controlSendAmount').value = '';
             } catch (error) { showStatus('controlStatus', parseErrorMessage(error), 'error'); }
