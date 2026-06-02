@@ -1,0 +1,467 @@
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محفظة BSC الاحترافية - QR Wallet</title>
+    <!-- Fix Ethers.js Link -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #ffd700;
+            --secondary-color: #1a1a1a;
+            --bg-gradient: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+            --text-color: #ffffff;
+            --border-color: #333333;
+            --accent-color: #ffed4e;
+            --error-color: #ff4444;
+            --success-color: #90ee90;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--secondary-color); color: var(--text-color); min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .container { max-width: 500px; margin: 0 auto; width: 100%; background: var(--bg-gradient); min-height: 100vh; display: flex; flex-direction: column; box-shadow: 0 0 30px rgba(0,0,0,0.5); position: relative; }
+
+        /* Header */
+        .header { background-color: #000; border-bottom: 3px solid var(--primary-color); padding: 20px 10px; text-align: center; position: sticky; top: 0; z-index: 100; }
+        .header h1 { font-size: 26px; color: var(--primary-color); font-weight: 800; letter-spacing: 2px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+
+        /* Main Content */
+        .main-content { flex: 1; padding: 15px; overflow-y: auto; }
+
+        /* Tabs Navigation */
+        .tabs-nav { display: flex; gap: 8px; margin-bottom: 20px; background-color: #000; padding: 8px; border-radius: 12px; border: 1px solid var(--border-color); }
+        .tab-btn { flex: 1; padding: 12px 5px; background-color: #222; color: #888; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 700; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .tab-btn.active { background-color: var(--primary-color); color: #000; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3); transform: scale(1.02); }
+
+        /* Sections */
+        .tab-content { display: none; animation: slideUp 0.4s ease-out; }
+        .tab-content.active { display: block; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .form-section { background-color: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 15px; padding: 20px; margin-bottom: 20px; backdrop-filter: blur(10px); }
+        .form-section h2 { color: var(--primary-color); margin-bottom: 15px; font-size: 18px; font-weight: 700; border-right: 4px solid var(--primary-color); padding-right: 10px; }
+
+        /* Inputs & Buttons */
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 8px; color: #aaa; font-size: 13px; font-weight: 600; }
+        
+        input, textarea, select { width: 100%; padding: 14px; background-color: #111; color: #fff; border: 1.5px solid var(--border-color); border-radius: 10px; font-size: 14px; font-family: 'Courier New', monospace; transition: border-color 0.3s; }
+        input:focus, textarea:focus { border-color: var(--primary-color); outline: none; background-color: #000; }
+
+        .input-helper { display: flex; gap: 10px; align-items: stretch; }
+        .input-helper input, .input-helper textarea { flex: 1; margin-bottom: 0; }
+        
+        .btn-icon { background-color: #333; color: var(--primary-color); border: 1px solid var(--border-color); border-radius: 10px; width: 48px; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; transition: all 0.2s; }
+        .btn-icon:hover { background-color: var(--primary-color); color: #000; border-color: var(--primary-color); }
+
+        button.main-btn { width: 100%; padding: 15px; background-color: var(--primary-color); color: #000; border: none; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; transition: all 0.3s; margin-top: 10px; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2); }
+        button.main-btn:hover { background-color: var(--accent-color); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 215, 0, 0.3); }
+        
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-outline { flex: 1; padding: 12px; background: transparent; border: 1.5px solid var(--primary-color); color: var(--primary-color); border-radius: 10px; font-weight: 700; cursor: pointer; }
+        .btn-danger { background-color: var(--error-color); color: #fff; border: none; border-radius: 10px; padding: 12px; font-weight: 700; cursor: pointer; }
+
+        /* Balance Card */
+        .balance-card { background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%); color: #000; padding: 20px; border-radius: 18px; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(255, 215, 0, 0.2); }
+        .balance-card .title { font-size: 13px; font-weight: 700; opacity: 0.7; margin-bottom: 5px; }
+        .balance-card .amount { font-size: 22px; font-weight: 900; margin-bottom: 10px; }
+        .balance-card .divider { height: 1px; background: rgba(0,0,0,0.1); margin: 10px 0; }
+
+        /* QR Container */
+        .qr-wrapper { background-color: #fff; padding: 15px; border-radius: 15px; margin: 15px 0; text-align: center; border: 4px solid var(--primary-color); display: inline-block; width: auto; }
+        .qr-wrapper div { display: inline-block; }
+        .qr-box { text-align: center; }
+
+        /* Scanner */
+        .scanner-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #000; z-index: 1000; display: none; flex-direction: column; }
+        .scanner-modal.active { display: flex; }
+        .scanner-header { padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+        #reader { flex: 1; width: 100%; }
+
+        /* Status & Countdown */
+        .status-box { padding: 15px; border-radius: 10px; margin-bottom: 15px; font-weight: 700; font-size: 14px; display: none; border: 1px solid transparent; }
+        .status-box.show { display: block; }
+        .status-success { background: rgba(144, 238, 144, 0.1); color: var(--success-color); border-color: var(--success-color); }
+        .status-error { background: rgba(255, 68, 68, 0.1); color: var(--error-color); border-color: var(--error-color); }
+
+        .timer-overlay { background: rgba(0,0,0,0.9); padding: 30px; border-radius: 20px; border: 2px solid var(--primary-color); text-align: center; margin-top: 20px; }
+        .timer-val { font-size: 60px; font-weight: 900; color: var(--primary-color); font-family: monospace; }
+
+        .code-preview { background: #0a0a0a; padding: 12px; border-radius: 8px; border: 1px solid #333; font-size: 11px; color: var(--primary-color); max-height: 100px; overflow-y: auto; margin-top: 10px; word-break: break-all; }
+
+        .hidden { display: none !important; }
+        footer { padding: 20px; text-align: center; font-size: 12px; opacity: 0.6; }
+        footer a { color: var(--primary-color); text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header"><h1>🔐 BSC WALLET</h1></div>
+
+        <div class="main-content">
+            <!-- Navigation -->
+            <div class="tabs-nav">
+                <button class="tab-btn active" onclick="switchTab('tab1')">المشاهدة</button>
+                <button class="tab-btn" onclick="switchTab('tab2')">التوقيع</button>
+                <button class="tab-btn" onclick="switchTab('tab3')">التحكم</button>
+            </div>
+
+            <!-- Status Box -->
+            <div id="globalStatus" class="status-box"></div>
+
+            <!-- Tab 1: View Only -->
+            <div id="tab1" class="tab-content active">
+                <div class="form-section">
+                    <h2>تحميل المحفظة</h2>
+                    <div class="form-group">
+                        <label>العنوان العام (Address)</label>
+                        <div class="input-helper">
+                            <input type="text" id="viewAddress" placeholder="0x..." maxlength="42">
+                            <button class="btn-icon" onclick="startScan('viewAddress')">📷</button>
+                        </div>
+                        <button class="main-btn" onclick="loadViewOnlyBalance()">تحميل البيانات</button>
+                    </div>
+                </div>
+
+                <div id="viewBalanceCard" class="balance-card hidden">
+                    <div class="title">إجمالي الرصيد المتوفر</div>
+                    <div class="amount" id="viewBNB">0.00 BNB</div>
+                    <div class="divider"></div>
+                    <div class="amount" id="viewUSDT">0.00 USDT</div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn-outline" onclick="toggleSection('viewReceive')">استقبال</button>
+                    <button class="btn-outline" onclick="toggleSection('viewSend')">إرسال</button>
+                </div>
+
+                <div id="viewReceive" class="form-section hidden mt-20">
+                    <h2>استقبال العملات</h2>
+                    <div class="qr-box">
+                        <div class="qr-wrapper"><div id="qrReceive"></div></div>
+                        <div class="address-display" id="displayAddr"></div>
+                    </div>
+                </div>
+
+                <div id="viewSend" class="form-section hidden mt-20">
+                    <h2>إرسال جديد</h2>
+                    <div class="form-group">
+                        <label>نوع العملة</label>
+                        <select id="viewCurrency"><option value="BNB">BNB (Native)</option><option value="USDT">USDT (BEP20)</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>المبلغ</label>
+                        <input type="number" id="viewAmount" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>عنوان المستلم</label>
+                        <div class="input-helper">
+                            <input type="text" id="viewRecp" placeholder="0x...">
+                            <button class="btn-icon" onclick="startScan('viewRecp')">📷</button>
+                        </div>
+                    </div>
+                    <button class="main-btn" onclick="createUnsignedTx()">بناء المعاملة غير الموقعة</button>
+
+                    <div id="unsignedArea" class="hidden mt-20">
+                        <label>رمز المعاملة (للمسح بجهاز التوقيع)</label>
+                        <div class="qr-box"><div class="qr-wrapper"><div id="qrUnsigned"></div></div></div>
+                        <div class="code-preview" id="codeUnsigned"></div>
+                        
+                        <div class="form-group mt-20">
+                            <label>المعاملة الموقعة (امسح من جهاز التوقيع)</label>
+                            <div class="input-helper">
+                                <textarea id="signedInput" placeholder="0x..."></textarea>
+                                <button class="btn-icon" onclick="startScan('signedInput')">📷</button>
+                            </div>
+                        </div>
+                        <button class="main-btn" onclick="initiateSend()">إرسال المعاملة للشبكة</button>
+                    </div>
+                </div>
+
+                <div id="countdownView" class="timer-overlay hidden">
+                    <div class="title" style="color:#fff">سيتم الإرسال خلال</div>
+                    <div class="timer-val" id="timerVal">30</div>
+                    <div class="btn-group">
+                        <button class="main-btn" onclick="confirmSend()">إرسال الآن</button>
+                        <button class="btn-danger" onclick="cancelSend()">إلغاء</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Offline Signing -->
+            <div id="tab2" class="tab-content">
+                <div class="form-section">
+                    <h2>توقيع المعاملات (أوفلاين)</h2>
+                    <div class="form-group">
+                        <label>المفتاح الخاص</label>
+                        <div class="input-helper">
+                            <input type="password" id="signPK" placeholder="0x...">
+                            <button class="btn-icon" onclick="startScan('signPK')">📷</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>بيانات المعاملة (امسح من جهاز المشاهدة)</label>
+                        <div class="input-helper">
+                            <textarea id="unsignedInput" placeholder="JSON..."></textarea>
+                            <button class="btn-icon" onclick="startScan('unsignedInput')">📷</button>
+                        </div>
+                    </div>
+                    <button class="main-btn" onclick="processSignature()">توقيع المعاملة الآن</button>
+
+                    <div id="signedArea" class="hidden mt-20">
+                        <label>المعاملة الموقعة (امسح بجهاز المشاهدة)</label>
+                        <div class="qr-box"><div class="qr-wrapper"><div id="qrSigned"></div></div></div>
+                        <div class="code-preview" id="codeSigned"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 3: Full Control -->
+            <div id="tab3" class="tab-content">
+                <div class="form-section">
+                    <h2>التحكم الكامل (أونلاين)</h2>
+                    <div class="form-group">
+                        <label>المفتاح الخاص</label>
+                        <div class="input-helper">
+                            <input type="password" id="ctrlPK" placeholder="0x...">
+                            <button class="btn-icon" onclick="startScan('ctrlPK')">📷</button>
+                        </div>
+                        <button class="main-btn" onclick="loadFullControl()">تحميل المحفظة</button>
+                    </div>
+                </div>
+
+                <div id="ctrlBalanceCard" class="balance-card hidden">
+                    <div class="title">الرصيد المتاح للتحكم</div>
+                    <div class="amount" id="ctrlBNB">0.00 BNB</div>
+                    <div class="divider"></div>
+                    <div class="amount" id="ctrlUSDT">0.00 USDT</div>
+                </div>
+
+                <div id="ctrlSendArea" class="form-section hidden">
+                    <h2>إرسال مباشر</h2>
+                    <select id="ctrlCurrency"><option value="BNB">BNB</option><option value="USDT">USDT</option></select>
+                    <input type="number" id="ctrlAmount" placeholder="0.00" class="mt-10">
+                    <div class="input-helper mt-10">
+                        <input type="text" id="ctrlRecp" placeholder="0x...">
+                        <button class="btn-icon" onclick="startScan('ctrlRecp')">📷</button>
+                    </div>
+                    <button class="main-btn" onclick="initiateDirectSend()">إرسال مباشر</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scanner Modal -->
+        <div id="scannerModal" class="scanner-modal">
+            <div class="scanner-header">
+                <h3>جاري المسح...</h3>
+                <button class="btn-danger" onclick="stopScan()">إغلاق</button>
+            </div>
+            <div id="reader"></div>
+        </div>
+
+        <footer><a href="https://iancoleman.io/bip39/" target="_blank">🔗 إنشاء محفظة جديدة (BIP39)</a></footer>
+    </div>
+
+    <script>
+        const BSC_RPC = 'https://bsc-dataseed.binance.org';
+        const USDT_ADDR = '0x55d398326f99059fF775485246999027B3197955';
+        const USDT_ABI = [
+            'function balanceOf(address owner) view returns (uint256)',
+            'function decimals() view returns (uint8)',
+            'function transfer(address to, uint256 amount) returns (bool)'
+        ];
+
+        let provider, signer, myAddr, viewAddr, html5QrCode, activeInput;
+        let timerInt;
+
+        function switchTab(id) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            event.target.classList.add('active');
+            stopScan();
+        }
+
+        function toggleSection(id) {
+            const sections = ['viewReceive', 'viewSend'];
+            sections.forEach(s => document.getElementById(s).classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            if(id === 'viewReceive') {
+                document.getElementById('qrReceive').innerHTML = '';
+                new QRCode(document.getElementById('qrReceive'), { text: viewAddr, width: 200, height: 200 });
+                document.getElementById('displayAddr').innerText = viewAddr;
+            }
+        }
+
+        function showStatus(msg, type) {
+            const el = document.getElementById('globalStatus');
+            el.innerText = msg;
+            el.className = `status-box show status-${type}`;
+            setTimeout(() => el.classList.remove('show'), 5000);
+        }
+
+        // Scanner Logic
+        async function startScan(targetId) {
+            activeInput = targetId;
+            document.getElementById('scannerModal').classList.add('active');
+            html5QrCode = new Html5Qrcode("reader");
+            const config = { fps: 20, qrbox: { width: 250, height: 250 } };
+            try {
+                await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
+                    document.getElementById(activeInput).value = text;
+                    showStatus('تم المسح بنجاح ✅', 'success');
+                    stopScan();
+                });
+            } catch (err) {
+                showStatus('خطأ في الكاميرا: ' + err, 'error');
+                stopScan();
+            }
+        }
+
+        function stopScan() {
+            if(html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode = null;
+                    document.getElementById('scannerModal').classList.remove('active');
+                }).catch(() => {
+                    document.getElementById('scannerModal').classList.remove('active');
+                });
+            } else {
+                document.getElementById('scannerModal').classList.remove('active');
+            }
+        }
+
+        // Core Logic
+        async function loadViewOnlyBalance() {
+            const addr = document.getElementById('viewAddress').value.trim();
+            if(!ethers.isAddress(addr)) return showStatus('العنوان غير صحيح', 'error');
+            viewAddr = addr;
+            try {
+                provider = new ethers.JsonRpcProvider(BSC_RPC);
+                const bnb = await provider.getBalance(addr);
+                const usdt = new ethers.Contract(USDT_ADDR, USDT_ABI, provider);
+                const uBal = await usdt.balanceOf(addr);
+                
+                document.getElementById('viewBNB').innerText = parseFloat(ethers.formatEther(bnb)).toFixed(6) + ' BNB';
+                document.getElementById('viewUSDT').innerText = parseFloat(ethers.formatUnits(uBal, 18)).toFixed(6) + ' USDT';
+                document.getElementById('viewBalanceCard').classList.remove('hidden');
+                showStatus('تم تحديث البيانات ✅', 'success');
+            } catch (e) { showStatus('خطأ في التحميل: ' + e.message, 'error'); }
+        }
+
+        async function createUnsignedTx() {
+            const recp = document.getElementById('viewRecp').value.trim();
+            const amnt = document.getElementById('viewAmount').value;
+            const curr = document.getElementById('viewCurrency').value;
+            if(!ethers.isAddress(recp) || !amnt) return showStatus('بيانات ناقصة أو خاطئة', 'error');
+            
+            try {
+                const nonce = await provider.getTransactionCount(viewAddr);
+                const fee = await provider.getFeeData();
+                let tx;
+                if(curr === 'BNB') {
+                    tx = { to: recp, value: ethers.parseEther(amnt).toString(), gasLimit: "21000", gasPrice: fee.gasPrice.toString(), nonce, chainId: 56, type: 0 };
+                } else {
+                    const iface = new ethers.Interface(USDT_ABI);
+                    const data = iface.encodeFunctionData('transfer', [recp, ethers.parseUnits(amnt, 18)]);
+                    tx = { to: USDT_ADDR, value: "0", gasLimit: "100000", gasPrice: fee.gasPrice.toString(), nonce, chainId: 56, data, type: 0 };
+                }
+                const json = JSON.stringify(tx);
+                document.getElementById('codeUnsigned').innerText = json;
+                document.getElementById('qrUnsigned').innerHTML = '';
+                new QRCode(document.getElementById('qrUnsigned'), { text: json, width: 250, height: 250 });
+                document.getElementById('unsignedArea').classList.remove('hidden');
+                showStatus('تم إنشاء المعاملة ✅', 'success');
+            } catch (e) { showStatus('خطأ: ' + e.message, 'error'); }
+        }
+
+        async function processSignature() {
+            const pk = document.getElementById('signPK').value.trim();
+            const input = document.getElementById('unsignedInput').value.trim();
+            if(!pk || !input) return showStatus('بيانات ناقصة', 'error');
+            try {
+                const tx = JSON.parse(input);
+                ['value', 'gasLimit', 'gasPrice', 'nonce'].forEach(f => { if(tx[f]) tx[f] = BigInt(tx[f]); });
+                const wallet = new ethers.Wallet(pk);
+                const signed = await wallet.signTransaction(tx);
+                document.getElementById('codeSigned').innerText = signed;
+                document.getElementById('qrSigned').innerHTML = '';
+                new QRCode(document.getElementById('qrSigned'), { text: signed, width: 250, height: 250 });
+                document.getElementById('signedArea').classList.remove('hidden');
+                showStatus('تم التوقيع بنجاح ✅', 'success');
+            } catch (e) { showStatus('خطأ في التوقيع: ' + e.message, 'error'); }
+        }
+
+        function initiateSend() {
+            if(!document.getElementById('signedInput').value.trim()) return showStatus('أدخل التوقيع أولاً', 'error');
+            document.getElementById('countdownView').classList.remove('hidden');
+            let time = 30;
+            document.getElementById('timerVal').innerText = time;
+            clearInterval(timerInt);
+            timerInt = setInterval(() => {
+                time--;
+                document.getElementById('timerVal').innerText = time;
+                if(time <= 0) confirmSend();
+            }, 1000);
+        }
+
+        async function confirmSend() {
+            clearInterval(timerInt);
+            const signed = document.getElementById('signedInput').value.trim();
+            try {
+                const res = await provider.broadcastTransaction(signed);
+                showStatus('تم الإرسال بنجاح! هاش: ' + res.hash, 'success');
+                document.getElementById('countdownView').classList.add('hidden');
+                document.getElementById('unsignedArea').classList.add('hidden');
+            } catch (e) { 
+                showStatus('فشل الإرسال: ' + e.message, 'error');
+                document.getElementById('countdownView').classList.add('hidden');
+            }
+        }
+
+        function cancelSend() {
+            clearInterval(timerInt);
+            document.getElementById('countdownView').classList.add('hidden');
+            showStatus('تم إلغاء العملية', 'error');
+        }
+
+        async function loadFullControl() {
+            const pk = document.getElementById('ctrlPK').value.trim();
+            try {
+                provider = new ethers.JsonRpcProvider(BSC_RPC);
+                signer = new ethers.Wallet(pk, provider);
+                const bnb = await provider.getBalance(signer.address);
+                const usdt = new ethers.Contract(USDT_ADDR, USDT_ABI, provider);
+                const uBal = await usdt.balanceOf(signer.address);
+                
+                document.getElementById('ctrlBNB').innerText = parseFloat(ethers.formatEther(bnb)).toFixed(6) + ' BNB';
+                document.getElementById('ctrlUSDT').innerText = parseFloat(ethers.formatUnits(uBal, 18)).toFixed(6) + ' USDT';
+                document.getElementById('ctrlBalanceCard').classList.remove('hidden');
+                document.getElementById('ctrlSendArea').classList.remove('hidden');
+                showStatus('تم تحميل المحفظة ✅', 'success');
+            } catch (e) { showStatus('خطأ: ' + e.message, 'error'); }
+        }
+
+        async function initiateDirectSend() {
+            const recp = document.getElementById('ctrlRecp').value.trim();
+            const amnt = document.getElementById('ctrlAmount').value;
+            const curr = document.getElementById('ctrlCurrency').value;
+            if(!ethers.isAddress(recp) || !amnt) return showStatus('بيانات خاطئة', 'error');
+            try {
+                const fee = await provider.getFeeData();
+                let tx;
+                if(curr === 'BNB') {
+                    tx = await signer.sendTransaction({ to: recp, value: ethers.parseEther(amnt), gasPrice: fee.gasPrice, type: 0 });
+                } else {
+                    const contract = new ethers.Contract(USDT_ADDR, USDT_ABI, signer);
+                    tx = await contract.transfer(recp, ethers.parseUnits(amnt, 18), { gasPrice: fee.gasPrice, type: 0 });
+                }
+                showStatus('تم الإرسال بنجاح! الهاش: ' + tx.hash, 'success');
+            } catch (e) { showStatus('خطأ: ' + e.message, 'error'); }
+        }
+    </script>
+</body>
+</html>
