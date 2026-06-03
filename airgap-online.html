@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BSC Wallet Final - AirGap Helper</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root { --primary-color: #F0B90B; --accent-color: #C89A0A; --bg-color: #000; --card-bg: #111; --text-primary: #fff; --text-secondary: #aaa; --border-color: #333; --success-color: #00ff88; --error-color: #ff4444; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: var(--bg-color); color: var(--text-primary); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 15px; }
+        .container { max-width: 480px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
+        header h1 { color: var(--primary-color); font-size: 22px; }
+        .form-section { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        .form-section h2 { color: var(--primary-color); margin-bottom: 15px; font-size: 17px; border-right: 4px solid var(--primary-color); padding-right: 10px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 8px; color: var(--text-secondary); font-size: 13px; }
+        input, select, textarea { width: 100%; padding: 12px; background-color: #000; color: #fff; border: 1.5px solid var(--border-color); border-radius: 10px; font-size: 14px; }
+        input:focus, textarea:focus, select:focus { border-color: var(--primary-color); outline: none; }
+        button.main-btn { width: 100%; padding: 15px; background-color: var(--primary-color); color: #000; border: none; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; transition: 0.3s; margin-top: 5px; }
+        button.main-btn:hover { background-color: var(--accent-color); }
+        .balance-card { background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%); color: #000; padding: 15px; border-radius: 15px; margin-top: 10px; display: none; }
+        .qr-wrapper { background: #fff; padding: 10px; border-radius: 10px; display: inline-block; margin-top: 10px; }
+        .status-box { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); padding: 10px 20px; border-radius: 20px; z-index: 3000; display: none; font-weight: bold; max-width: 90%; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .status-success { background: var(--success-color); color: #000; }
+        .status-error { background: var(--error-color); color: #fff; }
+        .copy-banner { width: 100%; background: #00ff88; color: #000; padding: 18px; border-radius: 12px; font-weight: 900; cursor: pointer; margin-bottom: 15px; border: 3px solid #000; font-size: 18px; box-shadow: 0 6px 20px rgba(0, 255, 136, 0.4); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+        .code-display-area { background: #000; padding: 15px; border-radius: 12px; border: 2px solid var(--primary-color); margin-top: 10px; }
+        .code-textarea { width: 100%; background: #0a0a0a; color: #00ff88; border: 1px solid #333; font-family: 'Courier New', monospace; font-size: 12px; resize: none; margin-bottom: 10px; text-align: left; direction: ltr; padding: 10px; border-radius: 8px; }
+        .hidden { display: none !important; }
+        .timer-overlay { background: rgba(0,0,0,0.95); position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .timer-val { font-size: 80px; font-weight: 900; color: var(--primary-color); }
+        .validation-msg { font-size: 12px; margin-top: 5px; padding: 8px; border-radius: 6px; }
+        .validation-success { background: rgba(0, 255, 136, 0.2); color: var(--success-color); }
+        .validation-error { background: rgba(255, 68, 68, 0.2); color: var(--error-color); }
+        .hash-result-box { background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%); color: #000; padding: 20px; border-radius: 15px; margin-top: 15px; display: none; }
+        .hash-result-box h3 { margin-bottom: 10px; font-size: 14px; }
+        .hash-value { background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; font-size: 12px; word-break: break-all; margin-bottom: 10px; font-family: monospace; }
+        .hash-link { display: inline-block; background: #000; color: var(--primary-color); padding: 10px 15px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 10px; border: 2px solid var(--primary-color); }
+        .hash-link:hover { background: var(--primary-color); color: #000; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>BSC AirGap Helper</h1>
+            <p>مراقبة • إنشاء • إرسال</p>
+        </header>
+
+        <div id="status" class="status-box"></div>
+
+        <!-- Section 1: Watch -->
+        <div class="form-section">
+            <h2>1. مراقبة الرصيد</h2>
+            <div class="form-group">
+                <label>العنوان العام المحفوظ في التطبيق</label>
+                <input type="text" id="watchAddr" placeholder="0x...">
+            </div>
+            <button class="main-btn" onclick="watchWallet()">تحديث الرصيد</button>
+            <div id="balanceCard" class="balance-card">
+                <div id="balUSDT" style="font-size: 20px; font-weight: 900;">0.00 USDT</div>
+                <div id="balBNB" style="font-size: 16px; font-weight: bold;">0.00 BNB</div>
+            </div>
+        </div>
+
+        <!-- Section 2: Create -->
+        <div class="form-section">
+            <h2>2. إنشاء معاملة (للجهاز المعزول)</h2>
+            <div class="form-group">
+                <label>إلى</label>
+                <input type="text" id="txTo" placeholder="0x..." oninput="validateAddress()">
+                <div id="addressValidation" class="validation-msg hidden"></div>
+            </div>
+            
+            <div class="form-group">
+                <label>العملة</label>
+                <select id="txAsset" onchange="validateAmount()">
+                    <option value="USDT" selected>USDT</option>
+                    <option value="BNB">BNB</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>المبلغ</label>
+                <input type="number" id="txAmount" step="any" oninput="validateAmount()">
+                <div id="amountValidation" class="validation-msg hidden"></div>
+            </div>
+
+            <button class="main-btn" onclick="createUnsigned()">توليد المعاملة</button>
+
+            <div id="unsignedArea" class="hidden" style="margin-top: 25px; text-align: center;">
+                <button id="copyBtn" class="copy-banner" onclick="forceCopy()">📋 اضغط هنا لنسخ الكود فوراً</button>
+                <div class="code-display-area">
+                    <label style="color: var(--text-secondary); font-size: 11px; margin-bottom: 5px; display: block;">كود المعاملة (يتم تحديده تلقائياً عند الضغط):</label>
+                    <textarea id="codeUnsigned" class="code-textarea" rows="5" readonly onclick="this.select(); document.execCommand('copy'); showStatus('تم النسخ بنجاح ✅', 'success');"></textarea>
+                    <div class="qr-wrapper"><div id="qrUnsigned"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Broadcast -->
+        <div class="form-section">
+            <h2>3. إرسال المعاملة الموقعة (من التطبيق)</h2>
+            <div class="form-group">
+                <label>الصق الكود الموقع الناتج من تطبيق الـ APK هنا:</label>
+                <textarea id="signedInput" rows="3" placeholder="0x..."></textarea>
+            </div>
+            <button class="main-btn" style="background-color: var(--success-color);" onclick="initiateSend()">بث المعاملة للشبكة</button>
+        </div>
+
+        <!-- Section 4: Transaction Result -->
+        <div class="form-section">
+            <h2>4. نتيجة المعاملة</h2>
+            <div id="hashResultBox" class="hash-result-box">
+                <h3>✅ تم الإرسال بنجاح!</h3>
+                <div>
+                    <label style="color: #000; font-size: 12px;">هاش المعاملة:</label>
+                    <div class="hash-value" id="hashValue">-</div>
+                </div>
+                <a id="bscscanLink" href="#" target="_blank" class="hash-link">🔗 عرض على BscScan</a>
+            </div>
+        </div>
+
+        <!-- Timer Overlay -->
+        <div id="countdownView" class="timer-overlay hidden">
+            <h2 style="color: #fff;">جاري الإرسال النهائي...</h2>
+            <div id="timerVal" class="timer-val">3</div>
+            <p style="color: var(--text-secondary);">سيتم البث للشبكة عند انتهاء العد</p>
+            <button class="main-btn" style="width: 200px; background: var(--error-color); color: #fff; margin-top: 20px;" onclick="cancelSend()">إلغاء الإرسال</button>
+        </div>
+
+        <footer>تم تصميمه ليعمل كبوابة إنترنت لجهازك المعزول</footer>
+    </div>
+
+    <script>
+        const BSC_RPC = "https://bsc-dataseed.binance.org/";
+        const USDT_ADDR = "0x55d398326f99059fF775485246999027B3197955";
+        const USDT_ABI = ["function balanceOf(address) view returns (uint256)"];
+        let provider = new ethers.JsonRpcProvider(BSC_RPC);
+        let timerInt;
+        let currentBalances = { BNB: 0, USDT: 0 };
+
+        function showStatus(msg, type) {
+            const s = document.getElementById('status');
+            s.innerText = msg; 
+            s.style.display = 'block';
+            s.className = 'status-box ' + (type === 'success' ? 'status-success' : 'status-error');
+            setTimeout(() => s.style.display = 'none', 3000);
+        }
+
+        function validateAddress() {
+            const addr = document.getElementById('txTo').value.trim();
+            const validationDiv = document.getElementById('addressValidation');
+            if (!addr) { validationDiv.classList.add('hidden'); return; }
+            if (ethers.isAddress(addr)) {
+                validationDiv.innerText = '✅ العنوان صحيح';
+                validationDiv.className = 'validation-msg validation-success';
+                validationDiv.classList.remove('hidden');
+            } else {
+                validationDiv.innerText = '❌ العنوان غير صحيح';
+                validationDiv.className = 'validation-msg validation-error';
+                validationDiv.classList.remove('hidden');
+            }
+        }
+
+        function validateAmount() {
+            const amount = parseFloat(document.getElementById('txAmount').value);
+            const asset = document.getElementById('txAsset').value;
+            const validationDiv = document.getElementById('amountValidation');
+            if (!amount || amount <= 0) { validationDiv.classList.add('hidden'); return; }
+            const balance = currentBalances[asset] || 0;
+            if (amount <= balance) {
+                validationDiv.innerHTML = `✅ المبلغ متاح (الرصيد: ${balance.toFixed(6)} ${asset})`;
+                validationDiv.className = 'validation-msg validation-success';
+                validationDiv.classList.remove('hidden');
+            } else {
+                validationDiv.innerHTML = `❌ رصيد غير كافٍ (المتاح: ${balance.toFixed(6)} ${asset})`;
+                validationDiv.className = 'validation-msg validation-error';
+                validationDiv.classList.remove('hidden');
+            }
+        }
+
+        async function watchWallet() {
+            const addr = document.getElementById('watchAddr').value.trim();
+            if(!ethers.isAddress(addr)) return showStatus('العنوان غير صحيح', 'error');
+            try {
+                const bnbBal = await provider.getBalance(addr);
+                const usdtContract = new ethers.Contract(USDT_ADDR, USDT_ABI, provider);
+                const usdtBal = await usdtContract.balanceOf(addr);
+                currentBalances.BNB = parseFloat(ethers.formatEther(bnbBal));
+                currentBalances.USDT = parseFloat(ethers.formatUnits(usdtBal, 18));
+                document.getElementById('balBNB').innerText = currentBalances.BNB.toFixed(6) + ' BNB';
+                document.getElementById('balUSDT').innerText = currentBalances.USDT.toFixed(2) + ' USDT';
+                document.getElementById('balanceCard').style.display = 'block';
+                showStatus('تم تحديث الأرصدة ✅', 'success');
+                validateAmount();
+            } catch (e) { showStatus('خطأ في الاتصال', 'error'); }
+        }
+
+        async function createUnsigned() {
+            const from = document.getElementById('watchAddr').value.trim();
+            const to = document.getElementById('txTo').value.trim();
+            const amount = document.getElementById('txAmount').value;
+            const asset = document.getElementById('txAsset').value;
+            
+            if(!ethers.isAddress(from) || !ethers.isAddress(to) || !amount) return showStatus('يرجى إكمال البيانات', 'error');
+            
+            try {
+                const nonce = await provider.getTransactionCount(from);
+                const feeData = await provider.getFeeData();
+                let tx = { to: to, nonce: nonce, gasPrice: feeData.gasPrice.toString(), chainId: 56, type: 0 };
+                
+                if(asset === 'BNB') {
+                    tx.value = ethers.parseEther(amount.toString()).toString();
+                    tx.gasLimit = "21000";
+                } else {
+                    const ui = new ethers.Interface(["function transfer(address,uint256)"]);
+                    tx.to = USDT_ADDR; tx.value = "0";
+                    tx.data = ui.encodeFunctionData("transfer", [to, ethers.parseUnits(amount.toString(), 18)]);
+                    tx.gasLimit = "100000";
+                }
+                
+                const jsonStr = JSON.stringify(tx);
+                const codeArea = document.getElementById('codeUnsigned');
+                codeArea.value = jsonStr;
+                
+                document.getElementById('qrUnsigned').innerHTML = '';
+                new QRCode(document.getElementById('qrUnsigned'), { text: jsonStr, width: 200, height: 200 });
+                document.getElementById('unsignedArea').classList.remove('hidden');
+                
+                // محاولة النسخ التلقائي
+                forceCopy();
+                showStatus('تم التوليد والنسخ ✅', 'success');
+                
+            } catch (e) { showStatus('خطأ: ' + e.message, 'error'); }
+        }
+
+        function forceCopy() {
+            const codeArea = document.getElementById('codeUnsigned');
+            
+            // الطريقة الأولى: Clipboard API
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(codeArea.value).then(() => {
+                    onCopySuccess();
+                }).catch(() => {
+                    fallbackCopy(codeArea);
+                });
+            } else {
+                fallbackCopy(codeArea);
+            }
+        }
+
+        function fallbackCopy(element) {
+            try {
+                element.select();
+                element.setSelectionRange(0, 99999); // للهواتف
+                const successful = document.execCommand('copy');
+                if (successful) onCopySuccess();
+                else showStatus('فشل النسخ التلقائي، انسخه يدوياً', 'error');
+            } catch (err) {
+                showStatus('فشل النسخ التلقائي، انسخه يدوياً', 'error');
+            }
+        }
+
+        function onCopySuccess() {
+            const btn = document.getElementById('copyBtn');
+            btn.innerText = '✅ تم النسخ بنجاح!';
+            btn.style.backgroundColor = '#00cc6e';
+            showStatus('تم نسخ الكود للحافظة ✅', 'success');
+            setTimeout(() => {
+                btn.innerText = '📋 اضغط هنا لنسخ الكود فوراً';
+                btn.style.backgroundColor = '#00ff88';
+            }, 2000);
+        }
+
+        function initiateSend() {
+            const signed = document.getElementById('signedInput').value.trim();
+            if(!signed.startsWith('0x')) return showStatus('كود التوقيع غير صحيح', 'error');
+            document.getElementById('countdownView').classList.remove('hidden');
+            let time = 3;
+            document.getElementById('timerVal').innerText = time;
+            clearInterval(timerInt);
+            timerInt = setInterval(() => {
+                time--; document.getElementById('timerVal').innerText = time;
+                if(time <= 0) confirmSend();
+            }, 1000);
+        }
+
+        async function confirmSend() {
+            clearInterval(timerInt);
+            const signed = document.getElementById('signedInput').value.trim();
+            try {
+                const res = await provider.broadcastTransaction(signed);
+                document.getElementById('hashValue').innerText = res.hash;
+                document.getElementById('bscscanLink').href = `https://bscscan.com/tx/${res.hash}`;
+                document.getElementById('hashResultBox').style.display = 'block';
+                document.getElementById('countdownView').classList.add('hidden');
+                document.getElementById('signedInput').value = '';
+                showStatus('تم الإرسال بنجاح! ✅', 'success');
+                document.getElementById('hashResultBox').scrollIntoView({ behavior: 'smooth' });
+            } catch (e) { 
+                showStatus('فشل الإرسال: ' + e.message, 'error');
+                document.getElementById('countdownView').classList.add('hidden');
+            }
+        }
+
+        function cancelSend() {
+            clearInterval(timerInt);
+            document.getElementById('countdownView').classList.add('hidden');
+            showStatus('تم إلغاء الإرسال', 'error');
+        }
+    </script>
+</body>
+</html>
