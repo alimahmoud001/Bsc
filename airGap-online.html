@@ -1,11 +1,11 @@
-<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BSC Wallet Final - AirGap Helper</title>
+    <title>BSC Wallet </title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         :root { --primary-color: #F0B90B; --accent-color: #C89A0A; --bg-color: #000; --card-bg: #111; --text-primary: #fff; --text-secondary: #aaa; --border-color: #333; --success-color: #00ff88; --error-color: #ff4444; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -13,31 +13,40 @@
         .container { max-width: 480px; margin: 0 auto; }
         header { text-align: center; margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
         header h1 { color: var(--primary-color); font-size: 22px; }
-        .form-section { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        /* حواف حادة للأقسام */
+        .form-section { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 0; padding: 20px; margin-bottom: 20px; }
         .form-section h2 { color: var(--primary-color); margin-bottom: 15px; font-size: 17px; border-right: 4px solid var(--primary-color); padding-right: 10px; }
-        .form-group { margin-bottom: 15px; }
+        .form-group { margin-bottom: 15px; position: relative; }
         label { display: block; margin-bottom: 8px; color: var(--text-secondary); font-size: 13px; }
-        input, select, textarea { width: 100%; padding: 12px; background-color: #000; color: #fff; border: 1.5px solid var(--border-color); border-radius: 10px; font-size: 14px; }
+        /* حواف حادة للمدخلات */
+        input, select, textarea { width: 100%; padding: 12px; background-color: #000; color: #fff; border: 1.5px solid var(--border-color); border-radius: 0; font-size: 14px; }
         input:focus, textarea:focus { border-color: var(--primary-color); outline: none; }
-        button.main-btn { width: 100%; padding: 15px; background-color: var(--primary-color); color: #000; border: none; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; transition: 0.3s; margin-top: 5px; }
+        /* حواف حادة للأزرار */
+        button.main-btn { width: 100%; padding: 15px; background-color: var(--primary-color); color: #000; border: none; border-radius: 0; font-size: 15px; font-weight: 800; cursor: pointer; transition: 0.3s; margin-top: 5px; }
         button.main-btn:hover { background-color: var(--accent-color); }
-        .balance-card { background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%); color: #000; padding: 15px; border-radius: 15px; margin-top: 10px; display: none; }
-        .qr-wrapper { background: #fff; padding: 10px; border-radius: 10px; display: inline-block; margin-top: 10px; }
-        .status-box { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); padding: 10px 20px; border-radius: 20px; z-index: 1000; display: none; font-weight: bold; }
+        /* حواف حادة لبطاقة الرصيد */
+        .balance-card { background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%); color: #000; padding: 15px; border-radius: 0; margin-top: 10px; display: none; }
+        /* حواف حادة لغلاف QR */
+        .qr-wrapper { background: #fff; padding: 10px; border-radius: 0; display: inline-block; margin-top: 10px; }
+        .status-box { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); padding: 10px 20px; border-radius: 0; z-index: 1000; display: none; font-weight: bold; }
         .status-success { background: var(--success-color); color: #000; }
         .status-error { background: var(--error-color); color: #fff; }
-        .copy-banner { width: 100%; background: var(--primary-color); color: #000; padding: 12px; border-radius: 8px; font-weight: 800; cursor: pointer; margin-bottom: 10px; border: none; }
-        .code-preview { background: #000; padding: 10px; border-radius: 8px; border: 1px solid #333; font-size: 11px; color: #888; word-break: break-all; margin-top: 5px; max-height: 80px; overflow-y: auto; text-align: left; direction: ltr; }
+        /* حواف حادة للبنر */
+        .copy-banner { width: 100%; background: var(--primary-color); color: #000; padding: 12px; border-radius: 0; font-weight: 800; cursor: pointer; margin-bottom: 10px; border: none; }
+        .code-preview { background: #000; padding: 10px; border-radius: 0; border: 1px solid #333; font-size: 11px; color: #888; word-break: break-all; margin-top: 5px; max-height: 80px; overflow-y: auto; text-align: left; direction: ltr; }
         .hidden { display: none !important; }
         .timer-overlay { background: rgba(0,0,0,0.95); position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
         .timer-val { font-size: 80px; font-weight: 900; color: var(--primary-color); }
+        
+        .scan-trigger { position: absolute; left: 12px; top: 38px; color: var(--primary-color); cursor: pointer; font-size: 18px; z-index: 10; background: #000; padding: 0 4px; }
+        #qr-reader { width: 100%; margin-top: 10px; border-radius: 0; overflow: hidden; display: none; border: 1px solid var(--border-color); }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>BSC AirGap Helper</h1>
-            <p>مراقبة • إنشاء • إرسال</p>
+            <p>🔻</p>
         </header>
 
         <div id="status" class="status-box"></div>
@@ -46,7 +55,7 @@
         <div class="form-section">
             <h2>1. مراقبة الرصيد</h2>
             <div class="form-group">
-                <label>العنوان العام المحفوظ في التطبيق</label>
+                <label>العنوان العام</label>
                 <input type="text" id="watchAddr" placeholder="0x...">
             </div>
             <button class="main-btn" onclick="watchWallet()">تحديث الرصيد</button>
@@ -58,7 +67,7 @@
 
         <!-- Section 2: Create -->
         <div class="form-section">
-            <h2>2. إنشاء معاملة (للجهاز المعزول)</h2>
+            <h2>2. إنشاء معاملة </h2>
             <div class="form-group"><label>إلى</label><input type="text" id="txTo" placeholder="0x..."></div>
             <div class="form-group"><label>المبلغ</label><input type="number" id="txAmount" step="any"></div>
             <div class="form-group">
@@ -76,10 +85,12 @@
 
         <!-- Section 3: Broadcast -->
         <div class="form-section">
-            <h2>3. إرسال المعاملة الموقعة (من التطبيق)</h2>
+            <h2>3. إرسال المعاملة الموقعة  </h2>
             <div class="form-group">
                 <label>الصق الكود الموقع الناتج من تطبيق الـ APK هنا:</label>
+                <div class="scan-trigger" onclick="toggleQRScanner()">📷</div>
                 <textarea id="signedInput" rows="3" placeholder="0x..."></textarea>
+                <div id="qr-reader"></div>
             </div>
             <button class="main-btn" style="background-color: var(--success-color);" onclick="initiateSend()">بث المعاملة للشبكة</button>
         </div>
@@ -92,7 +103,7 @@
             <button class="main-btn" style="width: 200px; background: var(--error-color); color: #fff; margin-top: 20px;" onclick="cancelSend()">إلغاء الإرسال</button>
         </div>
 
-        <footer>تم تصميمه ليعمل كبوابة إنترنت لجهازك المعزول</footer>
+        <footer>🔻</footer>
     </div>
 
     <script>
@@ -101,6 +112,7 @@
         const USDT_ABI = ["function balanceOf(address) view returns (uint256)"];
         let provider = new ethers.JsonRpcProvider(BSC_RPC);
         let timerInt;
+        let scannerObj = null;
 
         function showStatus(msg, type) {
             const s = document.getElementById('status');
@@ -154,6 +166,41 @@
         function copyCode() {
             const code = document.getElementById('codeUnsigned').innerText;
             navigator.clipboard.writeText(code).then(() => showStatus('✅ تم النسخ بضغطة واحدة!', 'success'));
+        }
+
+        function toggleQRScanner() {
+            const readerDiv = document.getElementById('qr-reader');
+            if (readerDiv.style.display === 'block') {
+                stopQR();
+            } else {
+                startQR();
+            }
+        }
+
+        function startQR() {
+            const readerDiv = document.getElementById('qr-reader');
+            readerDiv.style.display = 'block';
+            scannerObj = new Html5Qrcode("qr-reader");
+            scannerObj.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
+                document.getElementById('signedInput').value = text;
+                showStatus('✅ تم التصوير بنجاح', 'success');
+                stopQR();
+            }).catch(() => {
+                showStatus('فشل تشغيل الكاميرا', 'error');
+                stopQR();
+            });
+        }
+
+        function stopQR() {
+            const readerDiv = document.getElementById('qr-reader');
+            if (scannerObj) {
+                scannerObj.stop().then(() => {
+                    readerDiv.style.display = 'none';
+                    scannerObj = null;
+                }).catch(() => { readerDiv.style.display = 'none'; });
+            } else {
+                readerDiv.style.display = 'none';
+            }
         }
 
         function initiateSend() {
