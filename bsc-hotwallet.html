@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+    <title>BSC 交易工具</title>
+    <!-- Ethers v6 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.5/ethers.umd.min.js">
+    </script>
+    <!-- QRCode.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js">
+    </script>
+    <!-- html5-qrcode (scanner) -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js">
+    </script>
+    <style>
+        /* ── Reset & Base ── */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0b0b0b;
+            color: #f0f0f0;
+            min-height: 100vh;
+            padding: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .app-wrapper {
+            max-width: 560px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        /* ── Headline ── */
+        .app-title {
+            text-align: center;
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            padding: 20px 0 16px;
+            color: #f5c842;
+            text-shadow: 0 0 20px rgba(245, 200, 66, 0.15);
+        }
+        .app-title span {
+            display: inline-block;
+            background: #1a1a1a;
+            padding: 0 16px;
+            border-radius: 40px;
+            border: 1px solid #f5c84244;
+        }
+
+        /* ── Cards ── */
+        .card {
+            background: #141414;
+            border-radius: 18px;
+            padding: 20px 18px;
+            margin-bottom: 20px;
+            border: 1px solid #2a2a2a;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
+            transition: border 0.2s;
+        }
+        .card:hover {
+            border-color: #f5c84255;
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            font-size: 1.05rem;
+            color: #f5c842;
+            border-bottom: 1px solid #2a2a2a;
+            padding-bottom: 12px;
+        }
+        .card-header .badge {
+            background: #f5c842;
+            color: #0b0b0b;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 12px;
+            border-radius: 40px;
+            margin-right: auto;
+        }
+
+        /* ── Labels & Inputs ── */
+        .field-group {
+            margin-bottom: 14px;
+        }
+        .field-group label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #aaa;
+            margin-bottom: 4px;
+            letter-spacing: 0.3px;
+        }
+        .field-group .hint {
+            font-size: 0.7rem;
+            color: #777;
+            margin-top: 2px;
+        }
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px 14px;
+            background: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 12px;
+            color: #f0f0f0;
+            font-size: 0.95rem;
+            transition: border 0.2s, box-shadow 0.2s;
+            outline: none;
+            font-family: inherit;
+        }
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: #f5c842;
+            box-shadow: 0 0 0 3px #f5c84222;
+        }
+        input::placeholder,
+        textarea::placeholder {
+            color: #555;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 70px;
+            font-size: 0.82rem;
+            letter-spacing: 0.3px;
+        }
+        select {
+            appearance: none;
+            cursor: pointer;
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: #f5c842;
+            color: #0b0b0b;
+            border: none;
+            border-radius: 40px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 4px 16px rgba(245, 200, 66, 0.2);
+            width: 100%;
+            font-family: inherit;
+            letter-spacing: 0.3px;
+        }
+        .btn:hover {
+            background: #ffd95e;
+            box-shadow: 0 6px 24px rgba(245, 200, 66, 0.35);
+        }
+        .btn:active {
+            transform: scale(0.97);
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .btn-outline {
+            background: transparent;
+            color: #f5c842;
+            border: 1.5px solid #f5c842;
+            box-shadow: none;
+            width: auto;
+            padding: 8px 16px;
+            font-size: 0.8rem;
+        }
+        .btn-outline:hover {
+            background: #f5c84215;
+            box-shadow: none;
+        }
+        .btn-sm {
+            padding: 8px 14px;
+            font-size: 0.75rem;
+            width: auto;
+        }
+        .btn-block {
+            width: 100%;
+        }
+        .btn-danger {
+            background: #e74c3c;
+            box-shadow: 0 4px 16px rgba(231, 76, 60, 0.25);
+        }
+        .btn-danger:hover {
+            background: #ff5e4a;
+        }
+
+        /* ── QR Code wrapper ── */
+        .qr-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px 0 6px;
+        }
+        .qr-wrapper .qr-container {
+            background: #fff;
+            padding: 14px;
+            border-radius: 16px;
+            display: inline-block;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+            line-height: 0;
+            max-width: 100%;
+        }
+        .qr-wrapper .qr-container img,
+        .qr-wrapper .qr-container canvas {
+            display: block;
+            width: 100% !important;
+            height: auto !important;
+            max-width: 280px;
+        }
+        .qr-wrapper .qr-label {
+            font-size: 0.7rem;
+            color: #888;
+            margin-top: 8px;
+            word-break: break-all;
+            text-align: center;
+        }
+        .qr-wrapper .qr-data {
+            background: #1a1a1a;
+            padding: 12px 14px;
+            border-radius: 12px;
+            margin-top: 10px;
+            width: 100%;
+            font-size: 0.7rem;
+            color: #bbb;
+            word-break: break-all;
+            border: 1px solid #2a2a2a;
+            max-height: 120px;
+            overflow-y: auto;
+            user-select: all;
+            cursor: text;
+            font-family: 'Courier New', monospace;
+            direction: ltr;
+            text-align: left;
+        }
+        .qr-wrapper .qr-data .copy-hint {
+            color: #f5c842;
+            font-size: 0.65rem;
+            font-family: inherit;
+            direction: rtl;
+            text-align: right;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        /* ── Balance display ── */
+        .balance-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .balance-item {
+            background: #1a1a1a;
+            border-radius: 14px;
+            padding: 14px 12px;
+            text-align: center;
+            border: 1px solid #282828;
+        }
+        .balance-item .symbol {
+            font-size: 0.7rem;
+            color: #999;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .balance-item .amount {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #f0f0f0;
+            margin-top: 2px;
+            font-family: 'Courier New', monospace;
+        }
+        .balance-item .amount.loading {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .balance-item .usdt {
+            color: #26a17b;
+        }
+        .balance-item .bnb {
+            color: #f5c842;
+        }
+
+        /* ── Scanner overlay ── */
+        .scanner-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.92);
+            z-index: 999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .scanner-overlay.active {
+            display: flex;
+        }
+        .scanner-overlay .scanner-box {
+            background: #1a1a1a;
+            border-radius: 24px;
+            padding: 20px;
+            max-width: 420px;
+            width: 100%;
+            border: 1px solid #f5c84255;
+            position: relative;
+        }
+        .scanner-overlay .scanner-box #scanner-container {
+            width: 100%;
+            aspect-ratio: 1/1;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #000;
+        }
+        .scanner-overlay .scanner-box .scanner-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+        .scanner-overlay .scanner-box .scanner-actions .btn {
+            flex: 1;
+        }
+        .scanner-overlay .scanner-box .scanner-title {
+            color: #f5c842;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        .scanner-overlay .scanner-close {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: none;
+            border: none;
+            color: #aaa;
+            font-size: 1.6rem;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .scanner-overlay .scanner-close:hover {
+            color: #fff;
+        }
+
+        /* ── Result container ── */
+        .result-box {
+            padding: 14px 16px;
+            border-radius: 14px;
+            margin-top: 6px;
+            display: none;
+            font-size: 0.9rem;
+        }
+        .result-box.success {
+            display: block;
+            background: #1a3a2a;
+            border: 1px solid #2ecc71;
+            color: #8effb0;
+        }
+        .result-box.fail {
+            display: block;
+            background: #3a1a1a;
+            border: 1px solid #e74c3c;
+            color: #ffb0a0;
+        }
+        .result-box .hash {
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            word-break: break-all;
+            color: #8effb0;
+            margin-top: 4px;
+            background: #0b0b0b44;
+            padding: 6px 10px;
+            border-radius: 8px;
+            direction: ltr;
+            text-align: left;
+        }
+        .result-box .error-msg {
+            font-weight: 500;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            .card {
+                padding: 16px 14px;
+                border-radius: 14px;
+            }
+            .app-title {
+                font-size: 1.3rem;
+                padding: 12px 0;
+            }
+            .balance-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            .balance-item .amount {
+                font-size: 1.1rem;
+            }
+            .btn {
+                padding: 10px 18px;
+                font-size: 0.85rem;
+            }
+            .qr-wrapper .qr-container img,
+            .qr-wrapper .qr-container canvas {
+                max-width: 200px;
+            }
+            .qr-wrapper .qr-data {
+                font-size: 0.6rem;
+                max-height: 80px;
+            }
+            .scanner-overlay .scanner-box {
+                padding: 14px;
+            }
+        }
+        @media (min-width: 768px) {
+            .app-wrapper {
+                max-width: 640px;
+            }
+            .balance-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* ── Utilities ── */
+        .flex-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .flex-row .btn {
+            width: auto;
+            flex-shrink: 0;
+        }
+        .flex-row input {
+            flex: 1;
+        }
+        .mt-8 {
+            margin-top: 8px;
+        }
+        .mt-12 {
+            margin-top: 12px;
+        }
+        .mb-8 {
+            margin-bottom: 8px;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .gap-8 {
+            gap: 8px;
+        }
+        .hidden {
+            display: none !important;
+        }
+
+        /* scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #141414;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #f5c84266;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #f5c842aa;
+        }
+
+        /* Toast / copy feedback */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e1e1e;
+            color: #f5c842;
+            padding: 10px 24px;
+            border-radius: 40px;
+            border: 1px solid #f5c84244;
+            font-size: 0.85rem;
+            font-weight: 500;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-wrapper">
+        <!-- Title -->
+        <div class="app-title"><span>⛓️ BSC 交易工具</span></div>
+
+        <!-- ====== الحاوية الأولى ====== -->
+        <div class="card" id="container1">
+            <div class="card-header">
+                📬 عنوان المحفظة
+                <span class="badge">BSC</span>
+            </div>
+            <div class="field-group">
+                <label>العنوان العام (Public Address)</label>
+                <input type="text" id="walletAddress" placeholder="0x..." />
+                <div class="hint">أدخل عنوان محفظتك على شبكة BSC</div>
+            </div>
+            <div class="flex-row" style="gap:10px; flex-wrap:wrap;">
+                <button class="btn btn-sm btn-outline" id="fetchBalanceBtn" style="flex:1;">🔄 تحديث الرصيد</button>
+                <button class="btn btn-sm btn-outline" id="generateAddrQrBtn" style="flex:1;">📱 عرض QR</button>
+            </div>
+
+            <!-- QR code address -->
+            <div class="qr-wrapper" id="addrQrWrapper" style="display:none; margin-top:10px;">
+                <div class="qr-container" id="addrQrContainer"></div>
+                <div class="qr-label">عنوان المحفظة</div>
+            </div>
+
+            <!-- Balances -->
+            <div class="balance-grid" id="balanceGrid">
+                <div class="balance-item">
+                    <div class="symbol">BNB</div>
+                    <div class="amount bnb" id="bnbBalance">—</div>
+                </div>
+                <div class="balance-item">
+                    <div class="symbol">USDT (BEP-20)</div>
+                    <div class="amount usdt" id="usdtBalance">—</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== الحاوية الثانية ====== -->
+        <div class="card" id="container2">
+            <div class="card-header">
+                ✍️ إنشاء معاملة
+                <span class="badge">غير موقعة</span>
+            </div>
+
+            <!-- Recipient -->
+            <div class="field-group">
+                <label>عنوان المستلم</label>
+                <div class="flex-row">
+                    <input type="text" id="recipientAddress" placeholder="0x..." />
+                    <button class="btn btn-sm btn-outline" id="scanRecipientBtn" style="flex-shrink:0;">📷</button>
+                </div>
+                <div class="hint">أدخل عنوان المستلم أو امسح QR code</div>
+            </div>
+
+            <!-- Amount & Currency -->
+            <div class="flex-row" style="flex-wrap:wrap; gap:10px;">
+                <div class="field-group" style="flex:2; min-width:120px;">
+                    <label>الكمية</label>
+                    <input type="number" id="txAmount" placeholder="0.0" step="any" min="0" />
+                </div>
+                <div class="field-group" style="flex:1; min-width:100px;">
+                    <label>العملة</label>
+                    <select id="txCurrency">
+                        <option value="BNB">BNB</option>
+                        <option value="USDT" selected>USDT-BEP20</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn" id="generateTxBtn">⚡ تكوين المعاملة غير الموقعة</button>
+
+            <!-- Unsigned Tx QR + data -->
+            <div id="unsignedTxOutput" style="display:none; margin-top:16px;">
+                <div class="qr-wrapper">
+                    <div style="font-weight:600; color:#f5c842; font-size:0.9rem; margin-bottom:6px;">📲 المعاملة غير الموقعة</div>
+                    <div class="qr-container" id="unsignedTxQrContainer"></div>
+                    <div class="qr-label">امسح الكود لتوقيع المعاملة</div>
+                    <div class="qr-data" id="unsignedTxData">
+                        <span class="copy-hint">📋 اضغط لتحديد الكود ثم انسخ</span>
+                        <span id="unsignedTxRaw"></span>
+                    </div>
+                    <button class="btn btn-sm btn-outline mt-8" id="copyUnsignedBtn" style="width:auto;">📋 نسخ البيانات</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== الحاوية الثالثة ====== -->
+        <div class="card" id="container3">
+            <div class="card-header">
+                📤 بث المعاملة
+                <span class="badge">موقعة</span>
+            </div>
+            <div class="field-group">
+                <label>المعاملة الموقعة (Signed Transaction)</label>
+                <textarea id="signedTxInput" placeholder="الصق المعاملة الموقعة بصيغة hex ..."></textarea>
+                <div class="hint">أدخل المعاملة الموقعة أو امسح QR code</div>
+            </div>
+            <div class="flex-row" style="gap:10px; flex-wrap:wrap;">
+                <button class="btn btn-sm btn-outline" id="scanSignedBtn" style="flex:1;">📷 تصوير QR</button>
+                <button class="btn" id="broadcastBtn" style="flex:2;">🚀 بث المعاملة</button>
+            </div>
+        </div>
+
+        <!-- ====== الحاوية الرابعة ====== -->
+        <div class="card" id="container4">
+            <div class="card-header">
+                📋 نتيجة الإرسال
+                <span class="badge" id="resultBadge">انتظار</span>
+            </div>
+            <div class="result-box" id="resultBox">
+                <div id="resultContent"></div>
+            </div>
+        </div>
+
+        <!-- footer -->
+        <div style="text-align:center; font-size:0.65rem; color:#444; padding:12px 0 4px; border-top:1px solid #1a1a1a; margin-top:6px;">
+            BSC Mainnet · يستخدم RPC عام
+        </div>
+    </div>
+
+    <!-- ====== Scanner Overlay ====== -->
+    <div class="scanner-overlay" id="scannerOverlay">
+        <div class="scanner-box">
+            <button class="scanner-close" id="scannerCloseBtn">✕</button>
+            <div class="scanner-title">📷 امسح QR code</div>
+            <div id="scanner-container"></div>
+            <div class="scanner-actions">
+                <button class="btn btn-sm btn-outline" id="scannerCancelBtn">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ── Constants ──
+            const BSC_RPC = 'https://bsc-dataseed.binance.org/';
+            const USDT_CONTRACT = '0x55d398326f99059fF775485246999027B3197955';
+            const CHAIN_ID = 56;
+            const DEFAULT_GAS_LIMIT_BNB = 21000;
+            const DEFAULT_GAS_LIMIT_USDT = 65000;
+            const GAS_PRICE_GWEI = 3;
+
+            // ── State ──
+            let provider = null;
+            let signer = null;
+            let currentScanner = null;
+            let scannerMode = 'recipient'; // 'recipient' | 'signed'
+
+            // ── DOM refs ──
+            const $ = (id) => document.getElementById(id);
+            const walletInput = $('walletAddress');
+            const fetchBalanceBtn = $('fetchBalanceBtn');
+            const generateAddrQrBtn = $('generateAddrQrBtn');
+            const addrQrWrapper = $('addrQrWrapper');
+            const addrQrContainer = $('addrQrContainer');
+            const bnbBalance = $('bnbBalance');
+            const usdtBalance = $('usdtBalance');
+
+            const recipientInput = $('recipientAddress');
+            const scanRecipientBtn = $('scanRecipientBtn');
+            const txAmount = $('txAmount');
+            const txCurrency = $('txCurrency');
+            const generateTxBtn = $('generateTxBtn');
+            const unsignedTxOutput = $('unsignedTxOutput');
+            const unsignedTxQrContainer = $('unsignedTxQrContainer');
+            const unsignedTxRaw = $('unsignedTxRaw');
+            const copyUnsignedBtn = $('copyUnsignedBtn');
+
+            const signedTxInput = $('signedTxInput');
+            const scanSignedBtn = $('scanSignedBtn');
+            const broadcastBtn = $('broadcastBtn');
+
+            const resultBox = $('resultBox');
+            const resultContent = $('resultContent');
+            const resultBadge = $('resultBadge');
+
+            const scannerOverlay = $('scannerOverlay');
+            const scannerContainer = $('scanner-container');
+            const scannerCloseBtn = $('scannerCloseBtn');
+            const scannerCancelBtn = $('scannerCancelBtn');
+
+            const toast = $('toast');
+
+            // ── Toast ──
+            let toastTimer = null;
+
+            function showToast(msg, duration = 2200) {
+                toast.textContent = msg;
+                toast.classList.add('show');
+                clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => toast.classList.remove('show'), duration);
+            }
+
+            // ── Init provider ──
+            function initProvider() {
+                try {
+                    provider = new ethers.JsonRpcProvider(BSC_RPC);
+                    return true;
+                } catch (e) {
+                    console.error('Provider init error:', e);
+                    return false;
+                }
+            }
+            initProvider();
+
+            // ── Fetch balances ──
+            async function fetchBalances(address) {
+                if (!address || !address.startsWith('0x') || address.length < 40) {
+                    bnbBalance.textContent = '❌ غير صالح';
+                    usdtBalance.textContent = '❌ غير صالح';
+                    return;
+                }
+                try {
+                    bnbBalance.textContent = '⏳ جارٍ...';
+                    usdtBalance.textContent = '⏳ جارٍ...';
+
+                    // BNB
+                    const bnbWei = await provider.getBalance(address);
+                    const bnb = ethers.formatEther(bnbWei);
+                    bnbBalance.textContent = parseFloat(bnb).toFixed(6);
+
+                    // USDT
+                    const usdtContract = new ethers.Contract(
+                        USDT_CONTRACT,
+                        ['function balanceOf(address) view returns (uint256)'],
+                        provider
+                    );
+                    const usdtWei = await usdtContract.balanceOf(address);
+                    const usdt = ethers.formatUnits(usdtWei, 18);
+                    usdtBalance.textContent = parseFloat(usdt).toFixed(4);
+
+                } catch (e) {
+                    console.error('Balance fetch error:', e);
+                    bnbBalance.textContent = '⚠️ خطأ';
+                    usdtBalance.textContent = '⚠️ خطأ';
+                    showToast('⚠️ فشل جلب الرصيد: ' + e.message);
+                }
+            }
+
+            // ── QR generation ──
+            function generateQr(container, data, size = 200) {
+                container.innerHTML = '';
+                try {
+                    new QRCode(container, {
+                        text: data,
+                        width: size,
+                        height: size,
+                        colorDark: '#0b0b0b',
+                        colorLight: '#ffffff',
+                        correctLevel: QRCode.CorrectLevel.H,
+                    });
+                    return true;
+                } catch (e) {
+                    console.error('QR gen error:', e);
+                    container.innerHTML = '<div style="color:#e74c3c;font-size:0.8rem;">⚠️ فشل إنشاء QR</div>';
+                    return false;
+                }
+            }
+
+            // ── Show address QR ──
+            function showAddressQr() {
+                const addr = walletInput.value.trim();
+                if (!addr || !addr.startsWith('0x') || addr.length < 40) {
+                    showToast('⚠️ العنوان غير صالح');
+                    return;
+                }
+                addrQrWrapper.style.display = 'block';
+                generateQr(addrQrContainer, addr, 220);
+            }
+
+            // ── Build unsigned transaction ──
+            async function buildUnsignedTx() {
+                const from = walletInput.value.trim();
+                const to = recipientInput.value.trim();
+                const amount = txAmount.value.trim();
+                const currency = txCurrency.value;
+
+                if (!from || !from.startsWith('0x') || from.length < 40) {
+                    showToast('⚠️ العنوان العام غير صالح');
+                    return null;
+                }
+                if (!to || !to.startsWith('0x') || to.length < 40) {
+                    showToast('⚠️ عنوان المستلم غير صالح');
+                    return null;
+                }
+                if (!amount || parseFloat(amount) <= 0) {
+                    showToast('⚠️ أدخل كمية صحيحة');
+                    return null;
+                }
+
+                try {
+                    const nonce = await provider.getTransactionCount(from);
+                    const gasPrice = await provider.getFeeData().then(d => d.gasPrice || ethers.parseUnits(
+                    String(GAS_PRICE_GWEI), 'gwei'));
+
+                    let tx = {
+                        from: from,
+                        to: to,
+                        nonce: nonce,
+                        gasPrice: gasPrice,
+                        chainId: CHAIN_ID,
+                    };
+
+                    if (currency === 'BNB') {
+                        tx.value = ethers.parseEther(amount);
+                        tx.gasLimit = DEFAULT_GAS_LIMIT_BNB;
+                        tx.data = '0x';
+                    } else { // USDT
+                        tx.value = 0;
+                        tx.gasLimit = DEFAULT_GAS_LIMIT_USDT;
+                        const usdtContract = new ethers.Contract(
+                            USDT_CONTRACT,
+                            ['function transfer(address to, uint256 amount) returns (bool)'],
+                            provider
+                        );
+                        const amountWei = ethers.parseUnits(amount, 18);
+                        const data = usdtContract.interface.encodeFunctionData('transfer', [to, amountWei]);
+                        tx.data = data;
+                        tx.to = USDT_CONTRACT;
+                    }
+
+                    // Build a serializable object
+                    const txObj = {
+                        from: tx.from,
+                        to: tx.to,
+                        value: tx.value ? tx.value.toString() : '0',
+                        data: tx.data || '0x',
+                        gasLimit: tx.gasLimit.toString(),
+                        gasPrice: tx.gasPrice.toString(),
+                        nonce: tx.nonce,
+                        chainId: tx.chainId,
+                        currency: currency,
+                        amount: amount,
+                    };
+
+                    return txObj;
+                } catch (e) {
+                    console.error('Build tx error:', e);
+                    showToast('⚠️ فشل بناء المعاملة: ' + e.message);
+                    return null;
+                }
+            }
+
+            // ── Display unsigned tx ──
+            async function displayUnsignedTx() {
+                const txObj = await buildUnsignedTx();
+                if (!txObj) return;
+
+                const json = JSON.stringify(txObj, null, 2);
+                unsignedTxRaw.textContent = json;
+                unsignedTxOutput.style.display = 'block';
+
+                // QR
+                generateQr(unsignedTxQrContainer, json, 280);
+
+                // scroll to it
+                unsignedTxOutput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                showToast('✅ تم تكوين المعاملة غير الموقعة');
+            }
+
+            // ── Broadcast signed tx ──
+            async function broadcastTx() {
+                const signedHex = signedTxInput.value.trim();
+                if (!signedHex || !signedHex.startsWith('0x')) {
+                    showToast('⚠️ الصق معاملة موقعة صحيحة (تبدأ بـ 0x)');
+                    return;
+                }
+
+                resultBox.className = 'result-box';
+                resultBox.style.display = 'block';
+                resultContent.innerHTML = '⏳ جاري البث...';
+                resultBadge.textContent = 'جاري';
+
+                try {
+                    const txResponse = await provider.broadcastTransaction(signedHex);
+                    resultContent.innerHTML = `
+                            ✅ تم بث المعاملة بنجاح!
+                            <div class="hash">${txResponse.hash}</div>
+                            <div style="font-size:0.75rem;color:#aaa;margin-top:6px;">في انتظار التأكيد...</div>
+                        `;
+                    resultBox.className = 'result-box success';
+                    resultBadge.textContent = '✅ نجاح';
+
+                    // Wait for confirmation
+                    try {
+                        const receipt = await txResponse.wait(1);
+                        if (receipt && receipt.status === 1) {
+                            resultContent.innerHTML = `
+                                    ✅ تم تأكيد المعاملة!
+                                    <div class="hash">${receipt.hash}</div>
+                                    <div style="font-size:0.7rem;color:#8effb0;margin-top:4px;">البلوك: ${receipt.blockNumber}</div>
+                                `;
+                        } else if (receipt && receipt.status === 0) {
+                            resultContent.innerHTML = `
+                                    ⚠️ فشل تنفيذ المعاملة (status = 0)
+                                    <div class="hash">${receipt.hash}</div>
+                                `;
+                            resultBox.className = 'result-box fail';
+                            resultBadge.textContent = '⚠️ فشل';
+                        }
+                    } catch (waitErr) {
+                        // still broadcasted
+                        console.warn('Wait error:', waitErr);
+                    }
+
+                } catch (e) {
+                    console.error('Broadcast error:', e);
+                    let msg = e.message || 'خطأ غير معروف';
+                    if (msg.includes('insufficient funds')) {
+                        msg = '⚠️ رصيد غير كافٍ';
+                    } else if (msg.includes('nonce')) {
+                        msg = '⚠️ مشكلة في nonce (حاول تحديث الصفحة)';
+                    } else if (msg.includes('already known')) {
+                        msg = '⚠️ المعاملة معروفة بالفعل (مكررة)';
+                    } else if (msg.includes('gas')) {
+                        msg = '⚠️ مشكلة في الغاز (gas)';
+                    }
+                    resultContent.innerHTML = `
+                            ❌ فشل البث: ${msg}
+                            <div style="font-size:0.7rem;color:#888;margin-top:6px;word-break:break-all;">${e.message || ''}</div>
+                        `;
+                    resultBox.className = 'result-box fail';
+                    resultBadge.textContent = '❌ فشل';
+                    showToast('❌ فشل البث: ' + msg);
+                }
+            }
+
+            // ── Scanner ──
+            function openScanner(mode) {
+                scannerMode = mode;
+                scannerOverlay.classList.add('active');
+                scannerContainer.innerHTML = '';
+
+                // Start scanner
+                try {
+                    const html5QrCode = new Html5Qrcode('scanner-container');
+                    currentScanner = html5QrCode;
+                    const config = {
+                        fps: 15,
+                        qrbox: { width: 200, height: 200 },
+                        aspectRatio: 1.0,
+                    };
+                    html5QrCode.start({ facingMode: 'environment' },
+                        config,
+                        onScanSuccess,
+                        onScanError
+                    );
+                } catch (e) {
+                    console.error('Scanner start error:', e);
+                    scannerContainer.innerHTML =
+                        '<div style="color:#e74c3c;padding:40px;text-align:center;">⚠️ لا يمكن الوصول للكاميرا<br><span style="font-size:0.75rem;color:#888;">تأكد من منح الإذن</span></div>';
+                }
+            }
+
+            function closeScanner() {
+                scannerOverlay.classList.remove('active');
+                if (currentScanner) {
+                    try {
+                        currentScanner.stop().then(() => {
+                            currentScanner = null;
+                        }).catch(() => {});
+                    } catch (e) {}
+                }
+                scannerContainer.innerHTML = '';
+            }
+
+            function onScanSuccess(decodedText, decodedResult) {
+                // Beep or feedback
+                closeScanner();
+                if (scannerMode === 'recipient') {
+                    recipientInput.value = decodedText.trim();
+                    showToast('📷 تم مسح عنوان المستلم');
+                } else if (scannerMode === 'signed') {
+                    signedTxInput.value = decodedText.trim();
+                    showToast('📷 تم مسح المعاملة الموقعة');
+                }
+            }
+
+            function onScanError(err) {
+                // ignore
+            }
+
+            // ── Copy unsigned data ──
+            function copyUnsignedData() {
+                const text = unsignedTxRaw.textContent;
+                if (!text) { showToast('⚠️ لا توجد بيانات'); return; }
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('📋 تم نسخ البيانات');
+                }).catch(() => {
+                    // fallback
+                    const range = document.createRange();
+                    range.selectNode(unsignedTxRaw);
+                    window.getSelection().removeAllRanges();
+                    window.getSelection().addRange(range);
+                    document.execCommand('copy');
+                    showToast('📋 تم نسخ البيانات');
+                });
+            }
+
+            // ── Auto-fetch balance on address change ──
+            let balanceTimeout = null;
+
+            function autoFetchBalance() {
+                clearTimeout(balanceTimeout);
+                balanceTimeout = setTimeout(() => {
+                    const addr = walletInput.value.trim();
+                    if (addr && addr.startsWith('0x') && addr.length >= 40) {
+                        fetchBalances(addr);
+                    }
+                }, 600);
+            }
+
+            // ── Event bindings ──
+            // Balance
+            fetchBalanceBtn.addEventListener('click', () => {
+                const addr = walletInput.value.trim();
+                if (addr && addr.startsWith('0x') && addr.length >= 40) {
+                    fetchBalances(addr);
+                } else {
+                    showToast('⚠️ أدخل عنواناً صالحاً');
+                }
+            });
+            walletInput.addEventListener('input', autoFetchBalance);
+
+            // Address QR
+            generateAddrQrBtn.addEventListener('click', showAddressQr);
+
+            // Generate unsigned tx
+            generateTxBtn.addEventListener('click', displayUnsignedTx);
+
+            // Copy unsigned
+            copyUnsignedBtn.addEventListener('click', copyUnsignedData);
+
+            // Broadcast
+            broadcastBtn.addEventListener('click', broadcastTx);
+
+            // Scanners
+            scanRecipientBtn.addEventListener('click', () => openScanner('recipient'));
+            scanSignedBtn.addEventListener('click', () => openScanner('signed'));
+            scannerCloseBtn.addEventListener('click', closeScanner);
+            scannerCancelBtn.addEventListener('click', closeScanner);
+
+            // ── إزالة المثال التجريبي ──
+            // تم إزالة تحميل العنوان التجريبي بشكل كامل، الحقل فارغ الآن.
+
+            // ── Click on QR data to select all ──
+            document.querySelectorAll('.qr-data').forEach(el => {
+                el.addEventListener('click', function() {
+                    const range = document.createRange();
+                    range.selectNodeContents(this);
+                    window.getSelection().removeAllRanges();
+                    window.getSelection().addRange(range);
+                });
+            });
+
+            // ── Handle USDT amount decimals ──
+            txAmount.addEventListener('input', function() {
+                const val = this.value;
+                if (val.includes(',')) this.value = val.replace(/,/g, '.');
+            });
+
+            console.log('🚀 BSC Tool ready');
+            console.log('ℹ️ تم إزالة العنوان التجريبي، أدخل عنوانك الآن.');
+
+        })();
+    </script>
+
+</body>
+</html>
