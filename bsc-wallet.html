@@ -1,0 +1,1169 @@
+ابعتلي الرابط هون <!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>BSC Secure Wallet</title>
+<script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="text/javascript"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --surface3: #222222;
+    --yellow: #F0B90B;
+    --yellow-dim: #b88c09;
+    --white: #ffffff;
+    --gray: #888888;
+    --gray2: #444444;
+    --danger: #e53e3e;
+    --success: #38a169;
+    --radius: 8px;
+    --radius-sm: 5px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: 'Segoe UI', 'Arial', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* ===== SCREENS ===== */
+  .screen { display: none; flex-direction: column; min-height: 100vh; }
+  .screen.active { display: flex; }
+  /* ===== LOGIN ===== */
+  #screen-login {
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: radial-gradient(ellipse at center top, #1a1500 0%, #0a0a0a 70%);
+  }
+  .login-box {
+    width: 100%;
+    max-width: 400px;
+    background: var(--surface);
+    border: 1px solid #2a2a2a;
+    border-radius: var(--radius);
+    padding: 2.5rem 2rem;
+    text-align: center;
+  }
+  .logo {
+    width: 64px;
+    height: 64px;
+    background: var(--yellow);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    font-size: 2rem;
+  }
+  .login-box h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--yellow);
+    margin-bottom: 0.4rem;
+  }
+  .login-box p {
+    color: var(--gray);
+    font-size: 0.85rem;
+    margin-bottom: 2rem;
+  }
+  /* ===== FORM ELEMENTS ===== */
+  .form-group { margin-bottom: 1.2rem; text-align: right; }
+  .form-group label {
+    display: block;
+    color: var(--gray);
+    font-size: 0.8rem;
+    margin-bottom: 0.4rem;
+    font-weight: 500;
+  }
+  .form-group input, .form-group select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid #2e2e2e;
+    border-radius: var(--radius-sm);
+    color: var(--white);
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-appearance: none;
+  }
+  .form-group select option {
+    background: var(--surface2);
+  }
+  .form-group input:focus, .form-group select:focus {
+    border-color: var(--yellow);
+  }
+  .form-group input::placeholder { color: var(--gray2); }
+  /* ===== BUTTONS ===== */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+  }
+  .btn-primary {
+    background: var(--yellow);
+    color: #000;
+  }
+  .btn-primary:hover { background: #d4a40a; }
+  .btn-secondary {
+    background: var(--surface3);
+    color: var(--white);
+    border: 1px solid #333;
+  }
+  .btn-secondary:hover { background: #2a2a2a; }
+  .btn-danger {
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid var(--danger);
+  }
+  .btn-danger:hover { background: rgba(229, 62, 62, 0.1); }
+  .btn-outline {
+    background: transparent;
+    color: var(--yellow);
+    border: 1px solid var(--yellow);
+  }
+  .btn-outline:hover { background: rgba(240,185,11,0.1); }
+  .btn-sm { padding: 0.5rem 1rem; font-size: 0.82rem; width: auto; }
+  /* ===== HEADER ===== */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid #1e1e1e;
+    padding: 1rem 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--yellow);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .header-back {
+    background: none;
+    border: none;
+    color: var(--yellow);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .header-back:hover { background: var(--surface2); }
+  /* ===== WALLET LIST ===== */
+  .content { flex: 1; padding: 1.2rem; max-width: 480px; margin: 0 auto; width: 100%; }
+  .wallet-card {
+    background: var(--surface);
+    border: 1px solid #1e1e1e;
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    margin-bottom: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .wallet-card:hover { border-color: var(--yellow); background: #141414; }
+  .wallet-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--yellow) 0%, #b88c09 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+  }
+  .wallet-info { flex: 1; min-width: 0; }
+  .wallet-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--white);
+    margin-bottom: 0.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .wallet-addr {
+    font-size: 0.75rem;
+    color: var(--gray);
+    font-family: monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .wallet-arrow { color: var(--gray2); font-size: 0.9rem; }
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--gray);
+  }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+  .empty-state p { font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.5; }
+  /* ===== QR SCANNER ===== */
+  .scanner-container {
+    position: relative;
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 2px solid var(--yellow);
+  }
+  .scanner-container video { width: 100%; display: block; }
+  .scanner-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .scanner-frame {
+    width: 70%;
+    height: 70%;
+    border: 2px solid var(--yellow);
+    border-radius: 6px;
+    box-shadow: 0 0 0 1000px rgba(0,0,0,0.5);
+    position: relative;
+  }
+  .scanner-frame::before, .scanner-frame::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-color: var(--yellow);
+    border-style: solid;
+  }
+  .scanner-frame::before { top: -2px; right: -2px; border-width: 3px 3px 0 0; }
+  .scanner-frame::after { bottom: -2px; left: -2px; border-width: 0 0 3px 3px; }
+  .scanner-line {
+    position: absolute;
+    width: 90%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--yellow), transparent);
+    animation: scan 2s linear infinite;
+    left: 5%;
+  }
+  @keyframes scan {
+    0% { top: 10%; }
+    100% { top: 90%; }
+  }
+  /* ===== QR CODE DISPLAY ===== */
+  .qr-display {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+  }
+  /* ===== ADDRESS BOX ===== */
+  .address-box {
+    background: var(--surface2);
+    border: 1px solid #2e2e2e;
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1rem;
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: var(--white);
+    word-break: break-all;
+    line-height: 1.6;
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  /* ===== ALERTS ===== */
+  .alert {
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+  }
+  .alert-error { background: rgba(229,62,62,0.15); border: 1px solid rgba(229,62,62,0.3); color: #fc8181; }
+  .alert-success { background: rgba(56,161,105,0.15); border: 1px solid rgba(56,161,105,0.3); color: #68d391; }
+  .alert-warning { background: rgba(240,185,11,0.12); border: 1px solid rgba(240,185,11,0.3); color: var(--yellow); }
+  /* ===== DIVIDER ===== */
+  .divider { height: 1px; background: #1e1e1e; margin: 1.2rem 0; }
+  /* ===== SECTION TITLE ===== */
+  .section-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--gray);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.8rem;
+  }
+  /* ===== INFO ROW ===== */
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid #1a1a1a;
+    font-size: 0.88rem;
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-label { color: var(--gray); }
+  .info-value { color: var(--white); font-weight: 500; }
+  /* ===== BADGE ===== */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: rgba(240,185,11,0.15);
+    color: var(--yellow);
+    border: 1px solid rgba(240,185,11,0.3);
+  }
+  /* ===== NETWORK BADGE ===== */
+  .network-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(240,185,11,0.08);
+    border: 1px solid rgba(240,185,11,0.2);
+    border-radius: 20px;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.78rem;
+    color: var(--yellow);
+    margin-bottom: 1.2rem;
+  }
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--success);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  /* ===== MODAL ===== */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+  .modal-backdrop.active { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid #2a2a2a;
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 400px;
+  }
+  .modal h3 { font-size: 1rem; margin-bottom: 1rem; color: var(--white); }
+  /* ===== SPINNER ===== */
+  .spinner {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(0,0,0,0.3);
+    border-top-color: #000;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* ===== TX HASH ===== */
+  .tx-hash {
+    font-family: monospace;
+    font-size: 0.72rem;
+    color: var(--gray);
+    word-break: break-all;
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  /* ===== NO SELECT FOR SENSITIVE AREAS ===== */
+  .no-select { -webkit-user-select: none; user-select: none; }
+  /* ===== TABS ===== */
+  .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.2rem; }
+  .tab {
+    flex: 1;
+    padding: 0.6rem;
+    background: var(--surface2);
+    border: 1px solid #2a2a2a;
+    border-radius: var(--radius-sm);
+    color: var(--gray);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+  }
+  .tab.active { background: var(--yellow); color: #000; border-color: var(--yellow); }
+  /* ===== FAB ===== */
+  .fab {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 2.4rem);
+    max-width: 440px;
+    z-index: 50;
+  }
+  /* ===== RENAME INPUT ===== */
+  .inline-edit {
+    background: var(--surface2);
+    border: 1px solid var(--yellow);
+    border-radius: var(--radius-sm);
+    color: var(--white);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.95rem;
+    outline: none;
+    width: 100%;
+  }
+  canvas { display: block; }
+  @media (max-width: 360px) {
+    .content { padding: 1rem; }
+    .btn { padding: 0.7rem 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== SCREEN: LOGIN ===================== -->
+<div id="screen-login" class="screen active">
+  <div class="login-box">
+    <div class="logo">🔐</div>
+    <h1>BSC Secure Wallet</h1>
+    <p>محفظة آمنة لسلسلة BNB Smart Chain<br>أدخل كلمة المرور للمتابعة</p>
+    <div id="login-alert"></div>
+    <div class="form-group">
+      <label>كلمة المرور</label>
+      <input type="password" id="login-password" placeholder="أدخل كلمة المرور..." autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary" onclick="handleLogin()">
+      <span>دخول</span> <span>→</span>
+    </button>
+    <div class="divider"></div>
+    <p style="font-size:0.75rem; color:var(--gray); margin-top:0.5rem;">
+      أول دخول؟ ستُحفظ كلمة المرور هذه تلقائياً
+    </p>
+  </div>
+</div>
+
+<!-- ===================== SCREEN: WALLET LIST ===================== -->
+<div id="screen-wallets" class="screen">
+  <div class="header">
+    <div class="header-title">🔒 محافظي</div>
+    <button class="header-back" onclick="handleLogout()">خروج</button>
+  </div>
+  <div class="content" style="padding-bottom:6rem;">
+    <div class="network-bar">
+      <span class="dot"></span>
+      <span>BNB Smart Chain</span>
+      <span style="margin-right:auto; color:var(--gray); font-size:0.72rem;">Mainnet</span>
+    </div>
+    <div class="section-title">محافظك المحفوظة</div>
+    <div id="wallets-list"></div>
+  </div>
+  <div class="fab">
+    <button class="btn btn-primary" onclick="showScreen('screen-add-wallet')">
+      + إضافة محفظة جديدة (مسح QR)
+    </button>
+  </div>
+</div>
+
+<!-- ===================== SCREEN: ADD WALLET ===================== -->
+<div id="screen-add-wallet" class="screen">
+  <div class="header">
+    <div class="header-title">📷 استيراد محفظة</div>
+    <button class="header-back" onclick="stopCamera(); showScreen('screen-wallets')">← رجوع</button>
+  </div>
+  <div class="content">
+    <div class="alert alert-warning">
+      ⚠️ قم بمسح QR Code الخاص بالمفتاح الخاص. لن يُعرض المفتاح أبداً ولن يغادر هذا التطبيق.
+    </div>
+    <div id="scanner-section">
+      <div class="scanner-container" id="scanner-box">
+        <video id="scanner-video" playsinline autoplay muted></video>
+        <div class="scanner-overlay">
+          <div class="scanner-frame">
+            <div class="scanner-line"></div>
+          </div>
+        </div>
+      </div>
+      <p style="text-align:center; color:var(--gray); font-size:0.8rem; margin-top:0.8rem;">
+        وجّه الكاميرا نحو QR Code للمفتاح الخاص
+      </p>
+      <div id="scan-alert" style="margin-top:0.8rem;"></div>
+    </div>
+    <div id="wallet-name-section" style="display:none; margin-top:1.5rem;">
+      <div class="alert alert-success">✅ تم مسح المفتاح بنجاح! أدخل اسماً للمحفظة.</div>
+      <div class="form-group">
+        <label>اسم المحفظة</label>
+        <input type="text" id="new-wallet-name" placeholder="مثال: محفظتي الرئيسية" maxlength="40">
+      </div>
+      <button class="btn btn-primary" onclick="saveNewWallet()">حفظ المحفظة</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== SCREEN: WALLET DETAIL ===================== -->
+<div id="screen-wallet-detail" class="screen">
+  <div class="header">
+    <div class="header-title" id="detail-title">المحفظة</div>
+    <button class="header-back" onclick="showScreen('screen-wallets'); currentWalletIndex=-1;">← رجوع</button>
+  </div>
+  <div class="content" style="padding-bottom:6rem;">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('tab-address')">العنوان</div>
+      <div class="tab" onclick="switchTab('tab-send')">إرسال</div>
+      <div class="tab" onclick="switchTab('tab-settings')">إعدادات</div>
+    </div>
+
+    <!-- TAB: ADDRESS -->
+    <div id="tab-address" class="tab-content">
+      <div style="text-align:center; margin-bottom:1.2rem;">
+        <div class="qr-display" id="addr-qr-container">
+          <canvas id="addr-qr-canvas"></canvas>
+        </div>
+      </div>
+      <div class="section-title">العنوان العام (يمكن مشاركته)</div>
+      <div class="address-box" id="addr-text"></div>
+      <div style="margin-top:0.8rem;">
+        <button class="btn btn-outline" onclick="copyAddress()">📋 نسخ العنوان</button>
+      </div>
+      <div id="copy-alert" style="margin-top:0.6rem;"></div>
+      <div class="divider"></div>
+      <div class="alert" style="background:rgba(240,185,11,0.08); border:1px solid rgba(240,185,11,0.2); color:var(--yellow); font-size:0.82rem; line-height:1.6;">
+        🔒 المفتاح الخاص محفوظ بتشفير AES-256 ولا يمكن عرضه أو نسخه. يُستخدم فقط داخلياً للتوقيع.
+      </div>
+    </div>
+
+    <!-- TAB: SEND -->
+    <div id="tab-send" class="tab-content" style="display:none;">
+      <div class="network-bar"><span class="dot"></span> BNB Smart Chain</div>
+      <div class="form-group">
+        <label>العملة</label>
+        <select id="send-currency">
+          <option value="BNB">BNB (عملة الشبكة)</option>
+          <option value="USDT">USDT (BEP-20)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>عنوان المستلم</label>
+        <div style="display:flex; gap:0.5rem;">
+          <input type="text" id="send-to" placeholder="0x..." style="flex:1;" autocomplete="off">
+          <button class="btn btn-secondary btn-sm" onclick="openReceiverScanner()" style="white-space:nowrap; flex-shrink:0;">📷 مسح</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>المبلغ</label>
+        <input type="number" id="send-amount" placeholder="0.0" step="any" min="0">
+      </div>
+      <div id="send-alert" style="margin-bottom:0.8rem;"></div>
+      <button class="btn btn-primary" id="btn-send" onclick="handleSend()">إرسال</button>
+      <div id="tx-result" style="margin-top:1rem;"></div>
+    </div>
+
+    <!-- TAB: SETTINGS -->
+    <div id="tab-settings" class="tab-content" style="display:none;">
+      <div class="section-title">إعدادات المحفظة</div>
+      <div style="margin-bottom:1rem;">
+        <label class="form-group" style="display:block; margin-bottom:0.4rem; color:var(--gray); font-size:0.8rem; font-weight:500;">تعديل الاسم</label>
+        <div style="display:flex; gap:0.5rem;">
+          <input type="text" id="rename-input" class="inline-edit" maxlength="40" placeholder="الاسم الجديد">
+          <button class="btn btn-primary btn-sm" onclick="renameWallet()" style="flex-shrink:0; white-space:nowrap;">حفظ</button>
+        </div>
+      </div>
+      <div id="rename-alert" style="margin-bottom:1rem;"></div>
+      <div class="divider"></div>
+      <div class="alert alert-warning" style="margin-bottom:1rem;">
+        ⚠️ حذف المحفظة سيزيل المفتاح المشفر من الجهاز نهائياً. تأكد من الاحتفاظ بنسخة آمنة خارجياً.
+      </div>
+      <button class="btn btn-danger" onclick="openDeleteModal()">🗑️ حذف هذه المحفظة</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== SCREEN: RECEIVER SCANNER ===================== -->
+<div id="screen-recv-scan" class="screen">
+  <div class="header">
+    <div class="header-title">📷 مسح عنوان المستلم</div>
+    <button class="header-back" onclick="stopRecvCamera(); showScreen('screen-wallet-detail');">← رجوع</button>
+  </div>
+  <div class="content">
+    <div class="scanner-container" id="recv-scanner-box">
+      <video id="recv-scanner-video" playsinline autoplay muted></video>
+      <div class="scanner-overlay">
+        <div class="scanner-frame">
+          <div class="scanner-line"></div>
+        </div>
+      </div>
+    </div>
+    <p style="text-align:center; color:var(--gray); font-size:0.8rem; margin-top:0.8rem;">
+      وجّه الكاميرا نحو QR Code لعنوان المستلم
+    </p>
+    <div id="recv-scan-alert" style="margin-top:0.8rem;"></div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: DELETE CONFIRM ===================== -->
+<div class="modal-backdrop" id="modal-delete">
+  <div class="modal">
+    <h3>⚠️ تأكيد الحذف</h3>
+    <p style="color:var(--gray); font-size:0.88rem; margin-bottom:1.2rem; line-height:1.6;">
+      هل أنت متأكد من حذف هذه المحفظة؟ لا يمكن التراجع عن هذا الإجراء.
+    </p>
+    <div style="display:flex; gap:0.8rem;">
+      <button class="btn btn-danger" onclick="confirmDelete()" style="flex:1;">حذف نهائياً</button>
+      <button class="btn btn-secondary" onclick="closeDeleteModal()" style="flex:1;">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// =====================================================================
+//  CONSTANTS & STATE
+// =====================================================================
+const BSC_RPC = [
+  'https://bsc-dataseed.binance.org/',
+  'https://bsc-dataseed1.binance.org/',
+  'https://bsc-dataseed2.binance.org/',
+  'https://bsc-dataseed3.binance.org/',
+];
+const USDT_CONTRACT = '0x55d398326f99059fF775485246999027B3197955';
+const USDT_ABI = [
+  'function transfer(address to, uint256 amount) returns (bool)',
+  'function decimals() view returns (uint8)',
+  'function balanceOf(address) view returns (uint256)',
+];
+const STORAGE_KEY = 'bsc_wallets_v2';
+const HASH_KEY   = 'bsc_pw_hash_v2';
+const SALT_KEY   = 'bsc_pw_salt_v2';
+
+let masterKey = null;         // CryptoKey in memory only
+let wallets   = [];           // [{name, encKey, encIv, encData, address}]
+let currentWalletIndex = -1;
+let tempPrivKey = null;       // holds scanned PK temporarily before saving
+
+// Camera
+let scanStream      = null;
+let scanInterval    = null;
+let recvScanStream  = null;
+let recvScanInterval = null;
+
+// =====================================================================
+//  CRYPTO HELPERS
+// =====================================================================
+async function deriveKey(password, salt) {
+  const enc = new TextEncoder();
+  const rawKey = await crypto.subtle.importKey(
+    'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 600000, hash: 'SHA-256' },
+    rawKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function encryptText(text, key) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder().encode(text);
+  const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc);
+  return {
+    iv: bufToHex(iv),
+    data: bufToHex(new Uint8Array(cipher))
+  };
+}
+
+async function decryptText(iv, data, key) {
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: hexToBuf(iv) },
+    key,
+    hexToBuf(data)
+  );
+  return new TextDecoder().decode(decrypted);
+}
+
+function bufToHex(buf) {
+  return Array.from(buf).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+function hexToBuf(hex) {
+  const arr = new Uint8Array(hex.length / 2);
+  for (let i=0; i<arr.length; i++) arr[i] = parseInt(hex.substr(i*2,2),16);
+  return arr;
+}
+
+async function hashPassword(password, salt) {
+  const key = await deriveKey(password, salt);
+  // Use a test encrypt/decrypt to verify password later
+  const enc = await encryptText('__verify__', key);
+  return enc;
+}
+
+// =====================================================================
+//  STORAGE
+// =====================================================================
+function saveWallets() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(wallets));
+}
+function loadWallets() {
+  try { wallets = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch { wallets = []; }
+}
+
+// =====================================================================
+//  LOGIN / AUTH
+// =====================================================================
+async function handleLogin() {
+  const pw = document.getElementById('login-password').value;
+  if (!pw || pw.length < 4) {
+    showAlert('login-alert', 'error', 'كلمة المرور يجب أن تكون 4 أحرف على الأقل');
+    return;
+  }
+  clearAlert('login-alert');
+
+  const savedHash = localStorage.getItem(HASH_KEY);
+  const savedSalt = localStorage.getItem(SALT_KEY);
+
+  if (!savedHash) {
+    // First login — create password
+    const salt = crypto.getRandomValues(new Uint8Array(32));
+    localStorage.setItem(SALT_KEY, bufToHex(salt));
+    const key = await deriveKey(pw, salt);
+    const verify = await encryptText('__verify__', key);
+    localStorage.setItem(HASH_KEY, JSON.stringify(verify));
+    masterKey = key;
+    loadWallets();
+    showScreen('screen-wallets');
+    renderWallets();
+  } else {
+    // Verify password
+    const salt = hexToBuf(savedSalt);
+    const key = await deriveKey(pw, salt);
+    try {
+      const verify = JSON.parse(savedHash);
+      const plain = await decryptText(verify.iv, verify.data, key);
+      if (plain !== '__verify__') throw new Error('bad');
+      masterKey = key;
+      loadWallets();
+      showScreen('screen-wallets');
+      renderWallets();
+    } catch {
+      showAlert('login-alert', 'error', '❌ كلمة المرور غير صحيحة');
+    }
+  }
+}
+
+function handleLogout() {
+  masterKey = null;
+  wallets = [];
+  tempPrivKey = null;
+  document.getElementById('login-password').value = '';
+  clearAlert('login-alert');
+  showScreen('screen-login');
+}
+
+// =====================================================================
+//  SCREEN NAVIGATION
+// =====================================================================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  // Reset active tab when showing detail
+  if (id === 'screen-wallet-detail') {
+    switchTab('tab-address');
+  }
+}
+
+function switchTab(tabId) {
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const ids = ['tab-address','tab-send','tab-settings'];
+    t.classList.toggle('active', ids[i] === tabId);
+  });
+  document.querySelectorAll('.tab-content').forEach(tc=>{
+    tc.style.display = tc.id === tabId ? '' : 'none';
+  });
+  if (tabId === 'tab-settings' && currentWalletIndex >= 0) {
+    document.getElementById('rename-input').value = wallets[currentWalletIndex].name;
+  }
+}
+
+// =====================================================================
+//  RENDER WALLETS
+// =====================================================================
+function renderWallets() {
+  const list = document.getElementById('wallets-list');
+  if (wallets.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="icon">💼</div>
+      <p>لا توجد محافظ محفوظة بعد.<br>أضف محفظة بمسح QR Code للمفتاح الخاص.</p>
+    </div>`;
+    return;
+  }
+  list.innerHTML = wallets.map((w,i) => `
+    <div class="wallet-card no-select" onclick="openWallet(${i})">
+      <div class="wallet-avatar">${w.name.charAt(0).toUpperCase()}</div>
+      <div class="wallet-info">
+        <div class="wallet-name">${escHtml(w.name)}</div>
+        <div class="wallet-addr">${w.address}</div>
+      </div>
+      <div class="wallet-arrow">›</div>
+    </div>
+  `).join('');
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// =====================================================================
+//  OPEN WALLET DETAIL
+// =====================================================================
+async function openWallet(index) {
+  currentWalletIndex = index;
+  const w = wallets[index];
+  document.getElementById('detail-title').textContent = '🔒 ' + w.name;
+  document.getElementById('addr-text').textContent = w.address;
+  document.getElementById('send-to').value = '';
+  document.getElementById('send-amount').value = '';
+  clearAlert('send-alert');
+  clearAlert('copy-alert');
+  document.getElementById('tx-result').innerHTML = '';
+  // Generate QR code
+  try {
+    const canvas = document.getElementById('addr-qr-canvas');
+    await QRCode.toCanvas(canvas, w.address, {
+      width: 200,
+      margin: 1,
+      color: { dark: '#000000', light: '#ffffff' }
+    });
+  } catch(e) {}
+  showScreen('screen-wallet-detail');
+}
+
+async function copyAddress() {
+  if (currentWalletIndex < 0) return;
+  const addr = wallets[currentWalletIndex].address;
+  try {
+    await navigator.clipboard.writeText(addr);
+    showAlert('copy-alert','success','✅ تم نسخ العنوان');
+    setTimeout(()=>clearAlert('copy-alert'), 2500);
+  } catch {
+    showAlert('copy-alert','error','تعذّر النسخ، حاول يدوياً');
+  }
+}
+
+// =====================================================================
+//  ADD WALLET — QR SCANNER
+// =====================================================================
+async function startCamera() {
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' }
+    });
+    const video = document.getElementById('scanner-video');
+    video.srcObject = scanStream;
+    await video.play();
+    scanInterval = setInterval(() => scanFrame(video, 'pk'), 300);
+  } catch(e) {
+    showAlert('scan-alert','error','تعذّر الوصول للكاميرا: ' + e.message);
+  }
+}
+
+function stopCamera() {
+  clearInterval(scanInterval);
+  if (scanStream) { scanStream.getTracks().forEach(t=>t.stop()); scanStream=null; }
+  document.getElementById('scanner-video').srcObject = null;
+  tempPrivKey = null;
+  document.getElementById('scanner-section').style.display = '';
+  document.getElementById('wallet-name-section').style.display = 'none';
+  clearAlert('scan-alert');
+}
+
+function scanFrame(video, mode) {
+  if (video.readyState < 2) return;
+  const canvas = document.createElement('canvas');
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+  const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+  const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts:'dontInvert' });
+  if (code && code.data) {
+    if (mode === 'pk') handlePKScan(code.data);
+    else if (mode === 'recv') handleRecvScan(code.data);
+  }
+}
+
+function handlePKScan(raw) {
+  clearInterval(scanInterval);
+  scanStream.getTracks().forEach(t=>t.stop());
+  scanStream = null;
+  // Clean private key
+  let pk = raw.trim();
+  if (!pk.startsWith('0x')) pk = '0x' + pk;
+  try {
+    const wallet = new ethers.Wallet(pk);
+    tempPrivKey = pk;
+    document.getElementById('scanner-section').style.display = 'none';
+    document.getElementById('wallet-name-section').style.display = '';
+    document.getElementById('new-wallet-name').value = 'محفظة ' + (wallets.length + 1);
+    document.getElementById('new-wallet-name').focus();
+  } catch {
+    showAlert('scan-alert','error','❌ QR Code غير صالح. تأكد أنه يحتوي على مفتاح خاص صحيح.');
+    // Restart
+    startCamera();
+  }
+}
+
+async function saveNewWallet() {
+  if (!tempPrivKey) return;
+  const name = document.getElementById('new-wallet-name').value.trim();
+  if (!name) {
+    showAlert('scan-alert','error','أدخل اسماً للمحفظة');
+    return;
+  }
+  try {
+    const wallet = new ethers.Wallet(tempPrivKey);
+    const address = wallet.address;
+    // Encrypt private key
+    const enc = await encryptText(tempPrivKey, masterKey);
+    wallets.push({ name, address, iv: enc.iv, data: enc.data });
+    saveWallets();
+    tempPrivKey = null;
+    renderWallets();
+    showScreen('screen-wallets');
+  } catch(e) {
+    showAlert('scan-alert','error','حدث خطأ: ' + e.message);
+  }
+}
+
+// =====================================================================
+//  RECEIVER ADDRESS SCANNER
+// =====================================================================
+async function openReceiverScanner() {
+  showScreen('screen-recv-scan');
+  await startRecvCamera();
+}
+
+async function startRecvCamera() {
+  try {
+    recvScanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' }
+    });
+    const video = document.getElementById('recv-scanner-video');
+    video.srcObject = recvScanStream;
+    await video.play();
+    recvScanInterval = setInterval(() => scanFrame(video, 'recv'), 300);
+  } catch(e) {
+    showAlert('recv-scan-alert','error','تعذّر الوصول للكاميرا: ' + e.message);
+  }
+}
+
+function stopRecvCamera() {
+  clearInterval(recvScanInterval);
+  if (recvScanStream) { recvScanStream.getTracks().forEach(t=>t.stop()); recvScanStream=null; }
+  document.getElementById('recv-scanner-video').srcObject = null;
+}
+
+function handleRecvScan(raw) {
+  clearInterval(recvScanInterval);
+  recvScanStream.getTracks().forEach(t=>t.stop());
+  recvScanStream = null;
+  // Parse: could be plain address or ethereum:0x...
+  let addr = raw.trim();
+  const match = addr.match(/(?:ethereum:|bnb:)?([0x][0-9a-fA-F]{40})/i);
+  if (match) addr = match[1].startsWith('0x') ? match[1] : '0x' + match[1];
+  if (ethers.utils.isAddress(addr)) {
+    document.getElementById('send-to').value = ethers.utils.getAddress(addr);
+    showScreen('screen-wallet-detail');
+    switchTab('tab-send');
+  } else {
+    showAlert('recv-scan-alert','error','❌ QR Code لا يحتوي على عنوان صالح.');
+    startRecvCamera();
+  }
+}
+
+// =====================================================================
+//  SEND TRANSACTION
+// =====================================================================
+async function handleSend() {
+  if (currentWalletIndex < 0) return;
+  const currency = document.getElementById('send-currency').value;
+  const toAddr   = document.getElementById('send-to').value.trim();
+  const amount   = document.getElementById('send-amount').value.trim();
+  clearAlert('send-alert');
+  document.getElementById('tx-result').innerHTML = '';
+
+  if (!ethers.utils.isAddress(toAddr)) {
+    showAlert('send-alert','error','عنوان المستلم غير صالح');
+    return;
+  }
+  if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+    showAlert('send-alert','error','أدخل مبلغاً صحيحاً');
+    return;
+  }
+
+  const btn = document.getElementById('btn-send');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> جاري الإرسال...';
+
+  try {
+    // Decrypt private key
+    const w = wallets[currentWalletIndex];
+    const pk = await decryptText(w.iv, w.data, masterKey);
+    // Connect to BSC
+    let provider;
+    for (const rpc of BSC_RPC) {
+      try {
+        provider = new ethers.providers.JsonRpcProvider(rpc, { name:'bsc', chainId:56 });
+        await provider.getBlockNumber();
+        break;
+      } catch { provider = null; }
+    }
+    if (!provider) throw new Error('تعذّر الاتصال بشبكة BSC. تحقق من الإنترنت.');
+    const signer = new ethers.Wallet(pk, provider);
+
+    let txResponse;
+    if (currency === 'BNB') {
+      txResponse = await signer.sendTransaction({
+        to: ethers.utils.getAddress(toAddr),
+        value: ethers.utils.parseEther(amount),
+      });
+    } else {
+      // USDT BEP-20
+      const contract = new ethers.Contract(USDT_CONTRACT, USDT_ABI, signer);
+      const decimals = await contract.decimals();
+      const amt = ethers.utils.parseUnits(amount, decimals);
+      txResponse = await contract.transfer(ethers.utils.getAddress(toAddr), amt);
+    }
+
+    showAlert('send-alert','success','✅ تم إرسال المعاملة');
+    document.getElementById('tx-result').innerHTML = `
+      <div class="alert alert-success" style="margin-top:0.8rem;">
+        <strong>TX Hash:</strong>
+        <div class="tx-hash">${txResponse.hash}</div>
+        <a href="https://bscscan.com/tx/${txResponse.hash}" target="_blank" rel="noopener"
+          style="color:var(--yellow); font-size:0.8rem; display:inline-block; margin-top:0.4rem;">
+          عرض في BscScan ↗
+        </a>
+      </div>`;
+    document.getElementById('send-amount').value = '';
+    document.getElementById('send-to').value = '';
+
+  } catch(e) {
+    showAlert('send-alert','error','❌ ' + (e.reason || e.message || 'حدث خطأ'));
+  }
+  btn.disabled = false;
+  btn.innerHTML = 'إرسال';
+}
+
+// =====================================================================
+//  RENAME WALLET
+// =====================================================================
+function renameWallet() {
+  if (currentWalletIndex < 0) return;
+  const newName = document.getElementById('rename-input').value.trim();
+  if (!newName) { showAlert('rename-alert','error','أدخل اسماً'); return; }
+  wallets[currentWalletIndex].name = newName;
+  saveWallets();
+  document.getElementById('detail-title').textContent = '🔒 ' + newName;
+  renderWallets();
+  showAlert('rename-alert','success','✅ تم تحديث الاسم');
+  setTimeout(()=>clearAlert('rename-alert'), 2000);
+}
+
+// =====================================================================
+//  DELETE WALLET
+// =====================================================================
+function openDeleteModal()  { document.getElementById('modal-delete').classList.add('active'); }
+function closeDeleteModal() { document.getElementById('modal-delete').classList.remove('active'); }
+function confirmDelete() {
+  if (currentWalletIndex < 0) return;
+  wallets.splice(currentWalletIndex,1);
+  saveWallets();
+  currentWalletIndex = -1;
+  closeDeleteModal();
+  renderWallets();
+  showScreen('screen-wallets');
+}
+
+// =====================================================================
+//  ALERT HELPERS
+// =====================================================================
+function showAlert(id, type, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+}
+function clearAlert(id) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = '';
+}
+
+// =====================================================================
+//  INIT
+// =====================================================================
+document.getElementById('login-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleLogin();
+});
+
+// Start camera when entering add-wallet screen
+const addWalletScreen = document.getElementById('screen-add-wallet');
+const observer = new MutationObserver(() => {
+  if (addWalletScreen.classList.contains('active')) {
+    if (!scanStream) startCamera();
+  }
+});
+observer.observe(addWalletScreen, { attributes: true, attributeFilter: ['class'] });
+
+// Disable context menu on the whole app for extra security
+document.addEventListener('contextmenu', e => e.preventDefault());
+// Disable copy of private key related elements (all content except address box)
+document.addEventListener('copy', e => {
+  const sel = window.getSelection();
+  if (sel && sel.anchorNode) {
+    const parent = sel.anchorNode.parentElement;
+    if (!parent || !parent.closest('.address-box')) {
+      e.preventDefault();
+      e.clipboardData.clearData();
+    }
+  }
+});
+</script>
+<script src="https://replit-cdn.com/replit-pill/replit-pill.global.js" data-repl-id="d1071998-d48c-4a49-9230-bed2cf87ba7d"></script></body>
+</html>
