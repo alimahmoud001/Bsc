@@ -1,0 +1,2788 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src *; img-src * data: blob:; media-src *; camera *"
+    />
+    <title>Secure Vault — محفظة آمنة</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <style>
+      :root {
+        --bg: #0a0a0a;
+        --surface: #131313;
+        --surface2: #1c1c1c;
+        --border: #272727;
+        --accent: #f5c518;
+        --accent-dim: #c9a010;
+        --text: #f0f0f0;
+        --text2: #8a8a8a;
+        --text3: #555;
+        --red: #e05555;
+        --green: #4caf50;
+        --radius: 8px;
+        --radius-sm: 5px;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        -webkit-tap-highlight-color: transparent;
+      }
+      html,
+      body {
+        width: 100%;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          "Segoe UI",
+          system-ui,
+          -apple-system,
+          sans-serif;
+        font-size: 15px;
+        overflow-x: hidden;
+      }
+
+      /* ── SCREEN SYSTEM ── */
+      .screen {
+        display: none;
+        min-height: 100vh;
+        flex-direction: column;
+      }
+      .screen.active {
+        display: flex;
+      }
+
+      /* ── SHARED COMPONENTS ── */
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 20px 14px;
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        background: var(--bg);
+        z-index: 10;
+      }
+      .topbar-title {
+        font-size: 17px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+      }
+      .back-btn {
+        background: none;
+        border: none;
+        color: var(--text2);
+        cursor: pointer;
+        font-size: 22px;
+        padding: 4px 8px;
+        border-radius: var(--radius-sm);
+        transition: color 0.15s;
+      }
+      .back-btn:hover {
+        color: var(--accent);
+      }
+      .icon-btn {
+        background: none;
+        border: none;
+        color: var(--text2);
+        cursor: pointer;
+        font-size: 20px;
+        padding: 6px;
+        border-radius: var(--radius-sm);
+        transition: color 0.15s;
+      }
+      .icon-btn:hover {
+        color: var(--accent);
+      }
+
+      .page-content {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+      }
+
+      .btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 13px 20px;
+        border-radius: var(--radius);
+        border: none;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+        width: 100%;
+        letter-spacing: 0.3px;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: #000;
+      }
+      .btn-primary:hover {
+        background: #e8b912;
+      }
+      .btn-primary:active {
+        background: var(--accent-dim);
+        transform: scale(0.98);
+      }
+      .btn-outline {
+        background: transparent;
+        color: var(--accent);
+        border: 1.5px solid var(--accent);
+      }
+      .btn-outline:hover {
+        background: rgba(245, 197, 24, 0.07);
+      }
+      .btn-danger {
+        background: transparent;
+        color: var(--red);
+        border: 1.5px solid var(--red);
+      }
+      .btn-danger:hover {
+        background: rgba(224, 85, 85, 0.08);
+      }
+      .btn-ghost {
+        background: var(--surface2);
+        color: var(--text2);
+        border: 1px solid var(--border);
+      }
+      .btn-ghost:hover {
+        color: var(--text);
+        border-color: #444;
+      }
+      .btn-sm {
+        padding: 8px 14px;
+        font-size: 13px;
+        width: auto;
+      }
+      .btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .input-group {
+        margin-bottom: 16px;
+      }
+      .input-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text2);
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+      }
+      .input {
+        width: 100%;
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px 14px;
+        color: var(--text);
+        font-size: 15px;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+      .input:focus {
+        border-color: var(--accent);
+      }
+      .input::placeholder {
+        color: var(--text3);
+      }
+      .input-row {
+        display: flex;
+        gap: 8px;
+      }
+      .input-row .input {
+        flex: 1;
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        margin-bottom: 12px;
+      }
+      .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 9px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+      }
+      .tag-yellow {
+        background: rgba(245, 197, 24, 0.15);
+        color: var(--accent);
+        border: 1px solid rgba(245, 197, 24, 0.3);
+      }
+      .tag-blue {
+        background: rgba(80, 140, 255, 0.15);
+        color: #6fa3ff;
+        border: 1px solid rgba(80, 140, 255, 0.3);
+      }
+      .tag-green {
+        background: rgba(76, 175, 80, 0.15);
+        color: #6dcc71;
+        border: 1px solid rgba(76, 175, 80, 0.3);
+      }
+
+      .divider {
+        border: none;
+        border-top: 1px solid var(--border);
+        margin: 16px 0;
+      }
+
+      .alert {
+        padding: 12px 14px;
+        border-radius: var(--radius);
+        font-size: 13px;
+        margin-bottom: 14px;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+      }
+      .alert-warn {
+        background: rgba(245, 197, 24, 0.1);
+        border: 1px solid rgba(245, 197, 24, 0.25);
+        color: #d4aa20;
+      }
+      .alert-danger {
+        background: rgba(224, 85, 85, 0.1);
+        border: 1px solid rgba(224, 85, 85, 0.25);
+        color: #e07070;
+      }
+      .alert-info {
+        background: rgba(80, 140, 255, 0.1);
+        border: 1px solid rgba(80, 140, 255, 0.25);
+        color: #7aadff;
+      }
+      .alert-success {
+        background: rgba(76, 175, 80, 0.1);
+        border: 1px solid rgba(76, 175, 80, 0.25);
+        color: #6dcc71;
+      }
+
+      .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 100;
+        justify-content: center;
+        align-items: flex-end;
+      }
+      .modal-overlay.open {
+        display: flex;
+      }
+      .modal {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius) var(--radius) 0 0;
+        padding: 24px 20px;
+        width: 100%;
+        max-width: 520px;
+        max-height: 90vh;
+        overflow-y: auto;
+        animation: slideUp 0.25s ease;
+      }
+      @keyframes slideUp {
+        from {
+          transform: translateY(60px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      .modal-title {
+        font-size: 17px;
+        font-weight: 700;
+        margin-bottom: 18px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .modal-close {
+        margin-right: auto;
+        background: none;
+        border: none;
+        color: var(--text2);
+        font-size: 22px;
+        cursor: pointer;
+      }
+
+      .spinner {
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        border: 2px solid rgba(0, 0, 0, 0.2);
+        border-top-color: #000;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+      }
+      .spinner-light {
+        border-color: rgba(255, 255, 255, 0.2);
+        border-top-color: var(--text);
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* ── LOGIN SCREEN ── */
+      #screen-login {
+        justify-content: center;
+        align-items: center;
+        padding: 30px 20px;
+      }
+      .login-box {
+        width: 100%;
+        max-width: 400px;
+      }
+      .logo-wrap {
+        text-align: center;
+        margin-bottom: 36px;
+      }
+      .logo-icon {
+        font-size: 48px;
+        margin-bottom: 10px;
+        filter: drop-shadow(0 0 12px rgba(245, 197, 24, 0.4));
+      }
+      .logo-title {
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: 1px;
+      }
+      .logo-sub {
+        font-size: 13px;
+        color: var(--text2);
+        margin-top: 4px;
+      }
+      .bio-btn {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px;
+        color: var(--text2);
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        margin-top: 12px;
+        transition: all 0.15s;
+      }
+      .bio-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .bio-icon {
+        font-size: 22px;
+      }
+
+      /* ── WALLET LIST ── */
+      .wallet-card {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          background 0.15s;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .wallet-card:hover {
+        border-color: var(--accent);
+        background: #181818;
+      }
+      .wallet-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #2a2a2a, #3a3a3a);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        flex-shrink: 0;
+        border: 1px solid var(--border);
+      }
+      .wallet-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .wallet-name {
+        font-weight: 600;
+        font-size: 15px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .wallet-addr {
+        font-size: 12px;
+        color: var(--text2);
+        font-family: "Courier New", monospace;
+        margin-top: 3px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .wallet-arrow {
+        color: var(--text3);
+        font-size: 16px;
+      }
+
+      .fab {
+        position: fixed;
+        bottom: 28px;
+        right: 20px;
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        background: var(--accent);
+        border: none;
+        color: #000;
+        font-size: 26px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 20px rgba(245, 197, 24, 0.35);
+        transition: all 0.15s;
+        z-index: 50;
+      }
+      .fab:hover {
+        background: #e8b912;
+        box-shadow: 0 6px 24px rgba(245, 197, 24, 0.45);
+      }
+      .fab:active {
+        transform: scale(0.95);
+      }
+
+      /* ── QR SCANNER ── */
+      .qr-container {
+        position: relative;
+        width: 100%;
+        max-width: 360px;
+        margin: 0 auto;
+      }
+      .qr-video {
+        width: 100%;
+        border-radius: var(--radius);
+        display: block;
+        background: #000;
+      }
+      .qr-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+      }
+      .qr-frame {
+        width: 220px;
+        height: 220px;
+        border: 2px solid var(--accent);
+        border-radius: 12px;
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+        position: relative;
+      }
+      .qr-frame::before,
+      .qr-frame::after {
+        content: "";
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border-color: var(--accent);
+        border-style: solid;
+      }
+      .qr-frame::before {
+        top: -3px;
+        left: -3px;
+        border-width: 3px 0 0 3px;
+        border-radius: 4px 0 0 0;
+      }
+      .qr-frame::after {
+        bottom: -3px;
+        right: -3px;
+        border-width: 0 3px 3px 0;
+        border-radius: 0 0 4px 0;
+      }
+      .qr-scan-line {
+        position: absolute;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--accent),
+          transparent
+        );
+        animation: scanLine 2.5s ease-in-out infinite;
+      }
+      @keyframes scanLine {
+        0%,
+        100% {
+          top: 10%;
+          opacity: 0.7;
+        }
+        50% {
+          top: 88%;
+          opacity: 1;
+        }
+      }
+      .qr-status {
+        text-align: center;
+        margin-top: 14px;
+        font-size: 13px;
+        color: var(--text2);
+        min-height: 22px;
+      }
+
+      /* ── WALLET DETAIL ── */
+      .address-box {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .address-text {
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        color: var(--text);
+        flex: 1;
+        word-break: break-all;
+        line-height: 1.5;
+      }
+      .copy-btn {
+        flex-shrink: 0;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 7px 12px;
+        color: var(--text2);
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .copy-btn:hover {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+
+      .qr-display-wrap {
+        text-align: center;
+        padding: 20px;
+      }
+      #qr-address-canvas {
+        border-radius: 8px;
+        border: 6px solid white;
+      }
+
+      /* ── CHAIN SELECTOR ── */
+      .chain-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+      .chain-option {
+        background: var(--surface2);
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px 10px;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .chain-option:hover,
+      .chain-option.selected {
+        border-color: var(--accent);
+        background: rgba(245, 197, 24, 0.05);
+      }
+      .chain-option.selected .chain-dot {
+        background: var(--accent);
+      }
+      .chain-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--text3);
+        flex-shrink: 0;
+      }
+      .chain-name {
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .chain-symbol {
+        font-size: 11px;
+        color: var(--text2);
+      }
+
+      .token-tabs {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+      }
+      .token-tab {
+        background: var(--surface2);
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        padding: 7px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .token-tab.selected {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: rgba(245, 197, 24, 0.08);
+      }
+
+      /* ── TX RESULT ── */
+      .tx-hash-box {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px;
+      }
+      .tx-hash-text {
+        font-family: "Courier New", monospace;
+        font-size: 11px;
+        color: var(--text2);
+        word-break: break-all;
+      }
+
+      /* ── SETTINGS ── */
+      .setting-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .setting-label {
+        font-size: 14px;
+      }
+      .setting-sub {
+        font-size: 12px;
+        color: var(--text2);
+        margin-top: 3px;
+      }
+
+      /* ── MISC ── */
+      .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--text3);
+      }
+      .empty-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+      }
+      .empty-text {
+        font-size: 15px;
+        color: var(--text2);
+        margin-bottom: 8px;
+      }
+      .empty-sub {
+        font-size: 13px;
+      }
+
+      select.input {
+        appearance: none;
+        cursor: pointer;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%238a8a8a'%3E%3Cpath d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: left 12px center;
+        padding-left: 32px;
+      }
+
+      .pw-strength {
+        height: 3px;
+        border-radius: 2px;
+        margin-top: 6px;
+        background: var(--surface2);
+        overflow: hidden;
+      }
+      .pw-strength-bar {
+        height: 100%;
+        border-radius: 2px;
+        transition:
+          width 0.3s,
+          background 0.3s;
+        width: 0;
+      }
+
+      .tabs-nav {
+        display: flex;
+        gap: 4px;
+        background: var(--surface2);
+        padding: 4px;
+        border-radius: 9px;
+        margin-bottom: 18px;
+      }
+      .tab-btn {
+        flex: 1;
+        padding: 8px;
+        background: none;
+        border: none;
+        color: var(--text2);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        border-radius: 6px;
+        transition: all 0.15s;
+      }
+      .tab-btn.active {
+        background: var(--surface);
+        color: var(--text);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+      }
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+
+      .flash {
+        animation: flash 0.4s ease;
+      }
+      @keyframes flash {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+
+      ::-webkit-scrollbar {
+        width: 4px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #333;
+        border-radius: 4px;
+      }
+
+      .section-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text2);
+        margin-bottom: 10px;
+        margin-top: 4px;
+      }
+
+      .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .info-row:last-child {
+        border-bottom: none;
+      }
+      .info-key {
+        font-size: 13px;
+        color: var(--text2);
+      }
+      .info-val {
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      @media (min-width: 480px) {
+        .chain-grid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+      @media (prefers-color-scheme: light) {
+        /* keep dark regardless */
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ═══════════════════════════════════════════
+     SCREEN: LOGIN
+═══════════════════════════════════════════ -->
+    <div id="screen-login" class="screen active">
+      <div class="login-box">
+        <div class="logo-wrap">
+          <div class="logo-icon">🔐</div>
+          <div class="logo-title">SECURE VAULT</div>
+          <div class="logo-sub">محفظة تشفير آمنة متعددة الشبكات</div>
+        </div>
+
+        <div id="login-form">
+          <div class="input-group">
+            <label class="input-label">كلمة السر الرئيسية</label>
+            <input
+              class="input"
+              type="password"
+              id="login-pw"
+              placeholder="أدخل كلمة السر"
+              autocomplete="current-password"
+            />
+          </div>
+          <button class="btn btn-primary" onclick="attemptLogin()">
+            <span>🔓</span> الدخول
+          </button>
+          <button
+            class="bio-btn"
+            id="bio-login-btn"
+            onclick="attemptBiometricLogin()"
+            style="display: none"
+          >
+            <span class="bio-icon">👆</span>
+            <span>الدخول بالبصمة</span>
+          </button>
+          <div
+            id="login-error"
+            class="alert alert-danger"
+            style="display: none; margin-top: 12px"
+          >
+            <span>⚠️</span>
+            <span id="login-error-msg">كلمة السر غير صحيحة</span>
+          </div>
+        </div>
+
+        <div id="setup-form" style="display: none">
+          <div class="alert alert-info">
+            <span>ℹ️</span>
+            <span>أول مرة — قم بإنشاء كلمة سر رئيسية للتطبيق</span>
+          </div>
+          <div class="input-group">
+            <label class="input-label">كلمة السر الجديدة</label>
+            <input
+              class="input"
+              type="password"
+              id="setup-pw"
+              placeholder="اختر كلمة سر قوية"
+              oninput="checkPwStrength(this,'setup-strength')"
+            />
+            <div class="pw-strength">
+              <div class="pw-strength-bar" id="setup-strength"></div>
+            </div>
+          </div>
+          <div class="input-group">
+            <label class="input-label">تأكيد كلمة السر</label>
+            <input
+              class="input"
+              type="password"
+              id="setup-pw2"
+              placeholder="أعد كتابة كلمة السر"
+            />
+          </div>
+          <button class="btn btn-primary" onclick="setupVault()">
+            <span>🔐</span> إنشاء الخزنة
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+     SCREEN: WALLET LIST
+═══════════════════════════════════════════ -->
+    <div id="screen-wallets" class="screen">
+      <div class="topbar">
+        <div class="topbar-title">🔐 Secure Vault</div>
+        <div style="display: flex; gap: 4px">
+          <button
+            class="icon-btn"
+            onclick="showScreen('screen-settings')"
+            title="الإعدادات"
+          >
+            ⚙️
+          </button>
+          <button class="icon-btn" onclick="lockApp()" title="قفل">🔒</button>
+        </div>
+      </div>
+      <div class="page-content">
+        <div id="wallet-list-empty" class="empty-state" style="display: none">
+          <div class="empty-icon">💼</div>
+          <div class="empty-text">لا توجد محافظ بعد</div>
+          <div class="empty-sub">اضغط + لإضافة محفظة عبر مسح QR</div>
+        </div>
+        <div id="wallet-list"></div>
+      </div>
+      <button
+        class="fab"
+        onclick="showScreen('screen-import')"
+        title="إضافة محفظة"
+      >
+        ＋
+      </button>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+     SCREEN: IMPORT WALLET (QR ONLY)
+═══════════════════════════════════════════ -->
+    <div id="screen-import" class="screen">
+      <div class="topbar">
+        <button class="back-btn" onclick="goBack()">←</button>
+        <div class="topbar-title">استيراد محفظة</div>
+        <div style="width: 40px"></div>
+      </div>
+      <div class="page-content">
+        <div class="alert alert-warn" style="margin-bottom: 18px">
+          <span>🔒</span>
+          <span
+            >المفتاح الخاص لن يُعرض أو يُنسخ أبداً — يُخزَّن مشفراً محلياً
+            فقط</span
+          >
+        </div>
+
+        <p class="section-title">مسح QR Code للمفتاح الخاص</p>
+
+        <div class="qr-container">
+          <video
+            id="import-video"
+            class="qr-video"
+            autoplay
+            playsinline
+            muted
+          ></video>
+          <div class="qr-overlay">
+            <div class="qr-frame">
+              <div class="qr-scan-line"></div>
+            </div>
+          </div>
+        </div>
+        <div class="qr-status" id="import-qr-status">
+          جارٍ تشغيل الكاميرا...
+        </div>
+
+        <hr class="divider" />
+
+        <div id="import-key-found" style="display: none">
+          <div class="alert alert-success">
+            <span>✅</span>
+            <span id="import-detected-label">تم اكتشاف مفتاح خاص</span>
+          </div>
+
+          <div class="input-group">
+            <label class="input-label">اسم المحفظة</label>
+            <input
+              class="input"
+              id="import-name"
+              type="text"
+              placeholder="مثال: محفظتي الأولى"
+              maxlength="32"
+            />
+          </div>
+          <div class="input-group">
+            <label class="input-label">كلمة السر الخاصة بهذه المحفظة</label>
+            <input
+              class="input"
+              id="import-wallet-pw"
+              type="password"
+              placeholder="ستُطلب عند إرسال المعاملات"
+              oninput="checkPwStrength(this,'import-strength')"
+            />
+            <div class="pw-strength">
+              <div class="pw-strength-bar" id="import-strength"></div>
+            </div>
+          </div>
+          <div class="input-group">
+            <label class="input-label">تأكيد كلمة السر</label>
+            <input
+              class="input"
+              id="import-wallet-pw2"
+              type="password"
+              placeholder="أعد كتابة كلمة السر"
+            />
+          </div>
+          <button
+            class="btn btn-primary"
+            id="import-save-btn"
+            onclick="saveImportedWallet()"
+          >
+            <span>💾</span> حفظ المحفظة بأمان
+          </button>
+        </div>
+
+        <div
+          id="import-cam-error"
+          class="alert alert-danger"
+          style="display: none; margin-top: 12px"
+        >
+          <span>❌</span>
+          <span id="import-cam-error-msg">لا يمكن الوصول للكاميرا</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+     SCREEN: WALLET DETAIL
+═══════════════════════════════════════════ -->
+    <div id="screen-wallet-detail" class="screen">
+      <div class="topbar">
+        <button class="back-btn" onclick="goBack()">←</button>
+        <div class="topbar-title" id="detail-title">المحفظة</div>
+        <button class="icon-btn" onclick="openWalletMenu()" title="خيارات">
+          ⋯
+        </button>
+      </div>
+      <div class="page-content">
+        <div class="tabs-nav">
+          <button
+            class="tab-btn active"
+            onclick="switchTab('tab-address', this)"
+          >
+            📋 العنوان
+          </button>
+          <button class="tab-btn" onclick="switchTab('tab-send', this)">
+            📤 إرسال
+          </button>
+        </div>
+
+        <!-- TAB: ADDRESS -->
+        <div id="tab-address" class="tab-content active">
+          <p class="section-title">عنوانك العام (للاستلام)</p>
+          <div class="address-box" style="margin-bottom: 14px">
+            <span class="address-text" id="detail-address">0x...</span>
+            <button class="copy-btn" onclick="copyAddress()">
+              <span>📋</span> نسخ
+            </button>
+          </div>
+
+          <div class="qr-display-wrap">
+            <canvas id="qr-address-canvas"></canvas>
+            <p style="font-size: 12px; color: var(--text2); margin-top: 10px">
+              امسح هذا QR لاستقبال العملات
+            </p>
+          </div>
+        </div>
+
+        <!-- TAB: SEND -->
+        <div id="tab-send" class="tab-content">
+          <div class="input-group">
+            <label class="input-label">الشبكة</label>
+            <select class="input" id="send-chain" onchange="onChainChange()">
+              <option value="ethereum">Ethereum (ETH)</option>
+              <option value="bsc">BNB Smart Chain (BNB)</option>
+              <option value="polygon">Polygon (MATIC)</option>
+              <option value="arbitrum">Arbitrum (ETH)</option>
+              <option value="optimism">Optimism (ETH)</option>
+              <option value="base">Base (ETH)</option>
+              <option value="avalanche">Avalanche (AVAX)</option>
+              <option value="linea">Linea (ETH)</option>
+              <option value="mantle">Mantle (MNT)</option>
+              <option value="zksync">zkSync Era (ETH)</option>
+              <option value="celo">Celo (CELO)</option>
+              <option value="gnosis">Gnosis (XDAI)</option>
+              <option value="hyperevm">HyperEVM (HYPE)</option>
+            </select>
+          </div>
+
+          <div class="input-group">
+            <label class="input-label">العملة</label>
+            <div class="token-tabs" id="token-tabs"></div>
+          </div>
+
+          <div class="input-group">
+            <label class="input-label">عنوان المستلم</label>
+            <div class="input-row">
+              <input
+                class="input"
+                id="send-to"
+                placeholder="0x..."
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <button
+                class="btn btn-ghost btn-sm"
+                onclick="openRecipientScan()"
+                style="flex-shrink: 0; width: auto; gap: 4px"
+              >
+                <span>📷</span> مسح
+              </button>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label class="input-label"
+              >المبلغ
+              <span id="send-token-label" style="color: var(--accent)"></span
+            ></label>
+            <input
+              class="input"
+              id="send-amount"
+              type="number"
+              placeholder="0.00"
+              step="any"
+              min="0"
+            />
+          </div>
+
+          <button class="btn btn-primary" onclick="openSendConfirm()">
+            <span>📤</span> متابعة الإرسال
+          </button>
+
+          <div id="tx-result" style="display: none; margin-top: 16px">
+            <div id="tx-result-content"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+     SCREEN: SETTINGS
+═══════════════════════════════════════════ -->
+    <div id="screen-settings" class="screen">
+      <div class="topbar">
+        <button class="back-btn" onclick="goBack()">←</button>
+        <div class="topbar-title">الإعدادات</div>
+        <div style="width: 40px"></div>
+      </div>
+      <div class="page-content">
+        <p class="section-title">الأمان</p>
+        <div class="card">
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">تغيير كلمة السر الرئيسية</div>
+              <div class="setting-sub">تشفير جميع بيانات الخزنة</div>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="openChangePw()">
+              تغيير
+            </button>
+          </div>
+          <div class="setting-row" id="bio-setting-row">
+            <div>
+              <div class="setting-label">البصمة / الوجه</div>
+              <div class="setting-sub" id="bio-setting-sub">—</div>
+            </div>
+            <button
+              class="btn btn-ghost btn-sm"
+              id="bio-toggle-btn"
+              onclick="toggleBiometric()"
+            >
+              تفعيل
+            </button>
+          </div>
+        </div>
+
+        <p class="section-title" style="margin-top: 20px">عن التطبيق</p>
+        <div class="card">
+          <div class="info-row">
+            <span class="info-key">الإصدار</span
+            ><span class="info-val">1.0.0</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">التخزين</span
+            ><span class="info-val">محلي مشفر فقط</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">الاتصال بالإنترنت</span
+            ><span class="info-val">للمعاملات فقط</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">المفاتيح الخاصة</span
+            ><span class="info-val">لا تغادر الجهاز</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 20px">
+          <button class="btn btn-danger" onclick="confirmDeleteAll()">
+            🗑️ حذف كل البيانات والمحافظ
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+     MODALS
+═══════════════════════════════════════════ -->
+
+    <!-- Wallet Options Menu -->
+    <div class="modal-overlay" id="modal-wallet-menu">
+      <div class="modal" style="max-width: 400px">
+        <div class="modal-title">
+          <span>⚙️</span> خيارات المحفظة
+          <button class="modal-close" onclick="closeModal('modal-wallet-menu')">
+            ✕
+          </button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <button class="btn btn-ghost" onclick="openRenameModal()">
+            <span>✏️</span> إعادة تسمية
+          </button>
+          <button class="btn btn-danger" onclick="confirmDeleteWallet()">
+            <span>🗑️</span> حذف هذه المحفظة
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rename Modal -->
+    <div class="modal-overlay" id="modal-rename">
+      <div class="modal" style="max-width: 400px">
+        <div class="modal-title">
+          <span>✏️</span> إعادة تسمية
+          <button class="modal-close" onclick="closeModal('modal-rename')">
+            ✕
+          </button>
+        </div>
+        <div class="input-group">
+          <label class="input-label">الاسم الجديد</label>
+          <input
+            class="input"
+            id="rename-input"
+            type="text"
+            maxlength="32"
+            placeholder="اسم المحفظة"
+          />
+        </div>
+        <button class="btn btn-primary" onclick="doRename()">
+          <span>💾</span> حفظ
+        </button>
+      </div>
+    </div>
+
+    <!-- Send Confirm Modal (requires wallet password) -->
+    <div class="modal-overlay" id="modal-send-confirm">
+      <div class="modal" style="max-width: 400px">
+        <div class="modal-title">
+          <span>🔑</span> تأكيد الإرسال
+          <button
+            class="modal-close"
+            onclick="closeModal('modal-send-confirm')"
+          >
+            ✕
+          </button>
+        </div>
+        <div
+          id="send-confirm-summary"
+          class="card"
+          style="margin-bottom: 14px; font-size: 13px; line-height: 1.8"
+        ></div>
+        <div class="alert alert-warn" style="margin-bottom: 14px">
+          <span>⚠️</span> <span>أدخل كلمة سر هذه المحفظة للتوقيع</span>
+        </div>
+        <div class="input-group">
+          <label class="input-label">كلمة سر المحفظة</label>
+          <input
+            class="input"
+            type="password"
+            id="send-wallet-pw"
+            placeholder="••••••••"
+            autocomplete="off"
+          />
+        </div>
+        <button
+          class="btn btn-primary"
+          id="send-confirm-btn"
+          onclick="executeSend()"
+        >
+          <span>📤</span> إرسال المعاملة
+        </button>
+        <div
+          id="send-confirm-error"
+          class="alert alert-danger"
+          style="display: none; margin-top: 10px"
+        >
+          <span>❌</span> <span id="send-confirm-error-msg"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recipient QR Scanner Modal -->
+    <div class="modal-overlay" id="modal-recipient-scan">
+      <div class="modal" style="max-width: 400px">
+        <div class="modal-title">
+          <span>📷</span> مسح عنوان المستلم
+          <button class="modal-close" onclick="closeRecipientScan()">✕</button>
+        </div>
+        <div class="qr-container">
+          <video
+            id="recipient-video"
+            class="qr-video"
+            autoplay
+            playsinline
+            muted
+          ></video>
+          <div class="qr-overlay">
+            <div class="qr-frame"><div class="qr-scan-line"></div></div>
+          </div>
+        </div>
+        <div class="qr-status" id="recipient-qr-status">
+          جارٍ تشغيل الكاميرا...
+        </div>
+      </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal-overlay" id="modal-change-pw">
+      <div class="modal" style="max-width: 400px">
+        <div class="modal-title">
+          <span>🔑</span> تغيير كلمة السر
+          <button class="modal-close" onclick="closeModal('modal-change-pw')">
+            ✕
+          </button>
+        </div>
+        <div class="input-group">
+          <label class="input-label">كلمة السر الحالية</label>
+          <input
+            class="input"
+            type="password"
+            id="chpw-old"
+            placeholder="••••••••"
+          />
+        </div>
+        <div class="input-group">
+          <label class="input-label">كلمة السر الجديدة</label>
+          <input
+            class="input"
+            type="password"
+            id="chpw-new"
+            placeholder="اختر كلمة قوية"
+            oninput="checkPwStrength(this,'chpw-strength')"
+          />
+          <div class="pw-strength">
+            <div class="pw-strength-bar" id="chpw-strength"></div>
+          </div>
+        </div>
+        <div class="input-group">
+          <label class="input-label">تأكيد كلمة السر الجديدة</label>
+          <input
+            class="input"
+            type="password"
+            id="chpw-new2"
+            placeholder="أعد الكتابة"
+          />
+        </div>
+        <button class="btn btn-primary" onclick="doChangePw()">
+          <span>🔒</span> تغيير
+        </button>
+        <div
+          id="chpw-error"
+          class="alert alert-danger"
+          style="display: none; margin-top: 10px"
+        >
+          <span>❌</span> <span id="chpw-error-msg"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Confirm Modal -->
+    <div class="modal-overlay" id="modal-delete-confirm">
+      <div class="modal" style="max-width: 380px">
+        <div class="modal-title">
+          <span>⚠️</span> تأكيد الحذف
+          <button
+            class="modal-close"
+            onclick="closeModal('modal-delete-confirm')"
+          >
+            ✕
+          </button>
+        </div>
+        <p
+          id="delete-confirm-text"
+          style="
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text2);
+            margin-bottom: 18px;
+          "
+        ></p>
+        <div style="display: flex; gap: 8px">
+          <button
+            class="btn btn-ghost"
+            onclick="closeModal('modal-delete-confirm')"
+            style="flex: 1"
+          >
+            إلغاء
+          </button>
+          <button
+            class="btn btn-danger"
+            id="delete-confirm-btn"
+            style="flex: 1"
+            onclick="executeDelete()"
+          >
+            حذف
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div
+      id="toast"
+      style="
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1e1e1e;
+        border: 1px solid #333;
+        color: var(--text);
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 13px;
+        z-index: 999;
+        opacity: 0;
+        transition: opacity 0.25s;
+        pointer-events: none;
+        white-space: nowrap;
+        max-width: 90vw;
+        text-align: center;
+      "
+    ></div>
+
+    <script>
+      // ═══════════════════════════════════════════════════════
+      // CHAIN CONFIG
+      // ═══════════════════════════════════════════════════════
+      const CHAINS = {
+        ethereum: {
+          name: "Ethereum",
+          chainId: 1,
+          symbol: "ETH",
+          rpc: "https://cloudflare-eth.com",
+          explorer: "https://etherscan.io",
+          tokens: {
+            ETH: { native: true, dec: 18 },
+            USDT: {
+              addr: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+              dec: 6,
+            },
+            USDC: {
+              addr: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              dec: 6,
+            },
+          },
+        },
+        bsc: {
+          name: "BNB Smart Chain",
+          chainId: 56,
+          symbol: "BNB",
+          rpc: "https://bsc-dataseed.binance.org/",
+          explorer: "https://bscscan.com",
+          tokens: {
+            BNB: { native: true, dec: 18 },
+            USDT: {
+              addr: "0x55d398326f99059fF775485246999027B3197955",
+              dec: 18,
+            },
+            USDC: {
+              addr: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+              dec: 18,
+            },
+          },
+        },
+        polygon: {
+          name: "Polygon",
+          chainId: 137,
+          symbol: "MATIC",
+          rpc: "https://polygon-rpc.com",
+          explorer: "https://polygonscan.com",
+          tokens: {
+            MATIC: { native: true, dec: 18 },
+            USDT: {
+              addr: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+              dec: 6,
+            },
+            USDC: {
+              addr: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+              dec: 6,
+            },
+          },
+        },
+        arbitrum: {
+          name: "Arbitrum",
+          chainId: 42161,
+          symbol: "ETH",
+          rpc: "https://arb1.arbitrum.io/rpc",
+          explorer: "https://arbiscan.io",
+          tokens: {
+            ETH: { native: true, dec: 18 },
+            USDT: {
+              addr: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+              dec: 6,
+            },
+            USDC: {
+              addr: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+              dec: 6,
+            },
+          },
+        },
+        optimism: {
+          name: "Optimism",
+          chainId: 10,
+          symbol: "ETH",
+          rpc: "https://mainnet.optimism.io",
+          explorer: "https://optimistic.etherscan.io",
+          tokens: {
+            ETH: { native: true, dec: 18 },
+            USDT: {
+              addr: "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58",
+              dec: 6,
+            },
+            USDC: {
+              addr: "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
+              dec: 6,
+            },
+          },
+        },
+        base: {
+          name: "Base",
+          chainId: 8453,
+          symbol: "ETH",
+          rpc: "https://mainnet.base.org",
+          explorer: "https://basescan.org",
+          tokens: {
+            ETH: { native: true, dec: 18 },
+            USDT: {
+              addr: "0xfde4C96799f7359D1e9cF18Da6f53EfbF25E06a7",
+              dec: 6,
+            },
+            USDC: {
+              addr: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              dec: 6,
+            },
+          },
+        },
+        avalanche: {
+          name: "Avalanche",
+          chainId: 43114,
+          symbol: "AVAX",
+          rpc: "https://api.avax.network/ext/bc/C/rpc",
+          explorer: "https://snowtrace.io",
+          tokens: {
+            AVAX: { native: true, dec: 18 },
+            USDT: {
+              addr: "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7",
+              dec: 6,
+            },
+            USDC: {
+              addr: "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E",
+              dec: 6,
+            },
+          },
+        },
+        linea: {
+          name: "Linea",
+          chainId: 59144,
+          symbol: "ETH",
+          rpc: "https://rpc.linea.build",
+          explorer: "https://lineascan.build",
+          tokens: {
+            ETH: { native: true, dec: 18 },
+            USDT: {
+              addr: "0xA219439258ca9da29E9Cc4cE5596924745e12B93",
+              dec: 6,
+            },
+            USDC: {
+              addr: "0x176211869cA2b568f2A7D4EE941E073a821EE1ff",
+              dec: 6,
+            },
+          },
+        },
+        mantle: {
+          name: "Mantle",
+          chainId: 5000,
+          symbol: "MNT",
+          rpc: "https://rpc.mantle.xyz",
+          explorer: "https://mantlescan.xyz",
+          tokens: {
+            MNT: { native: true, dec: 18 },
+            USDT: {
+              addr: "0x201EBa5CC46D216Ce6DC03F6a759e8E766e956aE",
+              dec: 6,
+            },
+            USDC: {
+              addr: "0x09Bc4E0D864854c6aFB6eB9A9cdF58aC190D0dF9",
+              dec: 6,
+            },
+          },
+        },
+        zksync: {
+          name: "zkSync Era",
+          chainId: 324,
+          symbol: "ETH",
+          rpc: "https://mainnet.era.zksync.io",
+          explorer: "https://explorer.zksync.io",
+          tokens: {
+            ETH: { native: true, dec: 18 },
+            USDT: {
+              addr: "0x493257fD37EDB34451f62EDf8D2a0C418852bA4C",
+              dec: 6,
+            },
+            USDC: {
+              addr: "0x3355df6D4c9C3035724Fd0e3914dE96A5a83aaf4",
+              dec: 6,
+            },
+          },
+        },
+        celo: {
+          name: "Celo",
+          chainId: 42220,
+          symbol: "CELO",
+          rpc: "https://forno.celo.org",
+          explorer: "https://celoscan.io",
+          tokens: {
+            CELO: { native: true, dec: 18 },
+            USDT: {
+              addr: "0x617f3112bf5397D0467D315cC709EF968D9ba546",
+              dec: 6,
+            },
+            USDC: {
+              addr: "0xcebA9300f2b948710d2653dD7B07f33A8B32118C",
+              dec: 6,
+            },
+          },
+        },
+        gnosis: {
+          name: "Gnosis",
+          chainId: 100,
+          symbol: "XDAI",
+          rpc: "https://rpc.gnosischain.com",
+          explorer: "https://gnosisscan.io",
+          tokens: {
+            XDAI: { native: true, dec: 18 },
+            USDT: {
+              addr: "0x4ECaBa5870353805a9F068101A40E0f32ed605C6",
+              dec: 6,
+            },
+            USDC: {
+              addr: "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83",
+              dec: 6,
+            },
+          },
+        },
+        hyperevm: {
+          name: "HyperEVM",
+          chainId: 999,
+          symbol: "HYPE",
+          rpc: "https://rpc.hyperliquid.xyz/evm",
+          explorer: "https://purrsec.com",
+          tokens: {
+            HYPE: { native: true, dec: 18 },
+            USDT: {
+              addr: "0x0000000000000000000000000000000000000000",
+              dec: 6,
+            },
+            USDC: {
+              addr: "0x0000000000000000000000000000000000000000",
+              dec: 6,
+            },
+          },
+        },
+      };
+
+      const ERC20_ABI = [
+        "function transfer(address to, uint256 amount) returns (bool)",
+        "function balanceOf(address owner) view returns (uint256)",
+        "function decimals() view returns (uint8)",
+      ];
+
+      // ═══════════════════════════════════════════════════════
+      // CRYPTO HELPERS (Web Crypto API)
+      // ═══════════════════════════════════════════════════════
+      const Crypto = {
+        enc: new TextEncoder(),
+        dec: new TextDecoder(),
+
+        rand(n) {
+          return crypto.getRandomValues(new Uint8Array(n));
+        },
+
+        ab2hex(buf) {
+          return Array.from(new Uint8Array(buf))
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("");
+        },
+        hex2ab(hex) {
+          const b = new Uint8Array(hex.length / 2);
+          for (let i = 0; i < hex.length; i += 2)
+            b[i / 2] = parseInt(hex.substr(i, 2), 16);
+          return b;
+        },
+
+        async hashPw(password, salt) {
+          const km = await crypto.subtle.importKey(
+            "raw",
+            this.enc.encode(password),
+            "PBKDF2",
+            false,
+            ["deriveKey"],
+          );
+          return crypto.subtle.deriveKey(
+            { name: "PBKDF2", salt, iterations: 250000, hash: "SHA-256" },
+            km,
+            { name: "AES-GCM", length: 256 },
+            false,
+            ["encrypt", "decrypt"],
+          );
+        },
+
+        async encrypt(data, key) {
+          const iv = this.rand(12);
+          const ct = await crypto.subtle.encrypt(
+            { name: "AES-GCM", iv },
+            key,
+            this.enc.encode(JSON.stringify(data)),
+          );
+          return { iv: this.ab2hex(iv), ct: this.ab2hex(ct) };
+        },
+
+        async decrypt(enc, key) {
+          const pt = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: this.hex2ab(enc.iv) },
+            key,
+            this.hex2ab(enc.ct),
+          );
+          return JSON.parse(this.dec.decode(pt));
+        },
+
+        async hashStr(s) {
+          const buf = await crypto.subtle.digest("SHA-256", this.enc.encode(s));
+          return this.ab2hex(buf);
+        },
+      };
+
+      // ═══════════════════════════════════════════════════════
+      // APP STATE
+      // ═══════════════════════════════════════════════════════
+      let APP = {
+        masterKey: null, // CryptoKey (session only)
+        wallets: [], // decrypted wallet list (addresses + encrypted pk)
+        currentWalletIdx: null,
+        importedPrivKey: null, // temp during import flow
+        deleteTarget: null, // { type: 'wallet'|'all', idx? }
+        scanStreams: {}, // active camera streams
+        selectedToken: null,
+        scanInterval: null,
+      };
+
+      // ═══════════════════════════════════════════════════════
+      // STORAGE HELPERS
+      // ═══════════════════════════════════════════════════════
+      const Store = {
+        VAULT_KEY: "sv_vault",
+        HASH_KEY: "sv_hash",
+        SALT_KEY: "sv_salt",
+        BIO_KEY: "sv_bio_cred",
+
+        isSetup() {
+          return !!localStorage.getItem(this.HASH_KEY);
+        },
+
+        async saveVault(wallets, masterKey) {
+          const salt = Crypto.hex2ab(localStorage.getItem(this.SALT_KEY));
+          const enc = await Crypto.encrypt(wallets, masterKey);
+          localStorage.setItem(this.VAULT_KEY, JSON.stringify(enc));
+        },
+
+        async loadVault(masterKey) {
+          const raw = localStorage.getItem(this.VAULT_KEY);
+          if (!raw) return [];
+          return await Crypto.decrypt(JSON.parse(raw), masterKey);
+        },
+
+        async setupMaster(password) {
+          const salt = Crypto.rand(32);
+          const key = await Crypto.hashPw(password, salt);
+          const hash = await Crypto.hashStr(
+            password + ":" + Crypto.ab2hex(salt),
+          );
+          localStorage.setItem(this.SALT_KEY, Crypto.ab2hex(salt));
+          localStorage.setItem(this.HASH_KEY, hash);
+          await this.saveVault([], key);
+          return key;
+        },
+
+        async verifyMaster(password) {
+          const saltHex = localStorage.getItem(this.SALT_KEY);
+          if (!saltHex) return null;
+          const salt = Crypto.hex2ab(saltHex);
+          const hash = await Crypto.hashStr(password + ":" + saltHex);
+          const storedHash = localStorage.getItem(this.HASH_KEY);
+          if (hash !== storedHash) return null;
+          return await Crypto.hashPw(password, salt);
+        },
+
+        setBioCredId(id) {
+          localStorage.setItem(this.BIO_KEY, id);
+        },
+        getBioCredId() {
+          return localStorage.getItem(this.BIO_KEY);
+        },
+        clearBioCred() {
+          localStorage.removeItem(this.BIO_KEY);
+        },
+
+        clearAll() {
+          localStorage.removeItem(this.VAULT_KEY);
+          localStorage.removeItem(this.HASH_KEY);
+          localStorage.removeItem(this.SALT_KEY);
+          localStorage.removeItem(this.BIO_KEY);
+        },
+      };
+
+      // ═══════════════════════════════════════════════════════
+      // INIT
+      // ═══════════════════════════════════════════════════════
+      window.addEventListener("DOMContentLoaded", async () => {
+        if (!Store.isSetup()) {
+          document.getElementById("login-form").style.display = "none";
+          document.getElementById("setup-form").style.display = "block";
+        } else {
+          checkBiometricAvailability();
+        }
+        // Prevent devtools key extraction (best-effort)
+        document.addEventListener("contextmenu", (e) => e.preventDefault());
+      });
+
+      async function checkBiometricAvailability() {
+        const credId = Store.getBioCredId();
+        const bioBtn = document.getElementById("bio-login-btn");
+        if (credId && window.PublicKeyCredential) {
+          const avail =
+            await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().catch(
+              () => false,
+            );
+          if (avail) bioBtn.style.display = "flex";
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // LOGIN / SETUP
+      // ═══════════════════════════════════════════════════════
+      async function setupVault() {
+        const pw = document.getElementById("setup-pw").value;
+        const pw2 = document.getElementById("setup-pw2").value;
+        if (pw.length < 8) {
+          showToast("كلمة السر يجب أن تكون 8 أحرف على الأقل");
+          return;
+        }
+        if (pw !== pw2) {
+          showToast("كلمتا السر غير متطابقتين");
+          return;
+        }
+        try {
+          APP.masterKey = await Store.setupMaster(pw);
+          APP.wallets = [];
+          await enterApp();
+        } catch (e) {
+          showToast("خطأ في الإنشاء: " + e.message);
+        }
+      }
+
+      async function attemptLogin() {
+        const pw = document.getElementById("login-pw").value;
+        if (!pw) {
+          showToast("أدخل كلمة السر");
+          return;
+        }
+        const errDiv = document.getElementById("login-error");
+        errDiv.style.display = "none";
+        try {
+          const key = await Store.verifyMaster(pw);
+          if (!key) {
+            errDiv.style.display = "flex";
+            document.getElementById("login-error-msg").textContent =
+              "كلمة السر غير صحيحة";
+            return;
+          }
+          APP.masterKey = key;
+          APP.wallets = await Store.loadVault(key);
+          await enterApp();
+        } catch (e) {
+          errDiv.style.display = "flex";
+          document.getElementById("login-error-msg").textContent = e.message;
+        }
+      }
+
+      async function attemptBiometricLogin() {
+        if (!Store.getBioCredId()) {
+          showToast("لا توجد بصمة مسجلة");
+          return;
+        }
+        try {
+          const credId = Crypto.hex2ab(Store.getBioCredId());
+          const assertion = await navigator.credentials.get({
+            publicKey: {
+              challenge: crypto.getRandomValues(new Uint8Array(32)),
+              allowCredentials: [{ id: credId, type: "public-key" }],
+              userVerification: "required",
+              timeout: 60000,
+            },
+          });
+          if (assertion) {
+            // Bio passed — but we still need master key for decryption
+            // Prompt password silently (or store key hash for bio unlock)
+            const storedBioToken = sessionStorage.getItem("sv_bio_token");
+            if (storedBioToken) {
+              const key = await Store.verifyMaster(storedBioToken);
+              if (key) {
+                APP.masterKey = key;
+                APP.wallets = await Store.loadVault(key);
+                await enterApp();
+                return;
+              }
+            }
+            showToast(
+              "تم التحقق من البصمة — أدخل كلمة السر مرة واحدة لفتح الجلسة",
+            );
+          }
+        } catch (e) {
+          showToast("فشلت البصمة: " + (e.message || "إلغاء"));
+        }
+      }
+
+      async function enterApp() {
+        document.getElementById("login-pw").value = "";
+        renderWalletList();
+        showScreen("screen-wallets");
+      }
+
+      function lockApp() {
+        APP.masterKey = null;
+        APP.wallets = [];
+        APP.currentWalletIdx = null;
+        sessionStorage.removeItem("sv_bio_token");
+        stopAllCams();
+        showScreen("screen-login");
+        document.getElementById("login-pw").value = "";
+        document.getElementById("login-form").style.display = "block";
+        document.getElementById("setup-form").style.display = "none";
+        document.getElementById("login-error").style.display = "none";
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // BIOMETRIC MANAGEMENT
+      // ═══════════════════════════════════════════════════════
+      async function toggleBiometric() {
+        if (!window.PublicKeyCredential) {
+          showToast("المتصفح لا يدعم WebAuthn");
+          return;
+        }
+        const avail =
+          await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().catch(
+            () => false,
+          );
+        if (!avail) {
+          showToast("لا يوجد مستشعر بصمة على هذا الجهاز");
+          return;
+        }
+
+        if (Store.getBioCredId()) {
+          Store.clearBioCred();
+          updateBioSettingUI();
+          showToast("تم إلغاء تفعيل البصمة");
+          return;
+        }
+
+        try {
+          const cred = await navigator.credentials.create({
+            publicKey: {
+              challenge: crypto.getRandomValues(new Uint8Array(32)),
+              rp: {
+                name: "Secure Vault",
+                id: location.hostname || "localhost",
+              },
+              user: {
+                id: crypto.getRandomValues(new Uint8Array(16)),
+                name: "vault-user",
+                displayName: "Vault User",
+              },
+              pubKeyCredParams: [
+                { type: "public-key", alg: -7 },
+                { type: "public-key", alg: -257 },
+              ],
+              authenticatorSelection: {
+                userVerification: "required",
+                authenticatorAttachment: "platform",
+              },
+              timeout: 60000,
+            },
+          });
+          const credIdHex = Crypto.ab2hex(cred.rawId);
+          Store.setBioCredId(credIdHex);
+          // Store pw token for bio unlock
+          // Ask for master pw once
+          const pw = prompt(
+            "لتفعيل البصمة، أدخل كلمة السر الرئيسية مرة واحدة:",
+          );
+          if (pw) {
+            sessionStorage.setItem("sv_bio_token", pw);
+          }
+          updateBioSettingUI();
+          showToast("✅ تم تفعيل البصمة بنجاح");
+        } catch (e) {
+          showToast("فشل التسجيل: " + (e.message || "إلغاء"));
+        }
+      }
+
+      function updateBioSettingUI() {
+        const has = !!Store.getBioCredId();
+        document.getElementById("bio-setting-sub").textContent = has
+          ? "مفعّلة ✅"
+          : "غير مفعّلة";
+        document.getElementById("bio-toggle-btn").textContent = has
+          ? "إلغاء"
+          : "تفعيل";
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // WALLET RENDERING
+      // ═══════════════════════════════════════════════════════
+      function renderWalletList() {
+        const list = document.getElementById("wallet-list");
+        const empty = document.getElementById("wallet-list-empty");
+        list.innerHTML = "";
+        if (APP.wallets.length === 0) {
+          empty.style.display = "block";
+          return;
+        }
+        empty.style.display = "none";
+        APP.wallets.forEach((w, i) => {
+          const el = document.createElement("div");
+          el.className = "wallet-card";
+          el.innerHTML = `
+      <div class="wallet-avatar">${getWalletEmoji(i)}</div>
+      <div class="wallet-info">
+        <div class="wallet-name">${escHtml(w.name)}</div>
+        <div class="wallet-addr">${w.address}</div>
+      </div>
+      <span class="wallet-arrow">›</span>`;
+          el.onclick = () => openWalletDetail(i);
+          list.appendChild(el);
+        });
+      }
+
+      function getWalletEmoji(i) {
+        const emojis = [
+          "💰",
+          "🏦",
+          "💎",
+          "🌐",
+          "⚡",
+          "🔥",
+          "🌊",
+          "✨",
+          "🎯",
+          "🚀",
+          "🔮",
+          "💫",
+        ];
+        return emojis[i % emojis.length];
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // WALLET DETAIL
+      // ═══════════════════════════════════════════════════════
+      async function openWalletDetail(idx) {
+        APP.currentWalletIdx = idx;
+        const w = APP.wallets[idx];
+        document.getElementById("detail-title").textContent = w.name;
+        document.getElementById("detail-address").textContent = w.address;
+
+        // Generate QR code for address
+        const canvas = document.getElementById("qr-address-canvas");
+        await QRCode.toCanvas(canvas, w.address, {
+          width: 220,
+          margin: 2,
+          color: { dark: "#000000", light: "#ffffff" },
+        }).catch(() => {});
+
+        // Reset send tab
+        document.getElementById("send-to").value = "";
+        document.getElementById("send-amount").value = "";
+        document.getElementById("tx-result").style.display = "none";
+        onChainChange();
+
+        // Set first tab active
+        switchTab("tab-address", document.querySelector(".tab-btn"));
+        showScreen("screen-wallet-detail");
+      }
+
+      function onChainChange() {
+        const chain = document.getElementById("send-chain").value;
+        const cfg = CHAINS[chain];
+        const tokens = Object.keys(cfg.tokens);
+        const tabs = document.getElementById("token-tabs");
+        tabs.innerHTML = "";
+        tokens.forEach((t, i) => {
+          const btn = document.createElement("div");
+          btn.className = "token-tab" + (i === 0 ? " selected" : "");
+          btn.textContent = t;
+          btn.onclick = () => {
+            tabs
+              .querySelectorAll(".token-tab")
+              .forEach((b) => b.classList.remove("selected"));
+            btn.classList.add("selected");
+            APP.selectedToken = t;
+            document.getElementById("send-token-label").textContent = t;
+          };
+          tabs.appendChild(btn);
+        });
+        APP.selectedToken = tokens[0];
+        document.getElementById("send-token-label").textContent = tokens[0];
+      }
+
+      function copyAddress() {
+        const addr = APP.wallets[APP.currentWalletIdx]?.address;
+        if (!addr) return;
+        navigator.clipboard
+          .writeText(addr)
+          .then(() => showToast("✅ تم نسخ العنوان"))
+          .catch(() => {
+            // fallback
+            const ta = document.createElement("textarea");
+            ta.value = addr;
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand("copy");
+            document.body.removeChild(ta);
+            showToast("✅ تم نسخ العنوان");
+          });
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // WALLET MENU / RENAME / DELETE
+      // ═══════════════════════════════════════════════════════
+      function openWalletMenu() {
+        openModal("modal-wallet-menu");
+      }
+
+      function openRenameModal() {
+        closeModal("modal-wallet-menu");
+        document.getElementById("rename-input").value =
+          APP.wallets[APP.currentWalletIdx]?.name || "";
+        openModal("modal-rename");
+      }
+
+      async function doRename() {
+        const name = document.getElementById("rename-input").value.trim();
+        if (!name) {
+          showToast("أدخل اسماً");
+          return;
+        }
+        APP.wallets[APP.currentWalletIdx].name = name;
+        document.getElementById("detail-title").textContent = name;
+        await Store.saveVault(APP.wallets, APP.masterKey);
+        renderWalletList();
+        closeModal("modal-rename");
+        showToast("✅ تم تغيير الاسم");
+      }
+
+      function confirmDeleteWallet() {
+        closeModal("modal-wallet-menu");
+        APP.deleteTarget = { type: "wallet", idx: APP.currentWalletIdx };
+        document.getElementById("delete-confirm-text").textContent =
+          `هل تريد حذف محفظة "${APP.wallets[APP.currentWalletIdx]?.name}"؟ لا يمكن التراجع عن هذا الإجراء.`;
+        openModal("modal-delete-confirm");
+      }
+
+      function confirmDeleteAll() {
+        APP.deleteTarget = { type: "all" };
+        document.getElementById("delete-confirm-text").textContent =
+          "سيتم حذف جميع المحافظ وبيانات التطبيق نهائياً. لا يمكن التراجع عن هذا الإجراء.";
+        openModal("modal-delete-confirm");
+      }
+
+      async function executeDelete() {
+        if (!APP.deleteTarget) return;
+        closeModal("modal-delete-confirm");
+        if (APP.deleteTarget.type === "all") {
+          Store.clearAll();
+          lockApp();
+          document.getElementById("login-form").style.display = "none";
+          document.getElementById("setup-form").style.display = "block";
+          showToast("تم حذف كل البيانات");
+        } else {
+          APP.wallets.splice(APP.deleteTarget.idx, 1);
+          await Store.saveVault(APP.wallets, APP.masterKey);
+          renderWalletList();
+          showScreen("screen-wallets");
+          showToast("✅ تم حذف المحفظة");
+        }
+        APP.deleteTarget = null;
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // QR IMPORT FLOW
+      // ═══════════════════════════════════════════════════════
+      let importTempKey = null; // private key detected from QR
+
+      async function startImportScan() {
+        importTempKey = null;
+        document.getElementById("import-key-found").style.display = "none";
+        document.getElementById("import-cam-error").style.display = "none";
+        document.getElementById("import-qr-status").textContent =
+          "جارٍ تشغيل الكاميرا...";
+
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" },
+          });
+          APP.scanStreams.import = stream;
+          const vid = document.getElementById("import-video");
+          vid.srcObject = stream;
+          vid.play();
+          vid.addEventListener("loadedmetadata", startImportDecode, {
+            once: true,
+          });
+        } catch (e) {
+          document.getElementById("import-cam-error").style.display = "flex";
+          document.getElementById("import-cam-error-msg").textContent =
+            "لا يمكن الوصول للكاميرا: " + (e.message || e.name);
+          document.getElementById("import-qr-status").textContent = "";
+        }
+      }
+
+      function startImportDecode() {
+        const vid = document.getElementById("import-video");
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        document.getElementById("import-qr-status").textContent =
+          "وجّه الكاميرا نحو QR Code للمفتاح الخاص...";
+
+        clearInterval(APP.scanInterval);
+        APP.scanInterval = setInterval(() => {
+          if (vid.readyState < 2) return;
+          canvas.width = vid.videoWidth;
+          canvas.height = vid.videoHeight;
+          ctx.drawImage(vid, 0, 0);
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imgData.data, imgData.width, imgData.height, {
+            inversionAttempts: "dontInvert",
+          });
+          if (code && code.data) {
+            const val = code.data.trim();
+            if (isValidPrivKey(val)) {
+              clearInterval(APP.scanInterval);
+              stopCam("import");
+              importTempKey = val;
+              document.getElementById("import-qr-status").textContent =
+                "✅ تم اكتشاف مفتاح خاص";
+              document.getElementById("import-detected-label").textContent =
+                "تم اكتشاف مفتاح خاص صالح";
+              document.getElementById("import-key-found").style.display =
+                "block";
+              document.getElementById("import-name").focus();
+            } else {
+              document.getElementById("import-qr-status").textContent =
+                "⚠️ QR غير صالح — يجب أن يكون مفتاح خاص EVM";
+            }
+          }
+        }, 150);
+      }
+
+      function isValidPrivKey(val) {
+        let clean = val.startsWith("0x") ? val.slice(2) : val;
+        if (!/^[0-9a-fA-F]{64}$/.test(clean)) return false;
+        try {
+          new ethers.Wallet(val.startsWith("0x") ? val : "0x" + clean);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+
+      async function saveImportedWallet() {
+        if (!importTempKey) {
+          showToast("لا يوجد مفتاح للحفظ");
+          return;
+        }
+        const name = document.getElementById("import-name").value.trim();
+        const pw = document.getElementById("import-wallet-pw").value;
+        const pw2 = document.getElementById("import-wallet-pw2").value;
+        if (!name) {
+          showToast("أدخل اسماً للمحفظة");
+          return;
+        }
+        if (pw.length < 6) {
+          showToast("كلمة سر المحفظة يجب أن تكون 6 أحرف على الأقل");
+          return;
+        }
+        if (pw !== pw2) {
+          showToast("كلمتا السر غير متطابقتين");
+          return;
+        }
+
+        const btn = document.getElementById("import-save-btn");
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner"></div>';
+
+        try {
+          // Get wallet address
+          const cleanKey = importTempKey.startsWith("0x")
+            ? importTempKey
+            : "0x" + importTempKey;
+          const wallet = new ethers.Wallet(cleanKey);
+          const address = wallet.address;
+
+          // Encrypt private key with wallet-specific password
+          const wSalt = Crypto.rand(32);
+          const wKey = await Crypto.hashPw(pw, wSalt);
+          const encPk = await Crypto.encrypt(cleanKey, wKey);
+
+          // Wipe reference
+          importTempKey = null;
+
+          const walletObj = {
+            name,
+            address,
+            encPk,
+            wSalt: Crypto.ab2hex(wSalt),
+            createdAt: Date.now(),
+          };
+
+          APP.wallets.push(walletObj);
+          await Store.saveVault(APP.wallets, APP.masterKey);
+          renderWalletList();
+
+          // Reset form
+          document.getElementById("import-name").value = "";
+          document.getElementById("import-wallet-pw").value = "";
+          document.getElementById("import-wallet-pw2").value = "";
+          document.getElementById("import-key-found").style.display = "none";
+
+          showScreen("screen-wallets");
+          showToast("✅ تم حفظ المحفظة بأمان");
+        } catch (e) {
+          showToast("خطأ: " + e.message);
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = "<span>💾</span> حفظ المحفظة بأمان";
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // RECIPIENT QR SCAN
+      // ═══════════════════════════════════════════════════════
+      async function openRecipientScan() {
+        openModal("modal-recipient-scan");
+        document.getElementById("recipient-qr-status").textContent =
+          "جارٍ تشغيل الكاميرا...";
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" },
+          });
+          APP.scanStreams.recipient = stream;
+          const vid = document.getElementById("recipient-video");
+          vid.srcObject = stream;
+          vid.play();
+          vid.addEventListener("loadedmetadata", startRecipientDecode, {
+            once: true,
+          });
+        } catch (e) {
+          document.getElementById("recipient-qr-status").textContent =
+            "❌ لا يمكن الوصول للكاميرا";
+        }
+      }
+
+      function startRecipientDecode() {
+        const vid = document.getElementById("recipient-video");
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        document.getElementById("recipient-qr-status").textContent =
+          "وجّه الكاميرا نحو QR عنوان المستلم...";
+
+        const interval = setInterval(() => {
+          if (vid.readyState < 2) return;
+          canvas.width = vid.videoWidth;
+          canvas.height = vid.videoHeight;
+          ctx.drawImage(vid, 0, 0);
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imgData.data, imgData.width, imgData.height, {
+            inversionAttempts: "dontInvert",
+          });
+          if (code && code.data) {
+            const val = code.data.trim();
+            let addr = val;
+            // Handle ethereum: URIs
+            if (val.toLowerCase().startsWith("ethereum:"))
+              addr = val.split(":")[1].split("@")[0].split("?")[0];
+            if (ethers.utils.isAddress(addr)) {
+              clearInterval(interval);
+              closeRecipientScan();
+              document.getElementById("send-to").value = addr;
+              showToast("✅ تم قراءة عنوان المستلم");
+            } else {
+              document.getElementById("recipient-qr-status").textContent =
+                "⚠️ ليس عنوان محفظة صالح";
+            }
+          }
+        }, 150);
+        APP.scanStreams.recipientInterval = interval;
+      }
+
+      function closeRecipientScan() {
+        if (APP.scanStreams.recipientInterval) {
+          clearInterval(APP.scanStreams.recipientInterval);
+          delete APP.scanStreams.recipientInterval;
+        }
+        stopCam("recipient");
+        closeModal("modal-recipient-scan");
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // SEND TRANSACTION
+      // ═══════════════════════════════════════════════════════
+      function openSendConfirm() {
+        const toAddr = document.getElementById("send-to").value.trim();
+        const amount = document.getElementById("send-amount").value.trim();
+        const chain = document.getElementById("send-chain").value;
+        const token = APP.selectedToken;
+
+        if (!ethers.utils.isAddress(toAddr)) {
+          showToast("عنوان المستلم غير صالح");
+          return;
+        }
+        if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+          showToast("أدخل مبلغاً صحيحاً");
+          return;
+        }
+
+        const chainCfg = CHAINS[chain];
+        document.getElementById("send-confirm-summary").innerHTML = `
+    <div class="info-row"><span class="info-key">الشبكة</span><span class="info-val">${chainCfg.name}</span></div>
+    <div class="info-row"><span class="info-key">العملة</span><span class="info-val">${token}</span></div>
+    <div class="info-row"><span class="info-key">المبلغ</span><span class="info-val">${amount} ${token}</span></div>
+    <div class="info-row"><span class="info-key">المستلم</span><span class="info-val" style="font-family:monospace;font-size:11px;word-break:break-all">${toAddr}</span></div>`;
+
+        document.getElementById("send-wallet-pw").value = "";
+        document.getElementById("send-confirm-error").style.display = "none";
+        openModal("modal-send-confirm");
+      }
+
+      async function executeSend() {
+        const walletPw = document.getElementById("send-wallet-pw").value;
+        if (!walletPw) {
+          showToast("أدخل كلمة سر المحفظة");
+          return;
+        }
+
+        const btn = document.getElementById("send-confirm-btn");
+        const errDiv = document.getElementById("send-confirm-error");
+        errDiv.style.display = "none";
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner"></div> جارٍ المعالجة...';
+
+        const toAddr = document.getElementById("send-to").value.trim();
+        const amount = document.getElementById("send-amount").value.trim();
+        const chain = document.getElementById("send-chain").value;
+        const token = APP.selectedToken;
+        const chainCfg = CHAINS[chain];
+        const tokenCfg = chainCfg.tokens[token];
+        const walletData = APP.wallets[APP.currentWalletIdx];
+
+        try {
+          // Decrypt private key with wallet password
+          const wSalt = Crypto.hex2ab(walletData.wSalt);
+          const wKey = await Crypto.hashPw(walletPw, wSalt);
+          let privateKey;
+          try {
+            privateKey = await Crypto.decrypt(walletData.encPk, wKey);
+          } catch {
+            throw new Error("كلمة سر المحفظة غير صحيحة");
+          }
+
+          // Connect to RPC
+          const provider = new ethers.providers.JsonRpcProvider(chainCfg.rpc, {
+            chainId: chainCfg.chainId,
+            name: chain,
+          });
+          const signer = new ethers.Wallet(privateKey, provider);
+
+          // Wipe private key from variable immediately after use
+          let tx;
+          if (tokenCfg.native) {
+            const value = ethers.utils.parseUnits(amount, tokenCfg.dec);
+            tx = await signer.sendTransaction({ to: toAddr, value });
+          } else {
+            if (
+              tokenCfg.addr === "0x0000000000000000000000000000000000000000"
+            ) {
+              throw new Error("عقد هذه العملة غير متاح على هذه الشبكة بعد");
+            }
+            const contract = new ethers.Contract(
+              tokenCfg.addr,
+              ERC20_ABI,
+              signer,
+            );
+            const decimals = tokenCfg.dec;
+            const parsedAmount = ethers.utils.parseUnits(amount, decimals);
+            tx = await contract.transfer(toAddr, parsedAmount);
+          }
+
+          // Wipe
+          privateKey = null;
+
+          closeModal("modal-send-confirm");
+
+          const explorerUrl = `${chainCfg.explorer}/tx/${tx.hash}`;
+          const resultDiv = document.getElementById("tx-result");
+          resultDiv.style.display = "block";
+          document.getElementById("tx-result-content").innerHTML = `
+      <div class="alert alert-success">
+        <span>✅</span>
+        <div>
+          <div style="font-weight:600;margin-bottom:6px">تم إرسال المعاملة بنجاح!</div>
+          <div style="font-size:12px">Hash: <span style="font-family:monospace;word-break:break-all">${tx.hash}</span></div>
+          <div style="margin-top:8px"><a href="${explorerUrl}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);font-size:13px">عرض في المستعرض ↗</a></div>
+        </div>
+      </div>`;
+          resultDiv.scrollIntoView({ behavior: "smooth" });
+        } catch (e) {
+          errDiv.style.display = "flex";
+          document.getElementById("send-confirm-error-msg").textContent =
+            e.message || "فشل الإرسال";
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = "<span>📤</span> إرسال المعاملة";
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // CHANGE PASSWORD
+      // ═══════════════════════════════════════════════════════
+      function openChangePw() {
+        document.getElementById("chpw-old").value = "";
+        document.getElementById("chpw-new").value = "";
+        document.getElementById("chpw-new2").value = "";
+        document.getElementById("chpw-error").style.display = "none";
+        openModal("modal-change-pw");
+      }
+
+      async function doChangePw() {
+        const oldPw = document.getElementById("chpw-old").value;
+        const newPw = document.getElementById("chpw-new").value;
+        const newPw2 = document.getElementById("chpw-new2").value;
+        const errDiv = document.getElementById("chpw-error");
+        errDiv.style.display = "none";
+
+        if (newPw.length < 8) {
+          errDiv.style.display = "flex";
+          document.getElementById("chpw-error-msg").textContent =
+            "كلمة السر يجب أن تكون 8 أحرف على الأقل";
+          return;
+        }
+        if (newPw !== newPw2) {
+          errDiv.style.display = "flex";
+          document.getElementById("chpw-error-msg").textContent =
+            "كلمتا السر الجديدتان غير متطابقتين";
+          return;
+        }
+
+        try {
+          const oldKey = await Store.verifyMaster(oldPw);
+          if (!oldKey) {
+            errDiv.style.display = "flex";
+            document.getElementById("chpw-error-msg").textContent =
+              "كلمة السر الحالية غير صحيحة";
+            return;
+          }
+
+          // Save vault with new master password
+          const salt = Crypto.rand(32);
+          const newKey = await Crypto.hashPw(newPw, salt);
+          const hash = await Crypto.hashStr(newPw + ":" + Crypto.ab2hex(salt));
+          localStorage.setItem(Store.SALT_KEY, Crypto.ab2hex(salt));
+          localStorage.setItem(Store.HASH_KEY, hash);
+          APP.masterKey = newKey;
+          await Store.saveVault(APP.wallets, newKey);
+
+          closeModal("modal-change-pw");
+          showToast("✅ تم تغيير كلمة السر بنجاح");
+        } catch (e) {
+          errDiv.style.display = "flex";
+          document.getElementById("chpw-error-msg").textContent = e.message;
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // SCREEN / MODAL / TAB HELPERS
+      // ═══════════════════════════════════════════════════════
+      let screenHistory = ["screen-login"];
+
+      function showScreen(id) {
+        stopAllCams();
+        clearInterval(APP.scanInterval);
+
+        document
+          .querySelectorAll(".screen")
+          .forEach((s) => s.classList.remove("active"));
+        document.getElementById(id).classList.add("active");
+
+        if (id !== screenHistory[screenHistory.length - 1])
+          screenHistory.push(id);
+
+        if (id === "screen-import") setTimeout(startImportScan, 200);
+        if (id === "screen-settings") updateBioSettingUI();
+
+        window.scrollTo(0, 0);
+      }
+
+      function goBack() {
+        stopAllCams();
+        clearInterval(APP.scanInterval);
+        importTempKey = null;
+        screenHistory.pop();
+        const prev =
+          screenHistory[screenHistory.length - 1] || "screen-wallets";
+        document
+          .querySelectorAll(".screen")
+          .forEach((s) => s.classList.remove("active"));
+        document.getElementById(prev).classList.add("active");
+        window.scrollTo(0, 0);
+      }
+
+      function openModal(id) {
+        document.getElementById(id).classList.add("open");
+      }
+      function closeModal(id) {
+        document.getElementById(id).classList.remove("open");
+      }
+
+      function switchTab(tabId, btn) {
+        document
+          .querySelectorAll(".tab-content")
+          .forEach((t) => t.classList.remove("active"));
+        document
+          .querySelectorAll(".tab-btn")
+          .forEach((b) => b.classList.remove("active"));
+        document.getElementById(tabId).classList.add("active");
+        if (btn) btn.classList.add("active");
+        else document.querySelectorAll(".tab-btn")[0].classList.add("active");
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // CAMERA HELPERS
+      // ═══════════════════════════════════════════════════════
+      function stopCam(name) {
+        if (APP.scanStreams[name]) {
+          APP.scanStreams[name].getTracks().forEach((t) => t.stop());
+          delete APP.scanStreams[name];
+        }
+      }
+
+      function stopAllCams() {
+        Object.keys(APP.scanStreams).forEach((k) => {
+          if (typeof APP.scanStreams[k]?.getTracks === "function") {
+            APP.scanStreams[k].getTracks().forEach((t) => t.stop());
+          } else if (typeof APP.scanStreams[k] === "number") {
+            clearInterval(APP.scanStreams[k]);
+          }
+        });
+        APP.scanStreams = {};
+        clearInterval(APP.scanInterval);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // UI HELPERS
+      // ═══════════════════════════════════════════════════════
+      let toastTimer = null;
+      function showToast(msg, dur = 3000) {
+        const el = document.getElementById("toast");
+        el.textContent = msg;
+        el.style.opacity = "1";
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => (el.style.opacity = "0"), dur);
+      }
+
+      function checkPwStrength(input, barId) {
+        const v = input.value;
+        const bar = document.getElementById(barId);
+        let score = 0;
+        if (v.length >= 8) score++;
+        if (v.length >= 12) score++;
+        if (/[A-Z]/.test(v)) score++;
+        if (/[0-9]/.test(v)) score++;
+        if (/[^A-Za-z0-9]/.test(v)) score++;
+        const pct = (score / 5) * 100;
+        const color = score < 2 ? "#e05555" : score < 4 ? "#f0c040" : "#4caf50";
+        bar.style.width = pct + "%";
+        bar.style.background = color;
+      }
+
+      function escHtml(s) {
+        const d = document.createElement("div");
+        d.textContent = s;
+        return d.innerHTML;
+      }
+
+      // Close modals on overlay click
+      document.querySelectorAll(".modal-overlay").forEach((o) => {
+        o.addEventListener("click", (e) => {
+          if (e.target === o) {
+            if (o.id === "modal-recipient-scan") closeRecipientScan();
+            else closeModal(o.id);
+          }
+        });
+      });
+
+      // Prevent paste into password fields (security)
+      document.querySelectorAll('input[type="password"]').forEach((el) => {
+        el.addEventListener("paste", (e) => {
+          e.preventDefault();
+          showToast("اللصق غير مسموح في حقول كلمة السر");
+        });
+      });
+
+      // Enter key on login
+      document.getElementById("login-pw")?.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") attemptLogin();
+      });
+    </script>
+  <script src="https://replit-cdn.com/replit-pill/replit-pill.global.js" data-repl-id="9655c887-b495-45bc-8489-19f685f16ebf"></script></body>
+</html>
