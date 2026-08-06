@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>محفظة كريبتو</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js">
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            background: #f2f5fb;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        #app {
+            width: 100%;
+            max-width: 480px;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.03);
+            overflow: hidden;
+        }
+
+        #loginScreen {
+            position: fixed;
+            inset: 0;
+            background: white;
+            z-index: 999999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        #loginScreen .box {
+            max-width: 380px;
+            width: 100%;
+            text-align: center;
+            padding: 10px 0;
+        }
+
+        #loginScreen .box .icon {
+            font-size: 56px;
+            margin-bottom: 8px;
+        }
+
+        #loginScreen .box h2 {
+            font-size: 24px;
+            color: #141d32;
+            margin-bottom: 4px;
+        }
+
+        #loginScreen .box .sub {
+            color: #6f7f9f;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        #loginScreen .box input {
+            width: 100%;
+            padding: 14px 18px;
+            border-radius: 14px;
+            border: 2px solid #e2e8f2;
+            font-size: 16px;
+            text-align: center;
+            letter-spacing: 4px;
+            outline: none;
+            background: #fafcff;
+            margin-bottom: 10px;
+            transition: 0.15s;
+        }
+
+        #loginScreen .box input:focus {
+            border-color: #4a6cf7;
+            box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.1);
+        }
+
+        #loginScreen .box .btn {
+            width: 100%;
+            padding: 14px;
+            margin-top: 4px;
+            background: linear-gradient(135deg, #4a6cf7, #6a4cf7);
+            color: white;
+            border: none;
+            border-radius: 40px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(74, 108, 247, 0.2);
+            transition: 0.2s;
+        }
+
+        #loginScreen .box .btn:active {
+            transform: scale(0.97);
+        }
+
+        #loginScreen .box .error {
+            margin-top: 10px;
+            color: #e53e3e;
+            font-size: 14px;
+            min-height: 22px;
+        }
+
+        #appContent {
+            display: none;
+            width: 100%;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 18px 16px;
+            margin-bottom: 14px;
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.03);
+        }
+
+        .gradient-bg {
+            background: linear-gradient(145deg, #ffffff, #f5f9ff);
+        }
+
+        .header {
+            padding: 20px 16px 12px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #1a1f36, #2c3e7a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .wallet-list {
+            padding: 12px 16px 100px;
+        }
+
+        .wallet-item {
+            background: white;
+            border-radius: 18px;
+            padding: 16px 18px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #eef2f9;
+            cursor: pointer;
+            transition: 0.15s;
+            min-height: 70px;
+        }
+
+        .wallet-item:hover {
+            background: #fafcff;
+            border-color: #d0ddf5;
+        }
+
+        .wallet-name {
+            font-weight: 600;
+            font-size: 16px;
+            color: #141b2d;
+        }
+
+        .wallet-address-short {
+            font-size: 12px;
+            color: #6f7a94;
+            margin-top: 2px;
+        }
+
+        .wallet-balance-small {
+            font-size: 15px;
+            font-weight: 500;
+            color: #1f2a44;
+        }
+
+        .add-wallet-btn {
+            background: linear-gradient(135deg, #4a6cf7, #6a4cf7);
+            color: white;
+            border: none;
+            border-radius: 40px;
+            padding: 14px 20px;
+            font-size: 15px;
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(74, 108, 247, 0.2);
+            transition: 0.2s;
+        }
+
+        .add-wallet-btn:active {
+            transform: scale(0.97);
+        }
+
+        .detail-view {
+            padding: 12px 16px 100px;
+            display: none;
+        }
+
+        .qr-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 8px 0 4px;
+        }
+
+        .qr-box {
+            background: white;
+            padding: 10px;
+            border-radius: 16px;
+            border: 1px solid #ecf0f7;
+            cursor: pointer;
+            display: inline-block;
+            transition: 0.2s;
+        }
+
+        .qr-box:active {
+            transform: scale(0.95);
+        }
+
+        #qrcode img,
+        #qrcode canvas {
+            width: 120px !important;
+            height: 120px !important;
+            display: block;
+        }
+
+        .address-box {
+            margin-top: 8px;
+            width: 100%;
+        }
+
+        .qr-address {
+            font-size: 12px;
+            color: #3b4a6b;
+            background: #f5f7fc;
+            padding: 8px 14px;
+            border-radius: 40px;
+            word-break: break-all;
+            text-align: center;
+            font-family: monospace;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .qr-address:hover {
+            background: #e8edf8;
+            border-color: #d0ddf5;
+        }
+
+        .send-area label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e2740;
+            display: block;
+            margin-bottom: 4px;
+            margin-top: 14px;
+        }
+
+        .send-area label:first-of-type {
+            margin-top: 0;
+        }
+
+        .input-with-scan {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .input-with-scan input {
+            flex: 1;
+            padding: 12px 14px;
+            border-radius: 14px;
+            border: 1px solid #e2e8f2;
+            background: #fafcff;
+            font-size: 15px;
+            outline: none;
+            min-width: 0;
+        }
+
+        .input-with-scan input:focus {
+            border-color: #4a6cf7;
+            box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.08);
+        }
+
+        .input-with-scan .scan-btn {
+            background: #eef3fe;
+            border: none;
+            border-radius: 40px;
+            padding: 10px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #1a2a5e;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: 0.15s;
+        }
+
+        .input-with-scan .scan-btn:active {
+            background: #dce6fd;
+        }
+
+        .send-area select {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 14px;
+            border: 1px solid #e2e8f2;
+            background: #fafcff;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .send-area select:focus {
+            border-color: #4a6cf7;
+        }
+
+        .send-area input[type="number"] {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 14px;
+            border: 1px solid #e2e8f2;
+            background: #fafcff;
+            font-size: 18px;
+            font-weight: 600;
+            outline: none;
+        }
+
+        .send-area input[type="number"]:focus {
+            border-color: #4a6cf7;
+            box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.08);
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #1a2639, #2d3f6b);
+            color: white;
+            border: none;
+            border-radius: 40px;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 6px 20px rgba(26, 38, 57, 0.15);
+        }
+
+        .send-btn:active {
+            transform: scale(0.97);
+        }
+
+        .settings-btn {
+            background: transparent;
+            border: none;
+            color: #6f7f9f;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 30px;
+        }
+
+        .settings-btn:active {
+            background: #f0f4fe;
+        }
+
+        .settings-panel {
+            background: white;
+            border-radius: 20px;
+            padding: 10px 14px;
+            margin-top: 6px;
+            border: 1px solid #eef2f9;
+            display: none;
+            flex-wrap: nowrap;
+            gap: 6px;
+            align-items: center;
+            overflow-x: auto;
+        }
+
+        .settings-panel input {
+            padding: 6px 12px;
+            border-radius: 40px;
+            border: 1px solid #dce3ef;
+            min-width: 80px;
+            flex: 1;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .settings-panel input:focus {
+            border-color: #4a6cf7;
+        }
+
+        .settings-panel button {
+            background: #f0f4fe;
+            border: none;
+            border-radius: 40px;
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #1f2b4a;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .settings-panel button:active {
+            background: #dce6fd;
+        }
+
+        .settings-panel .danger {
+            background: #fee9e9;
+            color: #b91c1c;
+        }
+
+        .settings-panel .danger:active {
+            background: #fdd5d5;
+        }
+
+        .status-msg {
+            background: #f0f7ff;
+            border-radius: 16px;
+            padding: 10px 14px;
+            margin: 10px 0;
+            font-size: 13px;
+            color: #1f3a6b;
+            border-right: 4px solid #4a6cf7;
+            word-break: break-word;
+        }
+
+        .error-msg {
+            background: #fff0f0;
+            border-right-color: #e53e3e;
+            color: #a02222;
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            font-size: 22px;
+            color: #1a2744;
+            cursor: pointer;
+            padding: 4px 6px;
+        }
+
+        /* ===== عرض الرصيد ===== */
+        .balance-row {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+
+        .balance-usdt {
+            font-size: 34px;
+            font-weight: 700;
+            color: #0b1426;
+        }
+
+        .balance-label {
+            font-size: 18px;
+            font-weight: 600;
+            color: #3b4a6b;
+        }
+
+        .balance-bnb-value {
+            font-size: 16px;
+            color: #5a6b8a;
+            font-weight: 500;
+        }
+
+        .balance-bnb-label {
+            font-size: 13px;
+            color: #8a9bb8;
+        }
+
+        /* ===== نوافذ منبثقة ===== */
+        .import-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9998;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .import-modal .modal-box {
+            background: white;
+            border-radius: 28px;
+            padding: 28px 20px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+
+        .import-modal .modal-box h3 {
+            font-size: 20px;
+            color: #141d32;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+
+        .import-modal .modal-box .subtitle {
+            font-size: 13px;
+            color: #6f7f9f;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .import-modal .modal-box label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e2740;
+            display: block;
+            margin-bottom: 4px;
+            margin-top: 12px;
+        }
+
+        .import-modal .modal-box label:first-of-type {
+            margin-top: 0;
+        }
+
+        .import-modal .modal-box input {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 14px;
+            border: 1px solid #e2e8f2;
+            background: #fafcff;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .import-modal .modal-box input:focus {
+            border-color: #4a6cf7;
+        }
+
+        .import-modal .modal-box .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .import-modal .modal-box .modal-buttons button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 40px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .import-modal .modal-box .modal-buttons .confirm-btn {
+            background: #4a6cf7;
+            color: white;
+        }
+
+        .import-modal .modal-box .modal-buttons .cancel-btn {
+            background: #eef2f9;
+            color: #1a2a5e;
+        }
+
+        .import-modal .modal-box .options {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .import-modal .modal-box .options button {
+            flex: 1;
+            padding: 8px 10px;
+            border: 2px solid #eef2f9;
+            border-radius: 14px;
+            background: white;
+            font-size: 12px;
+            font-weight: 500;
+            color: #1a2a5e;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+
+        .import-modal .modal-box .options button:active {
+            border-color: #4a6cf7;
+            background: #f5f9ff;
+        }
+
+        #confirmModal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 99997;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        #confirmModal .modal-box {
+            background: white;
+            border-radius: 28px;
+            padding: 28px 20px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+
+        #confirmModal .modal-box h3 {
+            font-size: 20px;
+            color: #141d32;
+            text-align: center;
+        }
+
+        #confirmModal .modal-box .tx-details {
+            background: #f5f7fc;
+            border-radius: 16px;
+            padding: 14px;
+            margin: 14px 0;
+            font-size: 14px;
+            color: #1e2740;
+        }
+
+        #confirmModal .modal-box .tx-details div {
+            padding: 4px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #confirmModal .modal-box .tx-details .label {
+            color: #6f7f9f;
+        }
+
+        #confirmModal .modal-box input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 14px;
+            border: 2px solid #e2e8f2;
+            font-size: 16px;
+            text-align: center;
+            letter-spacing: 4px;
+            outline: none;
+            background: #fafcff;
+            margin: 8px 0;
+        }
+
+        #confirmModal .modal-box input:focus {
+            border-color: #4a6cf7;
+        }
+
+        #confirmModal .modal-box .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        #confirmModal .modal-box .modal-buttons button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 40px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        #confirmModal .modal-box .modal-buttons .confirm-btn {
+            background: #4a6cf7;
+            color: white;
+        }
+
+        #confirmModal .modal-box .modal-buttons .cancel-btn {
+            background: #eef2f9;
+            color: #1a2a5e;
+        }
+
+        #confirmModal .modal-box .error {
+            color: #e53e3e;
+            font-size: 13px;
+            min-height: 22px;
+            text-align: center;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a2639;
+            color: white;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 99999;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            white-space: nowrap;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        #cameraOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        #cameraOverlay video {
+            width: 100%;
+            max-width: 400px;
+            border-radius: 20px;
+            background: #000;
+            max-height: 70vh;
+            object-fit: cover;
+        }
+
+        #cameraOverlay .cam-controls {
+            margin-top: 18px;
+            display: flex;
+            gap: 15px;
+        }
+
+        #cameraOverlay button {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 40px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        #cameraOverlay .close-cam {
+            background: #e53e3e;
+            color: white;
+        }
+
+        #cameraOverlay .capture-cam {
+            background: #4a6cf7;
+            color: white;
+        }
+
+        #cameraOverlay .cam-status {
+            color: white;
+            margin-top: 12px;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 6px 20px;
+            border-radius: 40px;
+        }
+
+        #qrFullscreen {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.92);
+            z-index: 99999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 20px;
+            cursor: pointer;
+        }
+
+        #qrFullscreen .qr-big {
+            background: white;
+            padding: 24px;
+            border-radius: 28px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 90vw;
+        }
+
+        #qrFullscreen .qr-big #qrcode-big img,
+        #qrFullscreen .qr-big #qrcode-big canvas {
+            width: 260px !important;
+            height: 260px !important;
+            max-width: 70vw;
+            max-height: 70vw;
+        }
+
+        #qrFullscreen .qr-big .address-big {
+            margin-top: 14px;
+            font-size: 13px;
+            color: #3b4a6b;
+            background: #f5f7fc;
+            padding: 8px 16px;
+            border-radius: 40px;
+            word-break: break-all;
+            text-align: center;
+            font-family: monospace;
+            max-width: 90%;
+        }
+
+        #qrFullscreen .close-fullscreen {
+            color: white;
+            font-size: 16px;
+            margin-top: 16px;
+            background: rgba(255, 255, 255, 0.12);
+            padding: 8px 28px;
+            border-radius: 40px;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        #qrFullscreen .close-fullscreen:active {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        @media (max-width: 420px) {
+            .balance-usdt {
+                font-size: 28px;
+            }
+            .header h1 {
+                font-size: 20px;
+            }
+            .wallet-item {
+                padding: 14px 16px;
+            }
+            .qr-address {
+                font-size: 11px;
+                padding: 6px 12px;
+            }
+            #qrFullscreen .qr-big #qrcode-big img,
+            #qrFullscreen .qr-big #qrcode-big canvas {
+                width: 200px !important;
+                height: 200px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== شاشة الدخول ===== -->
+    <div id="loginScreen">
+        <div class="box">
+            <div class="icon">🔐</div>
+            <h2 id="loginTitle">مرحباً بك</h2>
+            <div class="sub" id="loginSub">أدخل كلمة السر لفتح التطبيق</div>
+
+            <input type="password" id="loginPassword" placeholder="••••••••" maxlength="20" autofocus>
+            <input type="password" id="confirmPassword" placeholder="تأكيد كلمة السر" maxlength="20" style="display:none;">
+
+            <button class="btn" id="loginBtn">فتح التطبيق</button>
+
+            <div class="error" id="loginError"></div>
+        </div>
+    </div>
+
+    <!-- ===== التطبيق الرئيسي ===== -->
+    <div id="appContent">
+        <div id="app">
+            <div id="mainView">
+                <div class="header flex-between">
+                    <h1>محافظي</h1>
+                    <span style="font-size:14px; color:#5f7397;">🔒</span>
+                </div>
+                <div class="wallet-list" id="walletList"></div>
+                <div style="padding:0 16px 30px;">
+                    <button class="add-wallet-btn" id="addWalletBtn">➕ إضافة محفظة</button>
+                </div>
+            </div>
+
+            <div id="detailView" class="detail-view">
+                <div class="flex-between">
+                    <button class="back-btn" id="backBtn">←</button>
+                    <span id="walletDetailName" style="font-weight:600; font-size:17px; color:#141d32;"></span>
+                    <button class="settings-btn" id="settingsToggle">⚙️</button>
+                </div>
+                <div id="settingsPanel" class="settings-panel" style="display:none;">
+                    <input type="text" id="renameInput" placeholder="اسم جديد">
+                    <button id="renameBtn">تسمية</button>
+                    <button id="deleteWalletBtn" class="danger">🗑 حذف</button>
+                </div>
+
+                <div class="card gradient-bg" style="margin-top:10px;">
+                    <div class="balance-row">
+                        <span class="balance-usdt" id="usdtBalance">0.0000000000</span>
+                        <span class="balance-label">USDT</span>
+                    </div>
+                    <div style="margin-top:2px;">
+                        <span class="balance-bnb-value" id="bnbBalance">0.0000</span>
+                        <span class="balance-bnb-label"> BNB</span>
+                    </div>
+                </div>
+
+                <div class="qr-section">
+                    <div class="qr-box" id="qrBox">
+                        <div id="qrcode"></div>
+                    </div>
+                    <div class="address-box">
+                        <div class="qr-address" id="walletAddressDisplay"></div>
+                    </div>
+                </div>
+
+                <div class="send-area card">
+                    <label>عنوان المستلم</label>
+                    <div class="input-with-scan">
+                        <input type="text" id="recipientAddress" placeholder="0x...">
+                        <button class="scan-btn" id="scanQrBtn">📷</button>
+                    </div>
+
+                    <label>العملة</label>
+                    <select id="tokenSelect">
+                        <option value="USDT">USDT</option>
+                        <option value="BNB">BNB</option>
+                    </select>
+
+                    <label>المبلغ</label>
+                    <input type="number" id="amountInput" placeholder="0.0" step="any">
+
+                    <button class="send-btn" id="sendTxBtn">إرسال</button>
+                    <div id="txStatus" class="status-msg hidden"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== النوافذ المنبثقة ===== -->
+    <div class="import-modal" id="importModal">
+        <div class="modal-box">
+            <h3>➕ إضافة محفظة</h3>
+            <p class="subtitle">أدخل المفتاح الخاص لاستيراد المحفظة</p>
+
+            <label>اسم المحفظة</label>
+            <input type="text" id="walletNameInput" placeholder="مثال: محفظتي الأساسية">
+
+            <label>المفتاح الخاص</label>
+            <div class="options">
+                <button id="scanOption">📷 تصوير QR</button>
+                <button id="pasteOption">📋 لصق</button>
+            </div>
+            <input type="text" id="privateKeyInput" placeholder="0x..." style="margin-top:8px;">
+
+            <div class="modal-buttons">
+                <button class="cancel-btn" id="importCancelBtn">إلغاء</button>
+                <button class="confirm-btn" id="importConfirmBtn">استيراد</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirmModal">
+        <div class="modal-box">
+            <h3>🔐 تأكيد الإرسال</h3>
+            <div class="tx-details" id="txDetails">
+                <div><span class="label">إلى:</span> <span id="confirmTo">0x...</span></div>
+                <div><span class="label">المبلغ:</span> <span id="confirmAmount">0.00</span></div>
+                <div><span class="label">العملة:</span> <span id="confirmToken">BNB</span></div>
+            </div>
+            <input type="password" id="confirmPasswordTx" placeholder="أدخل كلمة السر للتوقيع" maxlength="20">
+            <div class="error" id="confirmError"></div>
+            <div class="modal-buttons">
+                <button class="cancel-btn" id="confirmCancelBtn">إلغاء</button>
+                <button class="confirm-btn" id="confirmSendBtn">تأكيد الإرسال</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="qrFullscreen">
+        <div class="qr-big">
+            <div id="qrcode-big"></div>
+            <div class="address-big" id="addressBig"></div>
+        </div>
+        <button class="close-fullscreen" id="closeFullscreenBtn">✕ إغلاق</button>
+    </div>
+
+    <div id="cameraOverlay">
+        <video id="video" autoplay playsinline></video>
+        <div class="cam-status" id="camStatus">جاري تشغيل الكاميرا...</div>
+        <div class="cam-controls">
+            <button class="close-cam" id="closeCamBtn">✕ إلغاء</button>
+            <button class="capture-cam" id="captureCamBtn">📸 تصوير</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const BSC_RPC = 'https://bsc-dataseed.binance.org/';
+            const USDT_CONTRACT = '0x55d398326f99059fF775485246999027B3197955';
+
+            let wallets = [];
+            let currentWalletId = null;
+            let currentWallet = null;
+            let provider = null;
+            let cameraStream = null;
+            let scanMode = 'privateKey';
+            let appPassword = '';
+            let isPasswordSet = false;
+
+            // ==================== DOM ====================
+            const loginScreen = document.getElementById('loginScreen');
+            const loginTitle = document.getElementById('loginTitle');
+            const loginSub = document.getElementById('loginSub');
+            const loginPassword = document.getElementById('loginPassword');
+            const confirmPassword = document.getElementById('confirmPassword');
+            const loginBtn = document.getElementById('loginBtn');
+            const loginError = document.getElementById('loginError');
+
+            const appContent = document.getElementById('appContent');
+            const mainView = document.getElementById('mainView');
+            const detailView = document.getElementById('detailView');
+            const walletListEl = document.getElementById('walletList');
+            const addWalletBtn = document.getElementById('addWalletBtn');
+            const backBtn = document.getElementById('backBtn');
+            const settingsToggle = document.getElementById('settingsToggle');
+            const settingsPanel = document.getElementById('settingsPanel');
+            const renameInput = document.getElementById('renameInput');
+            const renameBtn = document.getElementById('renameBtn');
+            const deleteWalletBtn = document.getElementById('deleteWalletBtn');
+            const walletDetailName = document.getElementById('walletDetailName');
+            const usdtBalanceEl = document.getElementById('usdtBalance');
+            const bnbBalanceEl = document.getElementById('bnbBalance');
+            const qrBox = document.getElementById('qrBox');
+            const qrCodeDiv = document.getElementById('qrcode');
+            const walletAddressDisplay = document.getElementById('walletAddressDisplay');
+            const recipientAddress = document.getElementById('recipientAddress');
+            const scanQrBtn = document.getElementById('scanQrBtn');
+            const tokenSelect = document.getElementById('tokenSelect');
+            const amountInput = document.getElementById('amountInput');
+            const sendTxBtn = document.getElementById('sendTxBtn');
+            const txStatus = document.getElementById('txStatus');
+
+            const confirmModal = document.getElementById('confirmModal');
+            const confirmTo = document.getElementById('confirmTo');
+            const confirmAmount = document.getElementById('confirmAmount');
+            const confirmToken = document.getElementById('confirmToken');
+            const confirmPasswordTx = document.getElementById('confirmPasswordTx');
+            const confirmError = document.getElementById('confirmError');
+            const confirmSendBtn = document.getElementById('confirmSendBtn');
+            const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+
+            const qrFullscreen = document.getElementById('qrFullscreen');
+            const qrCodeBig = document.getElementById('qrcode-big');
+            const addressBig = document.getElementById('addressBig');
+            const closeFullscreenBtn = document.getElementById('closeFullscreenBtn');
+            const importModal = document.getElementById('importModal');
+            const walletNameInput = document.getElementById('walletNameInput');
+            const privateKeyInput = document.getElementById('privateKeyInput');
+            const importConfirmBtn = document.getElementById('importConfirmBtn');
+            const importCancelBtn = document.getElementById('importCancelBtn');
+            const scanOption = document.getElementById('scanOption');
+            const pasteOption = document.getElementById('pasteOption');
+            const cameraOverlay = document.getElementById('cameraOverlay');
+            const video = document.getElementById('video');
+            const camStatus = document.getElementById('camStatus');
+            const closeCamBtn = document.getElementById('closeCamBtn');
+            const captureCamBtn = document.getElementById('captureCamBtn');
+            const toast = document.getElementById('toast');
+
+            // ==================== الأدوات ====================
+            function showToast(msg) {
+                toast.textContent = msg;
+                toast.classList.add('show');
+                clearTimeout(toast._timer);
+                toast._timer = setTimeout(() => toast.classList.remove('show'), 2500);
+            }
+
+            function getWalletById(id) { return wallets.find(w => w.id === id); }
+
+            function saveWallets() { localStorage.setItem('wallets', JSON.stringify(wallets)); }
+
+            function loadWallets() {
+                try {
+                    const data = localStorage.getItem('wallets');
+                    if (data) wallets = JSON.parse(data);
+                } catch { wallets = []; }
+            }
+
+            // ==================== كلمة السر ====================
+            function loadPassword() {
+                try {
+                    const saved = localStorage.getItem('app_password');
+                    if (saved) { appPassword = saved;
+                        isPasswordSet = true; return true; }
+                    return false;
+                } catch { return false; }
+            }
+
+            function savePassword(pwd) {
+                localStorage.setItem('app_password', pwd);
+                appPassword = pwd;
+                isPasswordSet = true;
+            }
+
+            // ==================== شاشة الدخول ====================
+            function updateLoginUI() {
+                const hasPassword = loadPassword();
+                if (!hasPassword) {
+                    loginTitle.textContent = 'تعيين كلمة السر';
+                    loginSub.textContent = 'أدخل كلمة سر لحماية التطبيق';
+                    loginPassword.placeholder = 'كلمة السر الجديدة';
+                    confirmPassword.style.display = 'block';
+                    loginBtn.textContent = 'تعيين كلمة السر';
+                } else {
+                    loginTitle.textContent = 'مرحباً بعودتك';
+                    loginSub.textContent = 'أدخل كلمة السر لفتح التطبيق';
+                    loginPassword.placeholder = '••••••••';
+                    confirmPassword.style.display = 'none';
+                    loginBtn.textContent = 'فتح التطبيق';
+                }
+                loginError.textContent = '';
+                loginPassword.value = '';
+                confirmPassword.value = '';
+                loginPassword.focus();
+            }
+
+            function handleLogin() {
+                const pwd = loginPassword.value.trim();
+                const confirm = confirmPassword.value.trim();
+                loginError.textContent = '';
+
+                if (!isPasswordSet) {
+                    if (!pwd || pwd.length < 4) {
+                        loginError.textContent = '⚠️ كلمة السر يجب أن تكون 4 أحرف على الأقل';
+                        return;
+                    }
+                    if (pwd !== confirm) {
+                        loginError.textContent = '❌ كلمة السر غير متطابقة';
+                        return;
+                    }
+                    savePassword(pwd);
+                    showToast('✅ تم تعيين كلمة السر بنجاح');
+                    loginSuccess();
+                } else {
+                    if (pwd === appPassword) {
+                        loginSuccess();
+                    } else {
+                        loginError.textContent = '❌ كلمة سر خاطئة';
+                        loginPassword.value = '';
+                        loginPassword.focus();
+                    }
+                }
+            }
+
+            function loginSuccess() {
+                loginScreen.style.display = 'none';
+                appContent.style.display = 'block';
+                initApp();
+            }
+
+            loginBtn.addEventListener('click', handleLogin);
+            loginPassword.addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (!isPasswordSet && !confirmPassword.value) confirmPassword.focus();
+                    else handleLogin();
+                }
+            });
+            confirmPassword.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault();
+                    handleLogin(); } });
+
+            // ==================== التطبيق ====================
+            async function initApp() {
+                provider = new ethers.JsonRpcProvider(BSC_RPC);
+                loadWallets();
+                renderWallets();
+                setInterval(() => {
+                    if (currentWallet) updateBalances(currentWallet.address);
+                    updateAllBalances();
+                }, 30000);
+            }
+
+            // ==================== الأرصدة ====================
+            async function getBalances(address) {
+                try {
+                    if (!provider) provider = new ethers.JsonRpcProvider(BSC_RPC);
+                    const bnb = await provider.getBalance(address);
+                    const bnbFormatted = ethers.formatEther(bnb);
+                    const contract = new ethers.Contract(USDT_CONTRACT,
+                        ['function balanceOf(address) view returns (uint256)'], provider);
+                    const usdt = await contract.balanceOf(address);
+                    const usdtFormatted = ethers.formatUnits(usdt, 18);
+                    return { usdt: usdtFormatted, bnb: bnbFormatted };
+                } catch (error) {
+                    console.error('خطأ في جلب الرصيد:', error);
+                    return { usdt: '0', bnb: '0' };
+                }
+            }
+
+            async function updateBalances(address) {
+                try {
+                    const bal = await getBalances(address);
+                    usdtBalanceEl.textContent = parseFloat(bal.usdt).toFixed(10);
+                    bnbBalanceEl.textContent = parseFloat(bal.bnb).toFixed(6);
+                } catch (error) {
+                    console.error('خطأ في تحديث الرصيد:', error);
+                }
+            }
+
+            async function updateAllBalances() {
+                for (const w of wallets) {
+                    try {
+                        const bal = await getBalances(w.address);
+                        const item = document.querySelector(`.wallet-item[data-id="${w.id}"] .wallet-balance-small`);
+                        if (item) item.textContent = `${parseFloat(bal.usdt).toFixed(2)} USDT`;
+                    } catch (error) {
+                        console.error('خطأ في تحديث رصيد المحفظة:', error);
+                    }
+                }
+            }
+
+            // ==================== عرض المحافظ ====================
+            function renderWallets() {
+                if (wallets.length === 0) {
+                    walletListEl.innerHTML = `
+                        <div style="text-align:center; padding:40px 0; color:#7a8aa8;">
+                            <div style="font-size:48px; margin-bottom:12px;">📭</div>
+                            لا توجد محافظ
+                        </div>`;
+                    return;
+                }
+                let html = '';
+                wallets.forEach(w => {
+                    html += `
+                        <div class="wallet-item" data-id="${w.id}">
+                            <div>
+                                <div class="wallet-name">${w.name || 'محفظة'}</div>
+                                <div class="wallet-address-short">${w.address.slice(0,8)}...${w.address.slice(-6)}</div>
+                            </div>
+                            <div class="wallet-balance-small">⋯</div>
+                        </div>`;
+                });
+                walletListEl.innerHTML = html;
+                document.querySelectorAll('.wallet-item').forEach(el => {
+                    el.addEventListener('click', function() { openWallet(this.dataset.id); });
+                });
+                updateAllBalances();
+            }
+
+            // ==================== عمليات المحفظة ====================
+            async function openWallet(id) {
+                const w = getWalletById(id);
+                if (!w) return;
+                currentWalletId = id;
+                currentWallet = w;
+                detailView.style.display = 'block';
+                mainView.style.display = 'none';
+                walletDetailName.textContent = w.name || 'محفظة';
+                settingsPanel.style.display = 'none';
+
+                qrCodeDiv.innerHTML = '';
+                new QRCode(qrCodeDiv, { text: w.address, width: 120, height: 120, correctLevel: QRCode.CorrectLevel.H });
+                walletAddressDisplay.textContent = w.address;
+                await updateBalances(w.address);
+                recipientAddress.value = '';
+                amountInput.value = '';
+                txStatus.classList.add('hidden');
+            }
+
+            function goBack() {
+                detailView.style.display = 'none';
+                mainView.style.display = 'block';
+                renderWallets();
+            }
+
+            // ==================== استيراد المحفظة ====================
+            function importWallet() {
+                const name = walletNameInput.value.trim() || 'محفظة جديدة';
+                let pk = privateKeyInput.value.trim();
+                if (!pk) { showToast('⚠️ الرجاء إدخال المفتاح الخاص'); return; }
+                pk = pk.replace(/\s/g, '');
+                if (pk.startsWith('0x')) pk = pk.slice(2);
+                if (!/^[0-9a-fA-F]{64}$/.test(pk)) { showToast('❌ مفتاح خاص غير صالح'); return; }
+                try {
+                    const wallet = new ethers.Wallet('0x' + pk);
+                    const newWallet = {
+                        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 4),
+                        name,
+                        address: wallet.address,
+                        privateKey: '0x' + pk
+                    };
+                    wallets.push(newWallet);
+                    saveWallets();
+                    renderWallets();
+                    importModal.style.display = 'none';
+                    resetImportForm();
+                    showToast('✅ تم استيراد المحفظة');
+                } catch { showToast('❌ خطأ في المفتاح الخاص'); }
+            }
+
+            function resetImportForm() {
+                walletNameInput.value = '';
+                privateKeyInput.value = '';
+            }
+
+            // ==================== QR ====================
+            function showFullscreenQR(address) {
+                qrCodeBig.innerHTML = '';
+                new QRCode(qrCodeBig, { text: address, width: 280, height: 280, correctLevel: QRCode.CorrectLevel.H });
+                addressBig.textContent = address;
+                qrFullscreen.style.display = 'flex';
+            }
+
+            function hideFullscreenQR() { qrFullscreen.style.display = 'none'; }
+
+            // ==================== الكاميرا ====================
+            async function startCamera(mode) {
+                scanMode = mode;
+                cameraOverlay.style.display = 'flex';
+                camStatus.textContent = 'جاري تشغيل الكاميرا...';
+                try {
+                    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    video.srcObject = cameraStream;
+                    camStatus.textContent = 'وجه الكاميرا إلى رمز QR';
+                } catch {
+                    camStatus.textContent = '❌ لا يمكن الوصول إلى الكاميرا';
+                    showToast('❌ يرجى السماح بالوصول إلى الكاميرا');
+                }
+            }
+
+            function stopCamera() {
+                if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop());
+                    cameraStream = null; }
+                video.srcObject = null;
+                cameraOverlay.style.display = 'none';
+            }
+
+            function captureQR() {
+                if (!video.videoWidth) { camStatus.textContent = '❌ الكاميرا غير جاهزة'; return; }
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
+                if (code && code.data) {
+                    stopCamera();
+                    handleQRData(code.data);
+                } else {
+                    camStatus.textContent = '❌ لم يتم التعرف على QR';
+                    setTimeout(() => { camStatus.textContent = 'وجه الكاميرا إلى رمز QR'; }, 2000);
+                }
+            }
+
+            function handleQRData(data) {
+                const trimmed = data.trim();
+                const isPrivateKey = /^[0-9a-fA-F]{64}$/.test(trimmed) || /^0x[0-9a-fA-F]{64}$/.test(trimmed);
+                const isAddress = /^0x[0-9a-fA-F]{40}$/.test(trimmed);
+                if (scanMode === 'privateKey') {
+                    if (isPrivateKey) { privateKeyInput.value = trimmed;
+                        showToast('✅ تم قراءة المفتاح الخاص'); } else showToast('❌ هذا ليس مفتاح خاص صالح');
+                } else if (scanMode === 'address') {
+                    if (isAddress) { recipientAddress.value = trimmed;
+                        showToast('✅ تم قراءة العنوان'); } else showToast('❌ هذا ليس عنوان عام صالح');
+                }
+            }
+
+            // ==================== إرسال المعاملة ====================
+            let pendingTxData = null;
+
+            function prepareSend() {
+                if (!currentWallet) { showToast('❌ لا توجد محفظة مفتوحة'); return; }
+                const to = recipientAddress.value.trim();
+                if (!ethers.isAddress(to)) { showStatus('❌ عنوان غير صحيح', true); return; }
+                const amount = parseFloat(amountInput.value);
+                if (!amount || amount <= 0) { showStatus('❌ أدخل مبلغاً صحيحاً', true); return; }
+                const token = tokenSelect.value;
+                pendingTxData = { to, amount, token };
+                confirmTo.textContent = to.slice(0, 12) + '...' + to.slice(-6);
+                confirmAmount.textContent = amount.toFixed(6);
+                confirmToken.textContent = token;
+                confirmPasswordTx.value = '';
+                confirmError.textContent = '';
+                confirmModal.style.display = 'flex';
+                confirmPasswordTx.focus();
+            }
+
+            async function confirmSend() {
+                const password = confirmPasswordTx.value.trim();
+                confirmError.textContent = '';
+                if (!password) { confirmError.textContent = '⚠️ الرجاء إدخال كلمة السر'; return; }
+                if (password !== appPassword) {
+                    confirmError.textContent = '❌ كلمة سر خاطئة';
+                    confirmPasswordTx.value = '';
+                    confirmPasswordTx.focus();
+                    return;
+                }
+                confirmModal.style.display = 'none';
+                await executeSend();
+            }
+
+            async function executeSend() {
+                if (!pendingTxData || !currentWallet) return;
+                const { to, amount, token } = pendingTxData;
+                pendingTxData = null;
+                try {
+                    const bal = await getBalances(currentWallet.address);
+                    let balanceCheck = token === 'USDT' ? parseFloat(bal.usdt) : parseFloat(bal.bnb);
+                    if (amount > balanceCheck) {
+                        showStatus(`❌ الرصيد غير كافٍ. المتاح: ${balanceCheck.toFixed(6)} ${token}`, true);
+                        return;
+                    }
+                    const gasPrice = await provider.getGasPrice();
+                    let gasLimit = token === 'USDT' ? 100000 : 21000;
+                    const gasCost = parseFloat(ethers.formatEther(gasPrice * gasLimit));
+                    if (token === 'BNB' && (amount + gasCost) > balanceCheck) {
+                        showStatus(`❌ الرصيد غير كافٍ (الغاز: ${gasCost.toFixed(6)} BNB)`, true);
+                        return;
+                    }
+                    const walletSigner = new ethers.Wallet(currentWallet.privateKey, provider);
+                    showStatus('⏳ جاري التوقيع والإرسال...', false);
+                    let tx;
+                    if (token === 'BNB') {
+                        tx = await walletSigner.sendTransaction({
+                            to,
+                            value: ethers.parseEther(amount.toString()),
+                            gasPrice,
+                            gasLimit
+                        });
+                    } else {
+                        const contract = new ethers.Contract(USDT_CONTRACT, [
+                            'function transfer(address to, uint256 amount) public returns (bool)'
+                        ], walletSigner);
+                        const amountWei = ethers.parseUnits(amount.toString(), 18);
+                        tx = await contract.transfer(to, amountWei, { gasPrice, gasLimit });
+                    }
+                    showStatus(`⏳ جاري التأكيد... هاش: ${tx.hash.slice(0,20)}...`, false);
+                    const receipt = await tx.wait(2);
+                    if (receipt.status === 1) {
+                        showStatus(`✅ تم الإرسال بنجاح! هاش: ${tx.hash}`, false);
+                        await updateBalances(currentWallet.address);
+                        updateAllBalances();
+                    } else {
+                        showStatus(`❌ فشل التأكيد`, true);
+                    }
+                } catch (e) {
+                    console.error(e);
+                    showStatus(`❌ فشل: ${e.message || e}`, true);
+                }
+            }
+
+            function showStatus(msg, isError) {
+                txStatus.classList.remove('hidden');
+                txStatus.textContent = msg;
+                txStatus.classList.toggle('error-msg', isError);
+            }
+
+            // ==================== أحداث ====================
+            addWalletBtn.addEventListener('click', function() {
+                resetImportForm();
+                importModal.style.display = 'flex';
+            });
+            scanOption.addEventListener('click', function() {
+                importModal.style.display = 'none';
+                startCamera('privateKey');
+            });
+            pasteOption.addEventListener('click', function() { privateKeyInput.focus(); });
+            importCancelBtn.addEventListener('click', function() {
+                importModal.style.display = 'none';
+                resetImportForm();
+            });
+            importConfirmBtn.addEventListener('click', importWallet);
+            privateKeyInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault();
+                    importWallet(); } });
+
+            scanQrBtn.addEventListener('click', function() { startCamera('address'); });
+            closeCamBtn.addEventListener('click', stopCamera);
+            captureCamBtn.addEventListener('click', captureQR);
+
+            qrBox.addEventListener('click', function() { if (currentWallet) showFullscreenQR(currentWallet.address); });
+            closeFullscreenBtn.addEventListener('click', function(e) { e.stopPropagation();
+                hideFullscreenQR(); });
+            qrFullscreen.addEventListener('click', function(e) { if (e.target === qrFullscreen) hideFullscreenQR(); });
+
+            sendTxBtn.addEventListener('click', prepareSend);
+            confirmSendBtn.addEventListener('click', confirmSend);
+            confirmCancelBtn.addEventListener('click', function() {
+                confirmModal.style.display = 'none';
+                pendingTxData = null;
+                confirmError.textContent = '';
+            });
+            confirmPasswordTx.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault();
+                    confirmSend(); } });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    if (confirmModal.style.display === 'flex') { confirmModal.style.display = 'none';
+                        pendingTxData = null;
+                        confirmError.textContent = ''; }
+                    if (importModal.style.display === 'flex') { importModal.style.display = 'none';
+                        resetImportForm(); }
+                    if (cameraOverlay.style.display === 'flex') stopCamera();
+                    if (qrFullscreen.style.display === 'flex') hideFullscreenQR();
+                }
+            });
+
+            settingsToggle.addEventListener('click', function() {
+                settingsPanel.style.display = (settingsPanel.style.display === 'none' || settingsPanel.style.display ===
+                    '') ? 'flex' : 'none';
+            });
+
+            renameBtn.addEventListener('click', function() {
+                if (!currentWallet) return;
+                const newName = renameInput.value.trim();
+                if (!newName) { showToast('⚠️ أدخل اسماً'); return; }
+                const w = getWalletById(currentWallet.id);
+                if (w) { w.name = newName;
+                    saveWallets();
+                    walletDetailName.textContent = newName;
+                    renderWallets(); }
+                renameInput.value = '';
+                settingsPanel.style.display = 'none';
+                showToast('✅ تم تغيير الاسم');
+            });
+
+            deleteWalletBtn.addEventListener('click', function() {
+                if (!currentWallet) return;
+                if (!confirm('⚠️ هل أنت متأكد من حذف هذه المحفظة؟')) return;
+                wallets = wallets.filter(w => w.id !== currentWallet.id);
+                saveWallets();
+                goBack();
+                showToast('🗑 تم حذف المحفظة');
+            });
+
+            backBtn.addEventListener('click', goBack);
+
+            walletAddressDisplay.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const address = this.textContent;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(address).then(() => showToast('✅ تم نسخ العنوان'));
+                } else {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = address;
+                    textarea.style.cssText = 'position:fixed;opacity:0;';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try { document.execCommand('copy');
+                        showToast('✅ تم نسخ العنوان'); } catch {}
+                    document.body.removeChild(textarea);
+                }
+            });
+
+            // ==================== بدء التشغيل ====================
+            updateLoginUI();
+            loadWallets();
+            console.log('🔐 التطبيق جاهز');
+
+        })();
+    </script>
+</body>
+</html>
